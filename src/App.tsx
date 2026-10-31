@@ -21,7 +21,7 @@ import {
 
 type Stage = 'empty' | 'filling' | 'generating' | 'plan';
 
-const FULL_PRODUCT_NOTE = 'Part of the full product – not active in this concept demo';
+const FULL_PRODUCT_NOTE = 'Part of the full product - not active in this concept demo';
 
 function SkeletonBlock() {
   return (
@@ -267,7 +267,7 @@ export default function App() {
           Your media plan, <em>in minutes.</em>
         </h1>
         <p className="sub">
-          Answer a few questions. Compass recommends the publishers, formats and spend split – and
+          Answer a few questions. Compass recommends the publishers, formats and spend split - and
           the results to expect, with the reasoning shown.
         </p>
       </header>
@@ -283,7 +283,7 @@ export default function App() {
               id="f-name"
               className="ctl"
               type="text"
-              placeholder="e.g. UK Laboratory Procurement Campaign – Q1 2027"
+              placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
               value={brief.name}
               onChange={(e) => patch({ name: e.target.value })}
             />
@@ -462,7 +462,7 @@ export default function App() {
                 <h3>Your recommended plan builds here</h3>
                 <p>
                   As you answer, Compass checks your brief against publisher rates, audience sizes
-                  and performance benchmarks – then shows the full plan on this side.
+                  and performance benchmarks - then shows the full plan on this side.
                 </p>
               </div>
               <div className="steps3">
@@ -511,7 +511,7 @@ export default function App() {
               </div>
               <SkeletonBlock />
               <p className="keep">
-                Keep going – your recommended publishers, spend split and expected results appear
+                Keep going - your recommended publishers, spend split and expected results appear
                 here as soon as you generate.
               </p>
             </>
@@ -633,7 +633,7 @@ export default function App() {
         <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
           The Hybrid House
         </a>{' '}
-        &middot; Design concept – scenario, figures and rationale are
+        &middot; Design concept - scenario, figures and rationale are
         illustrative, adapted from the Compass brief
       </footer>
 
