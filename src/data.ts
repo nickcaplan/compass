@@ -236,7 +236,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
     ],
     items: [
       {
-        title: `Publisher A - ${b.audiences.join(' / ')} Webinar`,
+        title: `Publisher A – ${b.audiences.join(' / ')} Webinar`,
         format: 'Webinar',
         spend: webinarSpend,
         metrics: [
@@ -246,7 +246,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
         why: `Webinars historically deliver strong lead generation among ${audienceWord(b)} audiences at ${seniorityWord(b)} level.`,
       },
       {
-        title: 'Publisher B - Sponsored Content',
+        title: 'Publisher B – Sponsored Content',
         format: 'Sponsored article',
         spend: articleSpend,
         metrics: [
@@ -256,14 +256,14 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
         why: 'Builds consideration across the wider buying committee before lead-generation activity.',
       },
       {
-        title: 'Publisher C - Lead Generation Programme',
+        title: 'Publisher C – Lead Generation Programme',
         format: 'Lead generation',
         spend: leadSpend,
         metrics: [
           { k: 'Estimated leads', v: num(500 * f) },
           { k: 'Estimated CPL', v: gbp(100) },
         ],
-        why: 'Strongest penetration among the selected audience - the largest performance component.',
+        why: 'Strongest penetration among the selected audience – the largest performance component.',
       },
     ],
     timing: [
@@ -286,7 +286,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
     ],
     items: [
       {
-        title: `Publisher A - ${b.audiences.join(' / ')} Display Takeover`,
+        title: `Publisher A – ${b.audiences.join(' / ')} Display Takeover`,
         format: 'Display advertising',
         spend: takeoverSpend,
         metrics: [
@@ -296,7 +296,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
         why: `High-impact display delivers scale and visibility quickly among ${audienceWord(b)} audiences.`,
       },
       {
-        title: 'Publisher B - Sponsored Content',
+        title: 'Publisher B – Sponsored Content',
         format: 'Sponsored article',
         spend: articleSpend,
         metrics: [
@@ -306,7 +306,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
         why: 'Builds presence with the wider buying committee around the launch activity.',
       },
       {
-        title: 'Publisher C - Video Programme',
+        title: 'Publisher C – Video Programme',
         format: 'Video',
         spend: videoSpend,
         metrics: [
@@ -336,7 +336,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
     ],
     items: [
       {
-        title: `Publisher A - ${b.audiences.join(' / ')} Webinar Series`,
+        title: `Publisher A – ${b.audiences.join(' / ')} Webinar Series`,
         format: 'Webinar',
         spend: webinarSpend,
         metrics: [
@@ -346,7 +346,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
         why: `Webinars hold attention longest among ${audienceWord(b)} audiences at ${seniorityWord(b)} level.`,
       },
       {
-        title: 'Publisher B - Sponsored Content Hub',
+        title: 'Publisher B – Sponsored Content Hub',
         format: 'Sponsored article',
         spend: hubSpend,
         metrics: [
@@ -356,7 +356,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
         why: 'A content hub deepens engagement with the buying committee over the campaign period.',
       },
       {
-        title: 'Publisher C - Native Content Programme',
+        title: 'Publisher C – Native Content Programme',
         format: 'Native content',
         spend: nativeSpend,
         metrics: [
