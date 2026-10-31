@@ -43,6 +43,7 @@ function DemoCap() {
 
 export default function App() {
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
+  const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
   const [budgetText, setBudgetText] = useState('');
   const [stage, setStage] = useState<Stage>('empty');
   const [ticks, setTicks] = useState(0);
@@ -52,7 +53,13 @@ export default function App() {
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
   const objective = OBJECTIVES.find((o) => o.id === brief.objective) ?? null;
-  const plan = useMemo(() => (stage === 'plan' ? buildPlan(brief) : null), [stage, brief]);
+  const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
+  const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
+  const viewObjective = OBJECTIVES.find((o) => o.id === viewBrief.objective) ?? null;
+  const plan = useMemo(
+    () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
+    [stage, submittedBrief],
+  );
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -64,7 +71,7 @@ export default function App() {
   useEffect(() => {
     if (stage !== 'generating') return;
     setTicks(0);
-    const steps = checklistFor(brief).length;
+    const steps = checklistFor(submittedBrief ?? brief).length;
     const interval = window.setInterval(() => {
       setTicks((t) => {
         if (t + 1 >= steps) {
@@ -115,22 +122,24 @@ export default function App() {
 
   function generate() {
     if (count < 6) return;
+    setSubmittedBrief(brief);
     setStage('generating');
   }
 
   function reset() {
     setBrief(EMPTY_BRIEF);
+    setSubmittedBrief(null);
     setBudgetText('');
     setStage('empty');
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
-  if (objective) chips.push({ label: `Objective: ${objective.label}` });
-  if (brief.kpi) chips.push({ label: `KPI: ${brief.kpi}` });
-  if (brief.audience) chips.push({ label: `Audience: ${brief.audience}` });
-  if (brief.seniority.length) chips.push({ label: `Seniority: ${brief.seniority.join(' + ')}` });
-  if (brief.budget) chips.push({ label: `Budget: ${gbp(brief.budget)}` });
-  if (weeks > 0) chips.push({ label: `${weeks} weeks` });
+  if (viewObjective) chips.push({ label: `Objective: ${viewObjective.label}` });
+  if (viewBrief.kpi) chips.push({ label: `KPI: ${viewBrief.kpi}` });
+  if (viewBrief.audience) chips.push({ label: `Audience: ${viewBrief.audience}` });
+  if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
+  if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
+  if (viewWeeks > 0) chips.push({ label: `${viewWeeks} weeks` });
   if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
 
   return (
@@ -370,15 +379,15 @@ export default function App() {
                 <DemoCap />
               </div>
               <div className="chips">
-                <span className="chip">{objective?.label}</span>
-                <span className="chip">{brief.kpi}</span>
-                <span className="chip">{brief.audience}</span>
-                <span className="chip">{brief.seniority.join(' + ')}</span>
-                <span className="chip">{gbp(brief.budget ?? 0)}</span>
-                <span className="chip">{weeks} weeks</span>
+                <span className="chip">{viewObjective?.label}</span>
+                <span className="chip">{viewBrief.kpi}</span>
+                <span className="chip">{viewBrief.audience}</span>
+                <span className="chip">{viewBrief.seniority.join(' + ')}</span>
+                <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
+                <span className="chip">{viewWeeks} weeks</span>
               </div>
               <div className="check">
-                {checklistFor(brief).map((item, i) =>
+                {checklistFor(viewBrief).map((item, i) =>
                   i < ticks ? (
                     <div className="row" key={item}>
                       <span className="tick">&#10003;</span>

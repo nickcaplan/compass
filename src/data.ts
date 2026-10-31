@@ -99,7 +99,7 @@ export function answeredCount(b: Brief): number {
     b.audience !== null,
     b.seniority.length > 0,
     b.budget !== null && b.budget > 0,
-    b.start !== '' && b.end !== '',
+    campaignWeeks(b.start, b.end) > 0,
   ].filter(Boolean).length;
 }
 
@@ -118,14 +118,14 @@ const MONTHS = [
 export function timingMonths(start: string): string[] {
   const d = new Date(start);
   if (Number.isNaN(d.getTime())) return ['Month 1', 'Month 2', 'Month 3'];
-  const m = d.getMonth();
+  const m = d.getUTCMonth();
   return [MONTHS[m], MONTHS[(m + 1) % 12], MONTHS[(m + 2) % 12]];
 }
 
 export function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCFullYear()}`;
 }
 
 export function gbp(n: number): string {
@@ -170,7 +170,15 @@ function seniorityWord(b: Brief): string {
   return b.seniority.join(' + ').toLowerCase();
 }
 
+
+function spends(budget: number, shares: number[]): number[] {
+  const head = shares.slice(0, -1).map((s) => Math.round(budget * s));
+  const used = head.reduce((a, n) => a + n, 0);
+  return [...head, Math.round(budget) - used];
+}
+
 function performancePlan(b: Brief, f: number, weeks: number, months: string[]): Plan {
+  const [webinarSpend, articleSpend, leadSpend] = spends(b.budget ?? 0, [0.2, 0.3, 0.5]);
   return {
     metrics: [
       { k: 'Total budget', v: gbp(b.budget ?? 0) },
@@ -183,7 +191,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
       {
         title: `Publisher A - ${b.audience} Webinar`,
         format: 'Webinar',
-        spend: (b.budget ?? 0) * 0.2,
+        spend: webinarSpend,
         metrics: [
           { k: 'Est. leads', v: num(250 * f) },
           { k: 'Est. CPL', v: gbp(80) },
@@ -193,7 +201,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
       {
         title: 'Publisher B - Sponsored Content',
         format: 'Sponsored article',
-        spend: (b.budget ?? 0) * 0.3,
+        spend: articleSpend,
         metrics: [
           { k: 'Est. leads', v: num(200 * f) },
           { k: 'Est. reach', v: num(90000 * f) },
@@ -203,7 +211,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
       {
         title: 'Publisher C - Lead Generation Programme',
         format: 'Lead generation',
-        spend: (b.budget ?? 0) * 0.5,
+        spend: leadSpend,
         metrics: [
           { k: 'Est. leads', v: num(500 * f) },
           { k: 'Est. CPL', v: gbp(100) },
@@ -220,6 +228,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
 }
 
 function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Plan {
+  const [takeoverSpend, articleSpend, videoSpend] = spends(b.budget ?? 0, [0.35, 0.25, 0.4]);
   return {
     metrics: [
       { k: 'Total budget', v: gbp(b.budget ?? 0) },
@@ -232,7 +241,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
       {
         title: `Publisher A - ${b.audience} Display Takeover`,
         format: 'Display advertising',
-        spend: (b.budget ?? 0) * 0.35,
+        spend: takeoverSpend,
         metrics: [
           { k: 'Est. reach', v: num(210000 * f) },
           { k: 'Est. impressions', v: num(520000 * f) },
@@ -242,7 +251,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
       {
         title: 'Publisher B - Sponsored Content',
         format: 'Sponsored article',
-        spend: (b.budget ?? 0) * 0.25,
+        spend: articleSpend,
         metrics: [
           { k: 'Est. reach', v: num(90000 * f) },
           { k: 'Est. impressions', v: num(260000 * f) },
@@ -252,7 +261,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
       {
         title: 'Publisher C - Video Programme',
         format: 'Video',
-        spend: (b.budget ?? 0) * 0.4,
+        spend: videoSpend,
         metrics: [
           { k: 'Est. views', v: num(340000 * f) },
           { k: 'Completion', v: '68%' },
@@ -269,6 +278,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
 }
 
 function considerationPlan(b: Brief, f: number, weeks: number, months: string[]): Plan {
+  const [webinarSpend, hubSpend, nativeSpend] = spends(b.budget ?? 0, [0.3, 0.4, 0.3]);
   return {
     metrics: [
       { k: 'Total budget', v: gbp(b.budget ?? 0) },
@@ -281,7 +291,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
       {
         title: `Publisher A - ${b.audience} Webinar Series`,
         format: 'Webinar',
-        spend: (b.budget ?? 0) * 0.3,
+        spend: webinarSpend,
         metrics: [
           { k: 'Est. registrations', v: num(380 * f) },
           { k: 'Per registration', v: gbp(79) },
@@ -291,7 +301,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
       {
         title: 'Publisher B - Sponsored Content Hub',
         format: 'Sponsored article',
-        spend: (b.budget ?? 0) * 0.4,
+        spend: hubSpend,
         metrics: [
           { k: 'Est. interactions', v: num(2900 * f) },
           { k: 'Avg. dwell', v: '3:10' },
@@ -301,7 +311,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
       {
         title: 'Publisher C - Native Content Programme',
         format: 'Native content',
-        spend: (b.budget ?? 0) * 0.3,
+        spend: nativeSpend,
         metrics: [
           { k: 'Est. downloads', v: num(1150 * f) },
           { k: 'Est. reach', v: num(120000 * f) },

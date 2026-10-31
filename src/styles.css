@@ -104,6 +104,7 @@ h1 em{font-style:normal;color:#FECA0A}
 .signin{border:1px solid rgba(255,255,255,.2);color:#F4F3EF;background:rgba(255,255,255,.04)}
 label{color:#8E8C96}
 .ctl{background:#0E0E11;border:1px solid rgba(255,255,255,.1);color:#F4F3EF}
+.ctl:focus-visible{outline:2px solid #FECA0A;outline-offset:2px}
 select.ctl option{background:#101015;color:#F4F3EF}
 input.ctl{color:#F4F3EF}
 .pill{border:1.5px solid #FECA0A;color:#FECA0A}
