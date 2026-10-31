@@ -115,11 +115,17 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-export function timingMonths(start: string): string[] {
+export function timingMonths(start: string, end: string): string[] {
   const d = new Date(start);
-  if (Number.isNaN(d.getTime())) return ['Month 1', 'Month 2', 'Month 3'];
+  const finish = new Date(end);
+  if (Number.isNaN(d.getTime()) || Number.isNaN(finish.getTime())) {
+    return ['Month 1', 'Month 2', 'Month 3'];
+  }
   const m = d.getUTCMonth();
-  return [MONTHS[m], MONTHS[(m + 1) % 12], MONTHS[(m + 2) % 12]];
+  const startIndex = d.getUTCFullYear() * 12 + m;
+  const endIndex = finish.getUTCFullYear() * 12 + finish.getUTCMonth();
+  const lastOffset = Math.min(2, Math.max(0, endIndex - startIndex));
+  return [0, 1, 2].map((offset) => MONTHS[(m + Math.min(offset, lastOffset)) % 12]);
 }
 
 export function formatDate(iso: string): string {
@@ -330,7 +336,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
 export function buildPlan(b: Brief): Plan {
   const f = (b.budget ?? REFERENCE_BUDGET) / REFERENCE_BUDGET;
   const weeks = campaignWeeks(b.start, b.end) || 12;
-  const months = timingMonths(b.start);
+  const months = timingMonths(b.start, b.end);
   if (b.objective === 'awareness') return awarenessPlan(b, f, weeks, months);
   if (b.objective === 'consideration') return considerationPlan(b, f, weeks, months);
   return performancePlan(b, f, weeks, months);
