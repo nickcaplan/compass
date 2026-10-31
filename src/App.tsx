@@ -3,6 +3,7 @@ import logoUrl from './assets/thh-logo.svg';
 import {
   AUDIENCES,
   EMPTY_BRIEF,
+  PRIMARY_AUDIENCES,
   OBJECTIVES,
   SENIORITY_LEVELS,
   answeredCount,
@@ -51,8 +52,27 @@ export default function App() {
   const [budgetText, setBudgetText] = useState('');
   const [stage, setStage] = useState<Stage>('empty');
   const [ticks, setTicks] = useState(0);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return window.localStorage.getItem('compass-theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const [showAllAudiences, setShowAllAudiences] = useState(false);
+  const startRef = useRef<HTMLInputElement>(null);
+  const endRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      window.localStorage.setItem('compass-theme', theme);
+    } catch {
+      /* private mode */
+    }
+  }, [theme]);
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
@@ -61,6 +81,14 @@ export default function App() {
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
+  const primaryAudiences = AUDIENCES.filter((a) => PRIMARY_AUDIENCES.includes(a));
+  const secondaryAudiences = AUDIENCES.filter((a) => !PRIMARY_AUDIENCES.includes(a));
+  const visibleAudiences = showAllAudiences
+    ? [...primaryAudiences, ...secondaryAudiences]
+    : [...primaryAudiences, ...secondaryAudiences.filter((a) => brief.audiences.includes(a))];
+  const hiddenAudienceCount = showAllAudiences
+    ? 0
+    : secondaryAudiences.filter((a) => !brief.audiences.includes(a)).length;
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
     .flatMap((o) => o.kpis)
     .filter((k, i, a) => a.indexOf(k) === i);
@@ -102,6 +130,16 @@ export default function App() {
     setToast(message);
     window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+  }
+
+  function openDatePicker(ref: React.RefObject<HTMLInputElement | null>) {
+    const el = ref.current;
+    if (!el) return;
+    try {
+      el.showPicker();
+    } catch {
+      el.focus();
+    }
   }
 
   function patch(p: Partial<Brief>) {
@@ -161,6 +199,7 @@ export default function App() {
     setSubmittedBrief(null);
     setBudgetText('');
     setStage('empty');
+    setShowAllAudiences(false);
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
@@ -198,6 +237,24 @@ export default function App() {
         <div className="navlinks">
           <button type="button" onClick={() => showToast(FULL_PRODUCT_NOTE)}>My plans</button>
           <button type="button" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
+          <button
+            type="button"
+            className="themebtn"
+            onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4.2" />
+                <path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.8 1.8M17 17l1.8 1.8M18.8 5.2L17 7M7 17l-1.8 1.8" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 13.5A8.5 8.5 0 1 1 10.5 4a7 7 0 0 0 9.5 9.5z" />
+              </svg>
+            )}
+          </button>
           <button type="button" className="signin" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
             Sign in
           </button>
@@ -273,7 +330,7 @@ export default function App() {
           <div className="field">
             <label id="g-audience">Audience</label>
             <div className="pills" role="group" aria-labelledby="g-audience">
-              {AUDIENCES.map((a) => (
+              {visibleAudiences.map((a) => (
                 <button
                   key={a}
                   type="button"
@@ -284,6 +341,16 @@ export default function App() {
                   {a}
                 </button>
               ))}
+              <button
+                type="button"
+                className="pill more"
+                aria-expanded={showAllAudiences}
+                onClick={() => setShowAllAudiences((v) => !v)}
+              >
+                {showAllAudiences
+                  ? 'Show fewer'
+                  : `Show ${hiddenAudienceCount} more`}
+              </button>
             </div>
           </div>
 
@@ -320,22 +387,50 @@ export default function App() {
           <div className="field">
             <label>Campaign dates</label>
             <div className="daterow">
-              <input
-                aria-label="Start date"
-                className="ctl"
-                type="date"
-                value={brief.start}
-                min={tomorrowISO}
-                onChange={(e) => patch({ start: e.target.value })}
-              />
-              <input
-                aria-label="End date"
-                className="ctl"
-                type="date"
-                value={brief.end}
-                min={brief.start || tomorrowISO}
-                onChange={(e) => patch({ end: e.target.value })}
-              />
+              <div className="datewrap">
+                <input
+                  ref={startRef}
+                  aria-label="Start date"
+                  className="ctl"
+                  type="date"
+                  value={brief.start}
+                  min={tomorrowISO}
+                  onChange={(e) => patch({ start: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="calbtn"
+                  aria-label="Choose start date"
+                  onClick={() => openDatePicker(startRef)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+                  </svg>
+                </button>
+              </div>
+              <div className="datewrap">
+                <input
+                  ref={endRef}
+                  aria-label="End date"
+                  className="ctl"
+                  type="date"
+                  value={brief.end}
+                  min={brief.start || tomorrowISO}
+                  onChange={(e) => patch({ end: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="calbtn"
+                  aria-label="Choose end date"
+                  onClick={() => openDatePicker(endRef)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+                  </svg>
+                </button>
+              </div>
             </div>
             {startNotFuture(brief.start) && (
               <div className="dur warn">Start date must be in the future.</div>

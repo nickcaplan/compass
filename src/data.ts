@@ -62,6 +62,13 @@ export const AUDIENCES: string[] = [
   'Director',
 ];
 
+// Audiences shown first in the form. The brief (section 6) lists the
+// taxonomy without ranking it; this first-visible pair is a proposed default
+// grounded in the brief's worked example (Audience: Procurement) and the
+// prototype slice in the project notes (procurement and lab managers),
+// pending Nick's confirmation. Everything else sits under "Show more".
+export const PRIMARY_AUDIENCES: string[] = ['Procurement', 'Laboratory Manager'];
+
 // Seniority levels from the Compass brief (section 7). Multiple selections allowed.
 export const SENIORITY_LEVELS: string[] = [
   'Technician / Practitioner',
