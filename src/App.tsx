@@ -308,7 +308,10 @@ export default function App() {
 
   function deletePlan(id: string) {
     if (!window.confirm('Delete this saved plan? This cannot be undone.')) return;
-    persist(loadPlans().filter((p) => p.id !== id));
+    if (!persist(loadPlans().filter((p) => p.id !== id))) {
+      setSavedPlans(loadPlans());
+      showToast('Could not delete - browser storage is unavailable');
+    }
   }
 
   function openPlan(entry: SavedPlan) {
