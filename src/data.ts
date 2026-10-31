@@ -437,7 +437,7 @@ export function buildPlan(b: Brief): Plan {
   const timing = plans[0].timing.map((t) => ({ ...t }));
   for (const p of plans.slice(1)) {
     p.timing.forEach((t, i) => {
-      if (!timing[i].activity.includes(t.activity.split(' · ')[0])) {
+      if (!timing[i].activity.toLowerCase().includes(t.activity.split(' · ')[0].toLowerCase())) {
         timing[i] = { label: timing[i].label, activity: `${timing[i].activity} · ${t.activity}` };
       }
     });
