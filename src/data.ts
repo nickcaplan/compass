@@ -112,10 +112,22 @@ export function startNotFuture(start: string): boolean {
   return d.getTime() <= today.getTime();
 }
 
+export function weeksLabel(weeks: number): string {
+  return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
+}
+
+export function endBeforeStart(start: string, end: string): boolean {
+  if (!start || !end) return false;
+  const s = new Date(start + 'T00:00:00').getTime();
+  const e = new Date(end + 'T00:00:00').getTime();
+  if (Number.isNaN(s) || Number.isNaN(e)) return false;
+  return e < s;
+}
+
 export function campaignWeeks(start: string, end: string): number {
   const s = new Date(start).getTime();
   const e = new Date(end).getTime();
-  if (Number.isNaN(s) || Number.isNaN(e) || e <= s) return 0;
+  if (Number.isNaN(s) || Number.isNaN(e) || e < s) return 0;
   return Math.max(1, Math.round((e - s) / (7 * 24 * 3600 * 1000)));
 }
 
@@ -213,7 +225,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
       { k: 'Estimated reach', v: num(180000 * f) },
       { k: 'Estimated leads', v: num(950 * f), hl: true },
       { k: 'Blended CPL', v: gbp(105), hl: true },
-      { k: 'Duration', v: `${weeks} weeks` },
+      { k: 'Duration', v: weeksLabel(weeks) },
     ],
     items: [
       {
@@ -263,7 +275,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
       { k: 'Estimated reach', v: num(420000 * f), hl: true },
       { k: 'Estimated impressions', v: `${(1.1 * f).toFixed(1)}m`, hl: true },
       { k: 'Avg. frequency', v: '2.6' },
-      { k: 'Duration', v: `${weeks} weeks` },
+      { k: 'Duration', v: weeksLabel(weeks) },
     ],
     items: [
       {
@@ -313,7 +325,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
       { k: 'Estimated interactions', v: num(4400 * f), hl: true },
       { k: 'Estimated registrations', v: num(380 * f), hl: true },
       { k: 'Estimated downloads', v: num(1150 * f) },
-      { k: 'Duration', v: `${weeks} weeks` },
+      { k: 'Duration', v: weeksLabel(weeks) },
     ],
     items: [
       {
@@ -365,7 +377,8 @@ export function buildPlan(b: Brief): Plan {
   const f = (b.budget ?? REFERENCE_BUDGET) / REFERENCE_BUDGET;
   const weeks = campaignWeeks(b.start, b.end) || 12;
   const months = timingMonths(b.start, b.end);
-  const selected = b.objectives.length ? b.objectives : (['performance'] as ObjectiveId[]);
+  const chosen = b.objectives.length ? b.objectives : (['performance'] as ObjectiveId[]);
+  const selected = OBJECTIVES.map((o) => o.id).filter((id) => chosen.includes(id));
   if (selected.length === 1) return PLAN_BUILDERS[selected[0]](b, f, weeks, months);
 
   // Multiple objectives: compose one illustrative plan from every selected
@@ -411,7 +424,7 @@ export function buildPlan(b: Brief): Plan {
   const metrics: PlanMetric[] = [
     { k: 'Total budget', v: gbp(b.budget ?? 0) },
     ...hl,
-    { k: 'Duration', v: `${weeks} weeks` },
+    { k: 'Duration', v: weeksLabel(weeks) },
   ];
 
   const timing = plans[0].timing.map((t) => ({ ...t }));

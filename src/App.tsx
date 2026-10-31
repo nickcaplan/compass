@@ -9,9 +9,11 @@ import {
   buildPlan,
   campaignWeeks,
   checklistFor,
+  endBeforeStart,
   formatDate,
   gbp,
   startNotFuture,
+  weeksLabel,
   type Brief,
   type ObjectiveId,
 } from './data';
@@ -167,7 +169,7 @@ export default function App() {
   if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
   if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
   if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
-  if (viewWeeks > 0) chips.push({ label: `${viewWeeks} weeks` });
+  if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
   if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
 
   return (
@@ -338,9 +340,12 @@ export default function App() {
             {startNotFuture(brief.start) && (
               <div className="dur warn">Start date must be in the future.</div>
             )}
+            {endBeforeStart(brief.start, brief.end) && (
+              <div className="dur warn">End date must be on or after the start date.</div>
+            )}
             {weeks > 0 && (
               <div className="dur">
-                {formatDate(brief.start)} to {formatDate(brief.end)} · {weeks} weeks
+                {formatDate(brief.start)} to {formatDate(brief.end)} · {weeksLabel(weeks)}
               </div>
             )}
           </div>
@@ -429,7 +434,7 @@ export default function App() {
                 <span className="chip">{viewBrief.audiences.join(' + ')}</span>
                 <span className="chip">{viewBrief.seniority.join(' + ')}</span>
                 <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
-                <span className="chip">{viewWeeks} weeks</span>
+                <span className="chip">{weeksLabel(viewWeeks)}</span>
               </div>
               <div className="check">
                 {checklistFor(viewBrief).map((item, i) =>
