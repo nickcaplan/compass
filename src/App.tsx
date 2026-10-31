@@ -918,9 +918,9 @@ export default function App() {
                 specialist can talk it through.
               </p>
             </div>
-            <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+            <a className="btn" href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
               Talk to us
-            </button>
+            </a>
           </div>
         </section>
       )}
