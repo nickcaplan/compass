@@ -99,6 +99,29 @@ export const EMPTY_BRIEF: Brief = {
   end: '',
 };
 
+// Guided-demo helper: one tap loads a complete example brief so the demo
+// can reach the plan without filling every field by hand. Demo-only - this
+// is not user data and does not persist anything. Dates are computed
+// relative to today so the example never goes stale.
+export function demoBrief(): Brief {
+  const start = new Date();
+  start.setDate(start.getDate() + 30);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 83); // 12 weeks
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return {
+    name: 'UK Laboratory Procurement Campaign',
+    objectives: ['performance'],
+    kpis: ['Lead generation'],
+    audiences: ['Procurement'],
+    seniority: ['Manager'],
+    budget: 100000,
+    start: iso(start),
+    end: iso(end),
+  };
+}
+
 export function answeredCount(b: Brief): number {
   return [
     b.objectives.length > 0,

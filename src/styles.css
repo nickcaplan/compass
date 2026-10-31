@@ -95,6 +95,11 @@ input[type="date"].ctl::-webkit-calendar-picker-indicator{display:none}
 .pill.more{border-style:dashed}
 .gen{width:100%;margin-top:22px;border:0;border-radius:12px;padding:15px;font-family:Poppins,sans-serif;font-weight:700;font-size:15.5px;cursor:pointer}
 .gen span{opacity:.7;font-weight:500}
+.demofill{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;border:1.5px dashed var(--accent-line);color:var(--accent-ink);border-radius:12px;padding:11px 14px;font-family:Poppins,sans-serif;font-weight:600;font-size:13.5px;cursor:pointer;background:rgba(254,202,10,.05);transition:border-color .15s ease,background .15s ease}
+.demofill:hover{border-color:var(--accent-ink);background:rgba(254,202,10,.09)}
+.demohint{font-size:11.5px;color:var(--faint);text-align:center;margin:7px 0 18px}
+.gen.cue{animation:gencue 1.4s ease-in-out 3}
+@keyframes gencue{0%,100%{transform:scale(1);box-shadow:0 8px 30px rgba(254,202,10,.22)}50%{transform:scale(1.035);box-shadow:0 0 0 4px var(--accent-line),0 10px 34px rgba(254,202,10,.4)}}
 .gen:disabled{opacity:.55;cursor:default}
 .plan{padding:28px 30px 26px;min-height:420px}
 .planhead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:16px;margin-bottom:20px}
@@ -215,10 +220,12 @@ input.ctl{color:var(--text)}
 @media (prefers-reduced-motion:reduce){
   .check .dot{animation:none}
   .prog .fill{transition:none}
+  .gen.cue{animation:none;outline:3px solid var(--accent-ink);outline-offset:3px}
+  .demofill{transition:none}
 }
 .logoLink{display:flex;align-items:center}
 .brand small a,footer a,.cta a,.steps3 a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .brand small a:hover,footer a:hover,.cta a:hover,.steps3 a:hover{color:var(--accent-ink)}
-.pill:focus-visible,.signin:focus-visible,.navlinks button:focus-visible,.gen:focus-visible,.actbtn:focus-visible,.themebtn:focus-visible,.calbtn:focus-visible,a:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.pill:focus-visible,.demofill:focus-visible,.signin:focus-visible,.navlinks button:focus-visible,.gen:focus-visible,.actbtn:focus-visible,.themebtn:focus-visible,.calbtn:focus-visible,a:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 
 [data-theme="light"] .brand img{filter:invert(1)}
