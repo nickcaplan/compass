@@ -54,7 +54,6 @@ priority.
 
 ## 2026-10-31 - Campaign dates must not be in the past
 
-A plan that starts in the past is not useful, so the start date must be
-today or later and the end date no earlier than the start. A campaign
-starting today is allowed; anything earlier shows a warning and the brief
-does not count as ready.
+Campaign dates must be in the future: the start date is tomorrow onward (in
+the visitor's local calendar) and the end date no earlier than the start.
+Anything earlier shows a warning and the brief does not count as ready.

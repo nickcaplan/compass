@@ -11,7 +11,7 @@ import {
   checklistFor,
   formatDate,
   gbp,
-  startIsPast,
+  startNotFuture,
   type Brief,
   type ObjectiveId,
 } from './data';
@@ -63,7 +63,8 @@ export default function App() {
     .flatMap((o) => o.kpis)
     .filter((k, i, a) => a.indexOf(k) === i);
   const now = new Date();
-  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
   const plan = useMemo(
     () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
     [stage, submittedBrief],
@@ -318,7 +319,7 @@ export default function App() {
                 className="ctl"
                 type="date"
                 value={brief.start}
-                min={todayISO}
+                min={tomorrowISO}
                 onChange={(e) => patch({ start: e.target.value })}
               />
               <input
@@ -326,12 +327,12 @@ export default function App() {
                 className="ctl"
                 type="date"
                 value={brief.end}
-                min={brief.start || todayISO}
+                min={brief.start || tomorrowISO}
                 onChange={(e) => patch({ end: e.target.value })}
               />
             </div>
-            {startIsPast(brief.start) && (
-              <div className="dur warn">Start date must be today or later.</div>
+            {startNotFuture(brief.start) && (
+              <div className="dur warn">Start date must be in the future.</div>
             )}
             {weeks > 0 && (
               <div className="dur">

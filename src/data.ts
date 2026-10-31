@@ -99,17 +99,17 @@ export function answeredCount(b: Brief): number {
     b.audiences.length > 0,
     b.seniority.length > 0,
     b.budget !== null && b.budget > 0,
-    campaignWeeks(b.start, b.end) > 0 && !startIsPast(b.start),
+    campaignWeeks(b.start, b.end) > 0 && !startNotFuture(b.start),
   ].filter(Boolean).length;
 }
 
-export function startIsPast(start: string): boolean {
+export function startNotFuture(start: string): boolean {
   if (!start) return false;
   const d = new Date(start + 'T00:00:00');
   if (Number.isNaN(d.getTime())) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return d.getTime() < today.getTime();
+  return d.getTime() <= today.getTime();
 }
 
 export function campaignWeeks(start: string, end: string): number {
