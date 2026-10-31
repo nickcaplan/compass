@@ -68,23 +68,24 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count]);
 
+  const genSteps = checklistFor(viewBrief).length;
+
   useEffect(() => {
     if (stage !== 'generating') return;
     setTicks(0);
-    const steps = checklistFor(submittedBrief ?? brief).length;
     const interval = window.setInterval(() => {
-      setTicks((t) => {
-        if (t + 1 >= steps) {
-          window.clearInterval(interval);
-          window.setTimeout(() => setStage('plan'), 500);
-          return t + 1;
-        }
-        return t + 1;
-      });
+      setTicks((t) => Math.min(t + 1, genSteps));
     }, 650);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
+
+  useEffect(() => {
+    if (stage !== 'generating') return;
+    if (ticks < genSteps) return;
+    const id = window.setTimeout(() => setStage('plan'), 500);
+    return () => window.clearTimeout(id);
+  }, [stage, ticks, genSteps]);
 
   function showToast(message: string) {
     setToast(message);
