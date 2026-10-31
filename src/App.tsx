@@ -24,6 +24,29 @@ type Stage = 'empty' | 'filling' | 'generating' | 'plan';
 
 const FULL_PRODUCT_NOTE = 'Part of the full product - not active in this concept demo';
 
+type Page = 'planner' | 'plans' | 'signin' | 'pricing';
+
+interface SavedPlan {
+  id: string;
+  savedAt: string;
+  brief: Brief;
+}
+
+// Demo-only persistence: plans save to this browser's localStorage so the
+// My Plans design is clickable end-to-end without a backend. Real saved
+// plans across devices need sign-in + database - not built yet.
+const PLANS_KEY = 'compass-saved-plans';
+
+function loadPlans(): SavedPlan[] {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function SkeletonBlock() {
   return (
     <div className="dim skelpad">
@@ -63,6 +86,8 @@ export default function App() {
   const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
+  const [page, setPage] = useState<Page>('planner');
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -247,6 +272,43 @@ export default function App() {
     setShowAllAudiences(false);
   }
 
+  function persist(plans: SavedPlan[]) {
+    setSavedPlans(plans);
+    try {
+      window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
+    } catch {
+      /* private mode */
+    }
+  }
+
+  function savePlan() {
+    if (!submittedBrief) return;
+    const entry: SavedPlan = {
+      id: `${Date.now()}`,
+      savedAt: new Date().toISOString(),
+      brief: submittedBrief,
+    };
+    persist([entry, ...savedPlans].slice(0, 20));
+    showToast('Saved to My plans - stored in this browser only (demo)');
+  }
+
+  function deletePlan(id: string) {
+    persist(savedPlans.filter((p) => p.id !== id));
+  }
+
+  function openPlan(entry: SavedPlan) {
+    setBrief(entry.brief);
+    setSubmittedBrief(entry.brief);
+    setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
+    setStage('plan');
+    setPage('planner');
+  }
+
+  function go(p: Page) {
+    setPage(p);
+    window.scrollTo(0, 0);
+  }
+
   const chips: { label: string; soft?: boolean }[] = [];
   if (viewObjectiveLabels.length) chips.push({ label: `Objective: ${viewObjectiveLabels.join(' + ')}` });
   if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
@@ -280,8 +342,9 @@ export default function App() {
           </span>
         </div>
         <div className="navlinks">
-          <button type="button" onClick={() => showToast(FULL_PRODUCT_NOTE)}>My plans</button>
-          <button type="button" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
+          <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
+          <button type="button" className={page === 'pricing' ? 'navon' : ''} onClick={() => go('pricing')}>Pricing</button>
+          <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button
             type="button"
             className="themebtn"
@@ -300,12 +363,14 @@ export default function App() {
               </svg>
             )}
           </button>
-          <button type="button" className="signin" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+          <button type="button" className="signin" onClick={() => go('signin')}>
             Sign in
           </button>
         </div>
       </nav>
 
+      {page === 'planner' && (
+        <>
       <header className="hero">
         <div className="eyebrow">Life sciences media planning</div>
         <h1>
@@ -668,7 +733,7 @@ export default function App() {
                 </button>
               </div>
               <div className="secondary">
-                <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                <button type="button" className="ghost" onClick={savePlan}>
                   Save plan
                 </button>
                 <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
@@ -682,6 +747,163 @@ export default function App() {
           )}
         </section>
       </div>
+        </>
+      )}
+
+      {page === 'plans' && (
+        <section className="card pagecard" aria-label="My plans">
+          <div className="planhead">
+            <h2>My plans</h2>
+            <DemoCap />
+          </div>
+          <p className="pagesub">
+            Plans you save land here so you can pick up where you left off. In this demo they are
+            stored in this browser only - sign-in will sync them across devices in the full product.
+          </p>
+          {savedPlans.length === 0 ? (
+            <div className="empty">
+              <div className="glyph">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 2 L15 12 L12 22 L9 12 Z" fill="#FECA0A" />
+                </svg>
+              </div>
+              <h3>No saved plans yet</h3>
+              <p>Generate a plan, hit Save plan, and it will be waiting here next time.</p>
+              <button type="button" className="btn pagebtn" onClick={() => go('planner')}>
+                Plan a campaign
+              </button>
+            </div>
+          ) : (
+            <div className="planlist">
+              {savedPlans.map((sp) => {
+                const wks = campaignWeeks(sp.brief.start, sp.brief.end);
+                const objLabels = sp.brief.objectives
+                  .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
+                  .filter((l) => l !== '')
+                  .join(' + ');
+                return (
+                  <div className="plancard" key={sp.id}>
+                    <div className="pc-main">
+                      <b>{sp.brief.name || 'Untitled campaign'}</b>
+                      <div className="chips">
+                        {objLabels && <span className="chip">{objLabels}</span>}
+                        {sp.brief.audiences.length > 0 && (
+                          <span className="chip">{sp.brief.audiences.join(' + ')}</span>
+                        )}
+                        {sp.brief.budget !== null && <span className="chip">{gbp(sp.brief.budget)}</span>}
+                        {wks > 0 && <span className="chip">{weeksLabel(wks)}</span>}
+                      </div>
+                      <div className="pc-meta">
+                        Saved{' '}
+                        {new Date(sp.savedAt).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </div>
+                    </div>
+                    <div className="pc-actions">
+                      <button type="button" className="btn" onClick={() => openPlan(sp)}>
+                        Open plan
+                      </button>
+                      <button type="button" className="ghost" onClick={() => deletePlan(sp.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {page === 'signin' && (
+        <section className="card pagecard signincard" aria-label="Sign in">
+          <div className="planhead">
+            <h2>Sign in to Compass</h2>
+            <DemoCap />
+          </div>
+          <p className="pagesub">Save your plans and pick them up on any device.</p>
+          <div className="ssolist">
+            <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+              <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
+                <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z" />
+                <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.3 6.8C.5 8.4 0 10.1 0 12s.5 3.6 1.3 5.2l3.9-2.9z" />
+                <path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.8 1.3 6.8l3.9 2.9c.9-2.9 3.6-5 6.8-5z" />
+              </svg>
+              Continue with Google
+            </button>
+            <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+              <svg width="16" height="16" viewBox="0 0 23 23" aria-hidden="true">
+                <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+                <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+                <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+                <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+              </svg>
+              Continue with Microsoft
+            </button>
+          </div>
+          <div className="divider"><span>or</span></div>
+          <div className="field">
+            <label htmlFor="f-email">Work email</label>
+            <input id="f-email" className="ctl" type="email" placeholder="you@company.com" />
+          </div>
+          <button type="button" className="gen" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+            Continue with email <span>&rarr;</span>
+          </button>
+          <p className="finenote">
+            Design proposal - sign-in is not connected yet. Google and Microsoft shown; more
+            providers can be added when sign-in is built.
+          </p>
+        </section>
+      )}
+
+      {page === 'pricing' && (
+        <section className="card pagecard" aria-label="Pricing">
+          <div className="planhead">
+            <h2>Pricing</h2>
+            <DemoCap />
+          </div>
+          <p className="pagesub">
+            Compass is in early access. Tell Compass your brief and it recommends publishers,
+            formats, a spend split and the results to expect, with the reasoning shown.
+          </p>
+          <div className="includegrid">
+            <div className="include">
+              <div className="n">01</div>
+              <b>Your brief, answered</b>
+              <span>Objective, audience, seniority, budget and dates - no media expertise needed.</span>
+            </div>
+            <div className="include">
+              <div className="n">02</div>
+              <b>A plan you can act on</b>
+              <span>Recommended publishers and formats with a spend split and expected results.</span>
+            </div>
+            <div className="include">
+              <div className="n">03</div>
+              <b>Saved and shareable</b>
+              <span>Save plans to your account and bring a Hybrid House specialist in when you want one.</span>
+            </div>
+          </div>
+          <div className="cta pricecta">
+            <div>
+              <b>Questions on pricing or access?</b>
+              <p>
+                A{' '}
+                <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
+                  Hybrid House
+                </a>{' '}
+                specialist can talk it through.
+              </p>
+            </div>
+            <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+              Talk to us
+            </button>
+          </div>
+        </section>
+      )}
 
       <footer>
         Compass by{' '}

@@ -206,7 +206,7 @@ input.ctl{color:var(--text)}
   .layout{grid-template-columns:1fr}
   .form{position:static}
   .navlinks{gap:14px;font-size:12.5px}
-  .navlinks>button:nth-child(2){display:none}
+  .navlinks>button.navsupport{display:none}
   .prod small{display:none}
   .signin{padding:7px 14px;font-size:12px}
   .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -229,3 +229,38 @@ input.ctl{color:var(--text)}
 .pill:focus-visible,.demofill:focus-visible,.signin:focus-visible,.navlinks button:focus-visible,.gen:focus-visible,.actbtn:focus-visible,.themebtn:focus-visible,.calbtn:focus-visible,a:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 
 [data-theme="light"] .brand img{filter:invert(1)}
+
+/* design proposal pages */
+.pagecard{padding:28px 30px 26px;margin:10px 0 26px;max-width:760px;margin-left:auto;margin-right:auto}
+.pagesub{color:var(--muted);font-size:13.5px;max-width:560px;margin-bottom:22px}
+.pagebtn{margin-top:6px;border:0;border-radius:12px;padding:12px 22px;font-family:Poppins,sans-serif;font-weight:700;font-size:14px;cursor:pointer}
+.planlist{display:grid;gap:14px}
+.plancard{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:var(--inset)}
+.plancard .pc-main{min-width:0;flex:1}
+.plancard .pc-main>b{display:block;font-family:Poppins,sans-serif;font-size:15.5px;color:var(--text);margin-bottom:10px}
+.plancard .chips{margin:0 0 10px}
+.pc-meta{font-size:11.5px;color:var(--faint);letter-spacing:.04em}
+.pc-actions{display:flex;gap:10px;align-items:center}
+.pc-actions .btn{white-space:nowrap;font-weight:700;font-family:Poppins,sans-serif;border-radius:12px;padding:11px 18px;font-size:13.5px;cursor:pointer;border:0;background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent)}
+.pc-actions .ghost{flex:none;padding:10px 16px}
+.navon{color:var(--accent-ink)!important}
+.signincard{max-width:480px}
+.ssolist{display:grid;gap:10px;margin-bottom:18px}
+.sso{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;border:1px solid var(--line-mid);border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;background:var(--card);color:var(--text);font-family:Roboto,system-ui,sans-serif}
+.sso:hover{border-color:var(--accent-line)}
+.divider{display:flex;align-items:center;gap:12px;margin:4px 0 16px;color:var(--faint);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.finenote{font-size:11.5px;color:var(--faint);margin-top:16px;line-height:1.5}
+.includegrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:22px}
+.include{background:var(--inset);border:1px solid var(--line);border-radius:14px;padding:16px 17px}
+.include .n{font-weight:500;color:var(--accent-ink);font-size:11.5px;letter-spacing:.08em;margin-bottom:7px}
+.include b{display:block;font-size:13.5px;font-weight:600;margin-bottom:4px;color:var(--text)}
+.include span{color:var(--muted);font-size:12.5px}
+.pricecta{margin-top:0}
+.sso:focus-visible,.pagebtn:focus-visible,.pc-actions button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+@media (max-width:980px){
+  .pagecard{padding:22px 18px}
+  .includegrid{grid-template-columns:1fr}
+  .plancard{flex-direction:column;align-items:stretch}
+  .pc-actions{justify-content:flex-start}
+}
