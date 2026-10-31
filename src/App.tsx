@@ -301,10 +301,14 @@ export default function App() {
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
     setStage('plan');
+    window.clearTimeout(toastTimer.current);
+    setToast(null);
     setPage('planner');
   }
 
   function go(p: Page) {
+    window.clearTimeout(toastTimer.current);
+    setToast(null);
     setPage(p);
     window.scrollTo(0, 0);
   }
@@ -884,7 +888,7 @@ export default function App() {
             <div className="include">
               <div className="n">03</div>
               <b>Saved and shareable</b>
-              <span>Save plans to your account and bring a Hybrid House specialist in when you want one.</span>
+              <span>Saved plans stay in this browser in the demo - accounts and sharing are part of the full product design.</span>
             </div>
           </div>
           <div className="cta pricecta">

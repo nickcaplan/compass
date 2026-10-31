@@ -216,6 +216,7 @@ input.ctl{color:var(--text)}
   .cta{flex-direction:column;align-items:flex-start}
   .steps3{grid-template-columns:1fr}
   .skelrow{grid-template-columns:repeat(2,1fr)}
+  .toast{bottom:auto;top:12px;left:12px;right:12px;transform:none;text-align:center}
 }
 @media (prefers-reduced-motion:reduce){
   .check .dot{animation:none}
