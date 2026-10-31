@@ -224,7 +224,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
           { k: 'Estimated leads', v: num(250 * f) },
           { k: 'Estimated CPL', v: gbp(80) },
         ],
-        why: `Webinars historically deliver strong lead generation among ${seniorityWord(b)} ${audienceWord(b)} audiences.`,
+        why: `Webinars historically deliver strong lead generation among ${audienceWord(b)} audiences at ${seniorityWord(b)} level.`,
       },
       {
         title: 'Publisher B - Sponsored Content',
@@ -324,7 +324,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
           { k: 'Estimated registrations', v: num(380 * f) },
           { k: 'Per registration', v: gbp(79) },
         ],
-        why: `Webinars hold attention longest among ${seniorityWord(b)} ${audienceWord(b)} audiences.`,
+        why: `Webinars hold attention longest among ${audienceWord(b)} audiences at ${seniorityWord(b)} level.`,
       },
       {
         title: 'Publisher B - Sponsored Content Hub',
