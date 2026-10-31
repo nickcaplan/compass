@@ -57,3 +57,29 @@ priority.
 Campaign dates must be in the future: the start date is tomorrow onward (in
 the visitor's local calendar) and the end date no earlier than the start.
 Anything earlier shows a warning and the brief does not count as ready.
+
+## 2026-10-31 - Light and dark themes, toggle remembered
+
+Nick asked for a light mode alongside the approved dark design. Both themes
+are CSS-variable themes on the same markup; the nav toggle switches them and
+the choice is remembered in localStorage (dark stays the default, matching
+the approved design). The THH logo asset is white, so it is inverted in
+light mode.
+
+## 2026-10-31 - Priority audiences first, rest under "Show more"
+
+Nick asked for the most important audiences first with a Show more. The
+brief (section 6) lists the taxonomy without ranking it, so the
+first-visible pair is the source-grounded proposal Nick approved on
+31 Oct 2026: Procurement (the brief's worked-example audience) and
+Laboratory Manager (the other half of the prototype's first audience slice
+in the project notes). Selected options stay visible when the list is
+collapsed. The pair lives in PRIMARY_AUDIENCES so THH can reorder it when
+they supply the final taxonomy.
+
+## 2026-10-31 - Visible calendar icons on the date fields
+
+The native date-input picker indicator is invisible against the dark theme
+and varies by browser, so each date field gets its own always-visible
+calendar button that opens the native picker (showPicker, focus fallback).
+Dates stack vertically on small screens so the fields never clip.
