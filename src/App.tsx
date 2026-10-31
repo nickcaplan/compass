@@ -62,6 +62,7 @@ export default function App() {
   });
   const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
+  const [cueSeq, setCueSeq] = useState(0);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -198,13 +199,19 @@ export default function App() {
   // the eye to the generate button (scroll + subtle pulse + focus). Demo
   // only - it never generates the plan by itself.
   function fillDemo() {
+    if (count > 0 && !window.confirm('Replace the answers you have already given with the example brief?')) {
+      return;
+    }
     const d = demoBrief();
     setBrief(d);
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
     setShowAllAudiences(false);
     window.clearTimeout(cueTimer.current);
-    setCueGen(true);
-    cueTimer.current = window.setTimeout(() => setCueGen(false), 6000);
+    if (answeredCount(d) >= 6) {
+      setCueSeq((n) => n + 1);
+      setCueGen(true);
+      cueTimer.current = window.setTimeout(() => setCueGen(false), 6000);
+    }
   }
 
   useEffect(() => {
@@ -217,7 +224,7 @@ export default function App() {
       el.focus({ preventScroll: true });
     }, 60);
     return () => window.clearTimeout(id);
-  }, [cueGen]);
+  }, [cueGen, cueSeq]);
 
   function clearCue() {
     window.clearTimeout(cueTimer.current);
