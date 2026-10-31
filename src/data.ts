@@ -72,9 +72,9 @@ export const SENIORITY_LEVELS: string[] = [
 
 export interface Brief {
   name: string;
-  objective: ObjectiveId | null;
-  kpi: string | null;
-  audience: string | null;
+  objectives: ObjectiveId[];
+  kpis: string[];
+  audiences: string[];
   seniority: string[];
   budget: number | null;
   start: string; // ISO date or ''
@@ -83,9 +83,9 @@ export interface Brief {
 
 export const EMPTY_BRIEF: Brief = {
   name: '',
-  objective: null,
-  kpi: null,
-  audience: null,
+  objectives: [],
+  kpis: [],
+  audiences: [],
   seniority: [],
   budget: null,
   start: '',
@@ -94,13 +94,22 @@ export const EMPTY_BRIEF: Brief = {
 
 export function answeredCount(b: Brief): number {
   return [
-    b.objective !== null,
-    b.kpi !== null,
-    b.audience !== null,
+    b.objectives.length > 0,
+    b.kpis.length > 0,
+    b.audiences.length > 0,
     b.seniority.length > 0,
     b.budget !== null && b.budget > 0,
-    campaignWeeks(b.start, b.end) > 0,
+    campaignWeeks(b.start, b.end) > 0 && !startIsPast(b.start),
   ].filter(Boolean).length;
+}
+
+export function startIsPast(start: string): boolean {
+  if (!start) return false;
+  const d = new Date(start + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d.getTime() < today.getTime();
 }
 
 export function campaignWeeks(start: string, end: string): number {
@@ -168,7 +177,10 @@ export interface Plan {
 const REFERENCE_BUDGET = 100000;
 
 function audienceWord(b: Brief): string {
-  return b.audience ? b.audience.toLowerCase() : 'selected';
+  if (b.audiences.length === 0) return 'selected';
+  if (b.audiences.length === 1) return b.audiences[0].toLowerCase();
+  const rest = b.audiences.slice(0, -1).join(', ').toLowerCase();
+  return `${rest} and ${b.audiences[b.audiences.length - 1].toLowerCase()}`;
 }
 
 function seniorityWord(b: Brief): string {
@@ -188,19 +200,19 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
   return {
     metrics: [
       { k: 'Total budget', v: gbp(b.budget ?? 0) },
-      { k: 'Est. reach', v: num(180000 * f) },
-      { k: 'Est. leads', v: num(950 * f), hl: true },
+      { k: 'Estimated reach', v: num(180000 * f) },
+      { k: 'Estimated leads', v: num(950 * f), hl: true },
       { k: 'Blended CPL', v: gbp(105), hl: true },
       { k: 'Duration', v: `${weeks} weeks` },
     ],
     items: [
       {
-        title: `Publisher A - ${b.audience} Webinar`,
+        title: `Publisher A - ${b.audiences.join(' / ')} Webinar`,
         format: 'Webinar',
         spend: webinarSpend,
         metrics: [
-          { k: 'Est. leads', v: num(250 * f) },
-          { k: 'Est. CPL', v: gbp(80) },
+          { k: 'Estimated leads', v: num(250 * f) },
+          { k: 'Estimated CPL', v: gbp(80) },
         ],
         why: `Webinars historically deliver strong lead generation among ${seniorityWord(b)} ${audienceWord(b)} audiences.`,
       },
@@ -209,8 +221,8 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
         format: 'Sponsored article',
         spend: articleSpend,
         metrics: [
-          { k: 'Est. leads', v: num(200 * f) },
-          { k: 'Est. reach', v: num(90000 * f) },
+          { k: 'Estimated leads', v: num(200 * f) },
+          { k: 'Estimated reach', v: num(90000 * f) },
         ],
         why: 'Builds consideration across the wider buying committee before lead-generation activity.',
       },
@@ -219,8 +231,8 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
         format: 'Lead generation',
         spend: leadSpend,
         metrics: [
-          { k: 'Est. leads', v: num(500 * f) },
-          { k: 'Est. CPL', v: gbp(100) },
+          { k: 'Estimated leads', v: num(500 * f) },
+          { k: 'Estimated CPL', v: gbp(100) },
         ],
         why: 'Strongest penetration among the selected audience - the largest performance component.',
       },
@@ -238,19 +250,19 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
   return {
     metrics: [
       { k: 'Total budget', v: gbp(b.budget ?? 0) },
-      { k: 'Est. reach', v: num(420000 * f), hl: true },
-      { k: 'Est. impressions', v: `${(1.1 * f).toFixed(1)}m`, hl: true },
+      { k: 'Estimated reach', v: num(420000 * f), hl: true },
+      { k: 'Estimated impressions', v: `${(1.1 * f).toFixed(1)}m`, hl: true },
       { k: 'Avg. frequency', v: '2.6' },
       { k: 'Duration', v: `${weeks} weeks` },
     ],
     items: [
       {
-        title: `Publisher A - ${b.audience} Display Takeover`,
+        title: `Publisher A - ${b.audiences.join(' / ')} Display Takeover`,
         format: 'Display advertising',
         spend: takeoverSpend,
         metrics: [
-          { k: 'Est. reach', v: num(210000 * f) },
-          { k: 'Est. impressions', v: num(520000 * f) },
+          { k: 'Estimated reach', v: num(210000 * f) },
+          { k: 'Estimated impressions', v: num(520000 * f) },
         ],
         why: `High-impact display delivers scale and visibility quickly among ${audienceWord(b)} audiences.`,
       },
@@ -259,8 +271,8 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
         format: 'Sponsored article',
         spend: articleSpend,
         metrics: [
-          { k: 'Est. reach', v: num(90000 * f) },
-          { k: 'Est. impressions', v: num(260000 * f) },
+          { k: 'Estimated reach', v: num(90000 * f) },
+          { k: 'Estimated impressions', v: num(260000 * f) },
         ],
         why: 'Builds presence with the wider buying committee around the launch activity.',
       },
@@ -269,7 +281,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
         format: 'Video',
         spend: videoSpend,
         metrics: [
-          { k: 'Est. views', v: num(340000 * f) },
+          { k: 'Estimated views', v: num(340000 * f) },
           { k: 'Completion', v: '68%' },
         ],
         why: 'Video carries the story to the selected audience at strong expected completion rates.',
@@ -288,18 +300,18 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
   return {
     metrics: [
       { k: 'Total budget', v: gbp(b.budget ?? 0) },
-      { k: 'Est. interactions', v: num(4400 * f), hl: true },
-      { k: 'Est. registrations', v: num(380 * f), hl: true },
-      { k: 'Est. downloads', v: num(1150 * f) },
+      { k: 'Estimated interactions', v: num(4400 * f), hl: true },
+      { k: 'Estimated registrations', v: num(380 * f), hl: true },
+      { k: 'Estimated downloads', v: num(1150 * f) },
       { k: 'Duration', v: `${weeks} weeks` },
     ],
     items: [
       {
-        title: `Publisher A - ${b.audience} Webinar Series`,
+        title: `Publisher A - ${b.audiences.join(' / ')} Webinar Series`,
         format: 'Webinar',
         spend: webinarSpend,
         metrics: [
-          { k: 'Est. registrations', v: num(380 * f) },
+          { k: 'Estimated registrations', v: num(380 * f) },
           { k: 'Per registration', v: gbp(79) },
         ],
         why: `Webinars hold attention longest among ${seniorityWord(b)} ${audienceWord(b)} audiences.`,
@@ -309,7 +321,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
         format: 'Sponsored article',
         spend: hubSpend,
         metrics: [
-          { k: 'Est. interactions', v: num(2900 * f) },
+          { k: 'Estimated interactions', v: num(2900 * f) },
           { k: 'Avg. dwell', v: '3:10' },
         ],
         why: 'A content hub deepens engagement with the buying committee over the campaign period.',
@@ -319,8 +331,8 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
         format: 'Native content',
         spend: nativeSpend,
         metrics: [
-          { k: 'Est. downloads', v: num(1150 * f) },
-          { k: 'Est. reach', v: num(120000 * f) },
+          { k: 'Estimated downloads', v: num(1150 * f) },
+          { k: 'Estimated reach', v: num(120000 * f) },
         ],
         why: 'Native content converts engaged readers into downloadable assets they keep.',
       },
@@ -333,23 +345,79 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
   };
 }
 
+const PLAN_BUILDERS: Record<ObjectiveId, (b: Brief, f: number, weeks: number, months: string[]) => Plan> = {
+  awareness: awarenessPlan,
+  consideration: considerationPlan,
+  performance: performancePlan,
+};
+
 export function buildPlan(b: Brief): Plan {
   const f = (b.budget ?? REFERENCE_BUDGET) / REFERENCE_BUDGET;
   const weeks = campaignWeeks(b.start, b.end) || 12;
   const months = timingMonths(b.start, b.end);
-  if (b.objective === 'awareness') return awarenessPlan(b, f, weeks, months);
-  if (b.objective === 'consideration') return considerationPlan(b, f, weeks, months);
-  return performancePlan(b, f, weeks, months);
+  const selected = b.objectives.length ? b.objectives : (['performance'] as ObjectiveId[]);
+  if (selected.length === 1) return PLAN_BUILDERS[selected[0]](b, f, weeks, months);
+
+  // Multiple objectives: compose one illustrative plan from every selected
+  // objective's activities, deduplicated, with the budget re-split across the
+  // combined set so the spends still sum exactly to the entered budget.
+  const plans = selected.map((id) => PLAN_BUILDERS[id](b, f, weeks, months));
+  const items: PlanItem[] = [];
+  for (const p of plans) {
+    for (const item of p.items) {
+      if (!items.some((x) => x.title === item.title)) items.push({ ...item, spend: 0 });
+    }
+  }
+  const weights = items.map((it) => {
+    let w = 0;
+    for (const p of plans) {
+      const src = p.items.find((x) => x.title === it.title);
+      if (src) {
+        const total = p.items.reduce((a, x) => a + x.spend, 0) || 1;
+        w = Math.max(w, src.spend / total);
+      }
+    }
+    return w;
+  });
+  const wsum = weights.reduce((a, n) => a + n, 0) || 1;
+  const alloc = spends(b.budget ?? 0, weights.map((w) => w / wsum));
+  items.forEach((it, i) => {
+    it.spend = alloc[i];
+  });
+
+  const hl: PlanMetric[] = [];
+  for (const p of plans) {
+    for (const m of p.metrics) {
+      if (m.hl && !hl.some((x) => x.k === m.k)) hl.push(m);
+    }
+  }
+  const metrics: PlanMetric[] = [
+    { k: 'Total budget', v: gbp(b.budget ?? 0) },
+    ...hl,
+    { k: 'Duration', v: `${weeks} weeks` },
+  ];
+
+  const timing = plans[0].timing.map((t) => ({ ...t }));
+  for (const p of plans.slice(1)) {
+    p.timing.forEach((t, i) => {
+      if (!timing[i].activity.includes(t.activity.split(' · ')[0])) {
+        timing[i] = { label: timing[i].label, activity: `${timing[i].activity} · ${t.activity}` };
+      }
+    });
+  }
+  return { metrics, items, timing };
 }
 
 export function checklistFor(b: Brief): string[] {
-  const kpi = (b.kpi ?? 'your KPI').toLowerCase();
+  const kpi = b.kpis.length ? b.kpis.join(' + ').toLowerCase() : 'your KPI';
   const efficiency =
-    b.objective === 'awareness'
-      ? 'reach and impressions'
-      : b.objective === 'consideration'
-        ? 'engagement and registrations'
-        : 'delivery and cost per lead';
+    b.objectives.length > 1
+      ? 'results across your selected objectives'
+      : b.objectives[0] === 'awareness'
+        ? 'reach and impressions'
+        : b.objectives[0] === 'consideration'
+          ? 'engagement and registrations'
+          : 'delivery and cost per lead';
   return [
     "Excluding publishers and products that don't fit your brief",
     `Prioritising formats that work for ${kpi}`,

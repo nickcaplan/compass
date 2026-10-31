@@ -26,6 +26,7 @@ select.ctl{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
 select.ctl:invalid{color:#6E6C78}
 input.ctl::placeholder{color:#6E6C78;font-weight:400}
 .daterow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dur.warn{color:#FECA0A}
 .dur{font-family:"Roboto Mono",monospace;font-size:10.5px;color:#8E8C96;margin-top:6px;letter-spacing:.06em}
 .pills{display:flex;gap:8px;flex-wrap:wrap}
 .pill{border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;background:none;font-family:Roboto,system-ui,sans-serif}
@@ -37,8 +38,8 @@ input.ctl::placeholder{color:#6E6C78;font-weight:400}
 .planhead h2{font-family:Poppins,sans-serif;font-size:24px;font-weight:700;color:#F4F3EF}
 .planhead .cap{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.08em;text-align:right}
 .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
-.metric{border-radius:14px;padding:13px 14px}
-.metric .k{font-family:"Roboto Mono",monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.metric{border-radius:14px;padding:13px 14px;display:flex;flex-direction:column}
+.metric .k{font-family:"Roboto Mono",monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;flex:1}
 .metric .v{font-family:Poppins,sans-serif;font-size:20px;font-weight:700;white-space:nowrap;color:#F4F3EF}
 .act{display:grid;grid-template-columns:1fr 118px 118px 118px;gap:14px;align-items:center;padding:17px 4px}
 .act:last-of-type{border-bottom:0}
@@ -147,3 +148,7 @@ input.ctl{color:#F4F3EF}
   .check .dot{animation:none}
   .prog .fill{transition:none}
 }
+.logoLink{display:flex;align-items:center}
+.brand small a,footer a,.cta a,.steps3 a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.brand small a:hover,footer a:hover,.cta a:hover,.steps3 a:hover{color:#FECA0A}
+.pill:focus-visible,.signin:focus-visible,.navlinks button:focus-visible,.gen:focus-visible,.actbtn:focus-visible,a:focus-visible{outline:2px solid #FECA0A;outline-offset:2px}

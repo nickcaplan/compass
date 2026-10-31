@@ -11,7 +11,9 @@ import {
   checklistFor,
   formatDate,
   gbp,
+  startIsPast,
   type Brief,
+  type ObjectiveId,
 } from './data';
 
 type Stage = 'empty' | 'filling' | 'generating' | 'plan';
@@ -52,10 +54,16 @@ export default function App() {
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
-  const objective = OBJECTIVES.find((o) => o.id === brief.objective) ?? null;
   const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
-  const viewObjective = OBJECTIVES.find((o) => o.id === viewBrief.objective) ?? null;
+  const viewObjectiveLabels = viewBrief.objectives
+    .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
+    .filter((l) => l !== '');
+  const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
+    .flatMap((o) => o.kpis)
+    .filter((k, i, a) => a.indexOf(k) === i);
+  const now = new Date();
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const plan = useMemo(
     () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
     [stage, submittedBrief],
@@ -97,12 +105,30 @@ export default function App() {
     setBrief((b) => ({ ...b, ...p }));
   }
 
-  function onObjective(id: string) {
-    const next = OBJECTIVES.find((o) => o.id === id) ?? null;
-    patch({
-      objective: next?.id ?? null,
-      kpi: next && brief.kpi && next.kpis.includes(brief.kpi) ? brief.kpi : null,
+  function toggleObjective(id: ObjectiveId) {
+    setBrief((b) => {
+      const objectives = b.objectives.includes(id)
+        ? b.objectives.filter((o) => o !== id)
+        : [...b.objectives, id];
+      const valid = OBJECTIVES.filter((o) => objectives.includes(o.id)).flatMap((o) => o.kpis);
+      return { ...b, objectives, kpis: b.kpis.filter((k) => valid.includes(k)) };
     });
+  }
+
+  function toggleKpi(k: string) {
+    setBrief((b) => ({
+      ...b,
+      kpis: b.kpis.includes(k) ? b.kpis.filter((x) => x !== k) : [...b.kpis, k],
+    }));
+  }
+
+  function toggleAudience(a: string) {
+    setBrief((b) => ({
+      ...b,
+      audiences: b.audiences.includes(a)
+        ? b.audiences.filter((x) => x !== a)
+        : [...b.audiences, a],
+    }));
   }
 
   function onBudget(raw: string) {
@@ -135,9 +161,9 @@ export default function App() {
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
-  if (viewObjective) chips.push({ label: `Objective: ${viewObjective.label}` });
-  if (viewBrief.kpi) chips.push({ label: `KPI: ${viewBrief.kpi}` });
-  if (viewBrief.audience) chips.push({ label: `Audience: ${viewBrief.audience}` });
+  if (viewObjectiveLabels.length) chips.push({ label: `Objective: ${viewObjectiveLabels.join(' + ')}` });
+  if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
+  if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
   if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
   if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
   if (viewWeeks > 0) chips.push({ label: `${viewWeeks} weeks` });
@@ -147,9 +173,23 @@ export default function App() {
     <div className="wrap">
       <nav>
         <div className="brand">
-          <img src={logoUrl} alt="The Hybrid House" height={30} />
+          <a
+            className="logoLink"
+            href="https://thehybridhouse.co.uk"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="The Hybrid House website"
+          >
+            <img src={logoUrl} alt="The Hybrid House" height={30} />
+          </a>
           <span className="prod">
-            COMPASS<small>by The Hybrid House</small>
+            COMPASS
+            <small>
+              by{' '}
+              <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
+                The Hybrid House
+              </a>
+            </small>
           </span>
         </div>
         <div className="navlinks">
@@ -190,64 +230,55 @@ export default function App() {
           </div>
 
           <div className="field">
-            <label htmlFor="f-objective">Objective</label>
-            <select
-              id="f-objective"
-              className="ctl"
-              value={brief.objective ?? ''}
-              onChange={(e) => onObjective(e.target.value)}
-              required
-            >
-              <option value="" disabled>
-                Choose an objective
-              </option>
+            <label>Objective</label>
+            <div className="pills">
               {OBJECTIVES.map((o) => (
-                <option key={o.id} value={o.id}>
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`pill${brief.objectives.includes(o.id) ? '' : ' off'}`}
+                  onClick={() => toggleObjective(o.id)}
+                >
                   {o.label}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div className="field">
-            <label htmlFor="f-kpi">KPI</label>
-            <select
-              id="f-kpi"
-              className="ctl"
-              value={brief.kpi ?? ''}
-              onChange={(e) => patch({ kpi: e.target.value || null })}
-              disabled={!objective}
-              required
-            >
-              <option value="" disabled>
-                {objective ? 'Choose a KPI' : 'Select an objective first'}
-              </option>
-              {(objective?.kpis ?? []).map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
+            <label>KPI</label>
+            {kpiOptions.length === 0 ? (
+              <div className="hint">Select an objective first</div>
+            ) : (
+              <div className="pills">
+                {kpiOptions.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className={`pill${brief.kpis.includes(k) ? '' : ' off'}`}
+                    onClick={() => toggleKpi(k)}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="field">
-            <label htmlFor="f-audience">Audience</label>
-            <select
-              id="f-audience"
-              className="ctl"
-              value={brief.audience ?? ''}
-              onChange={(e) => patch({ audience: e.target.value || null })}
-              required
-            >
-              <option value="" disabled>
-                Choose an audience
-              </option>
+            <label>Audience</label>
+            <div className="pills">
               {AUDIENCES.map((a) => (
-                <option key={a} value={a}>
+                <button
+                  key={a}
+                  type="button"
+                  className={`pill${brief.audiences.includes(a) ? '' : ' off'}`}
+                  onClick={() => toggleAudience(a)}
+                >
                   {a}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div className="field">
@@ -287,6 +318,7 @@ export default function App() {
                 className="ctl"
                 type="date"
                 value={brief.start}
+                min={todayISO}
                 onChange={(e) => patch({ start: e.target.value })}
               />
               <input
@@ -294,10 +326,13 @@ export default function App() {
                 className="ctl"
                 type="date"
                 value={brief.end}
-                min={brief.start || undefined}
+                min={brief.start || todayISO}
                 onChange={(e) => patch({ end: e.target.value })}
               />
             </div>
+            {startIsPast(brief.start) && (
+              <div className="dur warn">Start date must be today or later.</div>
+            )}
             {weeks > 0 && (
               <div className="dur">
                 {formatDate(brief.start)} to {formatDate(brief.end)} · {weeks} weeks
@@ -339,7 +374,11 @@ export default function App() {
                 <div className="step3">
                   <div className="n">03</div>
                   <b>Act on it</b>
-                  <span>Save it, download it, or ask Hybrid House to activate it.</span>
+                  <span>Save it, download it, or ask{' '}
+                  <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
+                    Hybrid House
+                  </a>{' '}
+                  to activate it.</span>
                 </div>
               </div>
               <SkeletonBlock />
@@ -380,9 +419,9 @@ export default function App() {
                 <DemoCap />
               </div>
               <div className="chips">
-                <span className="chip">{viewObjective?.label}</span>
-                <span className="chip">{viewBrief.kpi}</span>
-                <span className="chip">{viewBrief.audience}</span>
+                <span className="chip">{viewObjectiveLabels.join(' + ')}</span>
+                <span className="chip">{viewBrief.kpis.join(' + ')}</span>
+                <span className="chip">{viewBrief.audiences.join(' + ')}</span>
                 <span className="chip">{viewBrief.seniority.join(' + ')}</span>
                 <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
                 <span className="chip">{viewWeeks} weeks</span>
@@ -456,7 +495,13 @@ export default function App() {
               <div className="cta">
                 <div>
                   <b>Want us to validate or activate this plan?</b>
-                  <p>A Hybrid House media specialist can pick it up from here.</p>
+                  <p>
+                A{' '}
+                <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
+                  Hybrid House
+                </a>{' '}
+                media specialist can pick it up from here.
+              </p>
                 </div>
                 <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
                   Speak to a specialist
@@ -479,7 +524,11 @@ export default function App() {
       </div>
 
       <footer>
-        Compass by The Hybrid House &middot; Design concept - scenario, figures and rationale are
+        Compass by{' '}
+        <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
+          The Hybrid House
+        </a>{' '}
+        &middot; Design concept - scenario, figures and rationale are
         illustrative, adapted from the Compass brief
       </footer>
 
