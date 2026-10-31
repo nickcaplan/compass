@@ -434,11 +434,14 @@ export function buildPlan(b: Brief): Plan {
     { k: 'Duration', v: weeksLabel(weeks) },
   ];
 
+  const norm = (s: string) => s.trim().toLowerCase();
   const timing = plans[0].timing.map((t) => ({ ...t }));
   for (const p of plans.slice(1)) {
     p.timing.forEach((t, i) => {
-      if (!timing[i].activity.toLowerCase().includes(t.activity.split(' · ')[0].toLowerCase())) {
-        timing[i] = { label: timing[i].label, activity: `${timing[i].activity} · ${t.activity}` };
+      const have = timing[i].activity.split(' · ').map(norm);
+      const extra = t.activity.split(' · ').filter((f) => !have.includes(norm(f)));
+      if (extra.length) {
+        timing[i] = { label: timing[i].label, activity: `${timing[i].activity} · ${extra.join(' · ')}` };
       }
     });
   }
