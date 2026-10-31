@@ -41,7 +41,16 @@ function loadPlans(): SavedPlan[] {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (p): p is SavedPlan =>
+        p !== null &&
+        typeof p === 'object' &&
+        typeof p.id === 'string' &&
+        typeof p.savedAt === 'string' &&
+        p.brief !== null &&
+        typeof p.brief === 'object',
+    );
   } catch {
     return [];
   }
@@ -272,12 +281,13 @@ export default function App() {
     setShowAllAudiences(false);
   }
 
-  function persist(plans: SavedPlan[]) {
+  function persist(plans: SavedPlan[]): boolean {
     setSavedPlans(plans);
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
+      return true;
     } catch {
-      /* private mode */
+      return false;
     }
   }
 
@@ -288,12 +298,16 @@ export default function App() {
       savedAt: new Date().toISOString(),
       brief: submittedBrief,
     };
-    persist([entry, ...savedPlans].slice(0, 20));
-    showToast('Saved to My plans - stored in this browser only (demo)');
+    const latest = loadPlans();
+    if (persist([entry, ...latest].slice(0, 20))) {
+      showToast('Saved to My plans - stored in this browser only (demo)');
+    } else {
+      showToast('Could not save - browser storage is unavailable');
+    }
   }
 
   function deletePlan(id: string) {
-    persist(savedPlans.filter((p) => p.id !== id));
+    persist(loadPlans().filter((p) => p.id !== id));
   }
 
   function openPlan(entry: SavedPlan) {
@@ -304,6 +318,7 @@ export default function App() {
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
+    window.scrollTo(0, 0);
   }
 
   function go(p: Page) {
@@ -346,6 +361,7 @@ export default function App() {
           </span>
         </div>
         <div className="navlinks">
+          <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           <button type="button" className={page === 'pricing' ? 'navon' : ''} onClick={() => go('pricing')}>Pricing</button>
           <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
