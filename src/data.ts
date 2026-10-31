@@ -190,9 +190,19 @@ function seniorityWord(b: Brief): string {
 
 
 function spends(budget: number, shares: number[]): number[] {
-  const head = shares.slice(0, -1).map((s) => Math.round(budget * s));
-  const used = head.reduce((a, n) => a + n, 0);
-  return [...head, Math.round(budget) - used];
+  const exact = shares.map((s) => Math.max(0, budget * s));
+  const out = exact.map((x) => Math.floor(x));
+  let rest = Math.round(budget) - out.reduce((a, n) => a + n, 0);
+  const order = exact
+    .map((x, i) => ({ frac: x - out[i], i }))
+    .sort((a, b) => b.frac - a.frac);
+  let k = 0;
+  while (rest > 0 && order.length > 0) {
+    out[order[k % order.length].i] += 1;
+    rest -= 1;
+    k += 1;
+  }
+  return out;
 }
 
 function performancePlan(b: Brief, f: number, weeks: number, months: string[]): Plan {
@@ -365,7 +375,14 @@ export function buildPlan(b: Brief): Plan {
   const items: PlanItem[] = [];
   for (const p of plans) {
     for (const item of p.items) {
-      if (!items.some((x) => x.title === item.title)) items.push({ ...item, spend: 0 });
+      const existing = items.find((x) => x.title === item.title);
+      if (existing) {
+        for (const m of item.metrics) {
+          if (!existing.metrics.some((x) => x.k === m.k)) existing.metrics.push(m);
+        }
+      } else {
+        items.push({ ...item, metrics: [...item.metrics], spend: 0 });
+      }
     }
   }
   const weights = items.map((it) => {

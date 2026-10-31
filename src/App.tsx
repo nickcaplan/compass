@@ -231,13 +231,14 @@ export default function App() {
           </div>
 
           <div className="field">
-            <label>Objective</label>
-            <div className="pills">
+            <label id="g-objective">Objective</label>
+            <div className="pills" role="group" aria-labelledby="g-objective">
               {OBJECTIVES.map((o) => (
                 <button
                   key={o.id}
                   type="button"
                   className={`pill${brief.objectives.includes(o.id) ? '' : ' off'}`}
+                  aria-pressed={brief.objectives.includes(o.id)}
                   onClick={() => toggleObjective(o.id)}
                 >
                   {o.label}
@@ -257,6 +258,7 @@ export default function App() {
                     key={k}
                     type="button"
                     className={`pill${brief.kpis.includes(k) ? '' : ' off'}`}
+                    aria-pressed={brief.kpis.includes(k)}
                     onClick={() => toggleKpi(k)}
                   >
                     {k}
@@ -267,13 +269,14 @@ export default function App() {
           </div>
 
           <div className="field">
-            <label>Audience</label>
-            <div className="pills">
+            <label id="g-audience">Audience</label>
+            <div className="pills" role="group" aria-labelledby="g-audience">
               {AUDIENCES.map((a) => (
                 <button
                   key={a}
                   type="button"
                   className={`pill${brief.audiences.includes(a) ? '' : ' off'}`}
+                  aria-pressed={brief.audiences.includes(a)}
                   onClick={() => toggleAudience(a)}
                 >
                   {a}
@@ -283,13 +286,14 @@ export default function App() {
           </div>
 
           <div className="field">
-            <label>Seniority</label>
-            <div className="pills">
+            <label id="g-seniority">Seniority</label>
+            <div className="pills" role="group" aria-labelledby="g-seniority">
               {SENIORITY_LEVELS.map((s) => (
                 <button
                   key={s}
                   type="button"
                   className={`pill${brief.seniority.includes(s) ? '' : ' off'}`}
+                  aria-pressed={brief.seniority.includes(s)}
                   onClick={() => toggleSeniority(s)}
                 >
                   {s}
@@ -485,8 +489,8 @@ export default function App() {
               <div className="timing">
                 <div className="k">Suggested timing</div>
                 <div className="months">
-                  {plan.timing.map((t) => (
-                    <div className="month" key={t.label}>
+                  {plan.timing.map((t, ti) => (
+                    <div className="month" key={ti}>
                       <b>{t.label}</b>
                       <span>{t.activity}</span>
                     </div>
