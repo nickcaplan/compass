@@ -1,5 +1,16 @@
 # Compass concept demo - project brief
 
+## Project documents
+
+The working documents for the whole Compass project live in a private Google
+Drive folder and are indexed here:
+
+- Project index: https://docs.google.com/document/d/1AxIJQ0wwsJ8aiEFrk5BXLz2ARhlFCnNTVGNg1j7_vys/edit
+- Brief: https://docs.google.com/document/d/11TrcImrvRGY03CLRB7jqCbyJVZTbc9KYpmeRhQAiVAM/edit
+- Design direction: https://docs.google.com/document/d/1s84IaJ-uFHuIR_n8A9gVGknVRAoQVeJwKVAnSu4QW9Q/edit
+- Architecture: https://docs.google.com/document/d/1-L6-FzQe1CaSF5dIZy05Ch8wP_2M3MvpgXdXUkw9aks/edit
+- Build plan: https://docs.google.com/document/d/1Ljd8xueDF51b8Jz6FqpMrOerOtrNW-mDXiuhfSEsII4/edit
+
 ## Purpose
 
 A persuasive, clickable front-end demonstration of Compass, The Hybrid
