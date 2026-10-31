@@ -39,3 +39,22 @@ honest: nothing implies a working backend that does not exist.
 The mockups showed three; the brief (section 7) lists four: Technician /
 Practitioner, Manager, Senior Manager / Head, Director / Executive. The demo
 implements the brief's four.
+
+## 2026-10-31 - Objective, KPI and audience are multi-select
+
+A campaign brief can span several objectives, KPIs and audiences, so those
+fields are multi-select. KPI options are the union of the selected
+objectives' KPIs; deselecting an objective drops only the KPIs that no
+remaining objective offers, and re-selecting does not restore them silently.
+When several objectives are selected the plan composes one illustrative set
+of activities from all of them, deduplicated, with the budget re-split so
+spends still sum exactly to the entered budget; headline metrics are the
+union of each objective's highlighted figures. Selection order carries no
+priority.
+
+## 2026-10-31 - Campaign dates must not be in the past
+
+A plan that starts in the past is not useful, so the start date must be
+today or later and the end date no earlier than the start. A campaign
+starting today is allowed; anything earlier shows a warning and the brief
+does not count as ready.
