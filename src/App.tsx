@@ -81,7 +81,9 @@ export default function App() {
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
-  const primaryAudiences = AUDIENCES.filter((a) => PRIMARY_AUDIENCES.includes(a));
+  const primaryAudiences = PRIMARY_AUDIENCES.map((label) =>
+    AUDIENCES.find((a) => a === label),
+  ).filter((a): a is (typeof AUDIENCES)[number] => a !== undefined);
   const secondaryAudiences = AUDIENCES.filter((a) => !PRIMARY_AUDIENCES.includes(a));
   const visibleAudiences = showAllAudiences
     ? [...primaryAudiences, ...secondaryAudiences]
