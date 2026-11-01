@@ -334,6 +334,7 @@ export default function App() {
     setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
+    window.scrollTo(0, 0);
   }
 
   function persist(plans: SavedPlan[]): boolean {
