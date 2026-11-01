@@ -30,16 +30,20 @@ async function openSavedPlan(page) {
   await clickButton(page, 'Open plan');
 }
 
-async function generateExample(page) {
+async function generateExample(page, { expectGate }) {
   await clickButton(page, 'Fill it in for me');
   await page.waitForFunction(() => !document.querySelector('.gen').disabled);
   await page.locator('.gen').click();
   await page.waitForSelector('.planin');
-  // The plan reveal sits behind the demo sign-in gate the first time.
-  if (await page.$('#f-gate-name')) {
+  if (expectGate) {
+    // The first generation in a new context shows the demo sign-in gate.
+    assert.ok(await page.$('#f-gate-name'), 'First generation must show the demo sign-in gate');
     await page.locator('#f-gate-name').fill('Test User');
     await page.locator('#f-gate-email').fill('test@example.com');
     await clickButton(page, 'See my plan');
+  } else {
+    // After demo sign-in, later generations go straight to the plan.
+    assert.equal(await page.$('#f-gate-name'), null, 'Later generations must skip the gate');
   }
   await page.waitForSelector('.planin .metrics');
 }
@@ -78,7 +82,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
     await page.goto('http://127.0.0.1:4173');
-    await generateExample(page);
+    await generateExample(page, { expectGate: true });
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
     await page.waitForFunction(() => document.querySelector('.toast')?.textContent === 'Saved to My plans');
@@ -139,7 +143,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
 
     await t.test('an unsaved generated plan still requires confirmation', async () => {
       await clickButton(page, 'Create another scenario');
-      await generateExample(page);
+      await generateExample(page, { expectGate: false });
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
       assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Replace your current plan/);

@@ -1092,11 +1092,11 @@ export default function App() {
               <button
                 type="submit"
                 className="gen"
-                disabled={!gateName.trim() || !/.+@.+\..+/.test(gateEmail.trim())}
+                disabled={!gateName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gateEmail.trim())}
               >
                 See my plan <span>&rarr;</span>
               </button>
-              <button type="button" className="ghost" onClick={() => setStage('filling')}>
+              <button type="button" className="ghost" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>
                 Back to my brief
               </button>
               <p className="finenote">
