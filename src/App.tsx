@@ -64,6 +64,7 @@ export default function App() {
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [hasFilled, setHasFilled] = useState(false);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -204,6 +205,7 @@ export default function App() {
     if (count > 0 && !window.confirm('Replace the answers you have already given with the example brief?')) {
       return;
     }
+    setHasFilled(true);
     const d = demoBrief(brief.name || undefined);
     setBrief(d);
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
@@ -253,6 +255,7 @@ export default function App() {
     setStage('empty');
     setShowAllAudiences(false);
     setHasGenerated(false);
+    setHasFilled(false);
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
@@ -336,7 +339,7 @@ export default function App() {
               <path d="M6 11l.9 2.4 2.4.9-2.4.9L6 17.6l-.9-2.4-2.4-.9 2.4-.9L6 11z" />
               <path d="M17.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" />
             </svg>
-            Fill it in for me
+            {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
           <div className="demohint">Loads a complete example brief - demo only</div>
 
