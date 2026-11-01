@@ -160,6 +160,12 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.locator('.confirm .ghost').click();
       await page.waitForSelector('[role="alertdialog"]', { hidden: true });
       await page.setViewport({ width: 1440, height: 900 });
+      await page.evaluate((name) => {
+        const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
+        plans[0].brief.name = name;
+        localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
+      }, originalName);
+      await page.reload();
     });
 
     await t.test('cancelling after another tab deletes the plan clears the saved view', async () => {
