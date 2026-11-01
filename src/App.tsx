@@ -364,7 +364,9 @@ export default function App() {
             <img src={logoUrl} alt="The Hybrid House" height={30} />
           </a>
           <span className="prod">
-            COMPASS
+            <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
+              COMPASS
+            </button>
             <small>
               by{' '}
               <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">

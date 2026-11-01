@@ -59,6 +59,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0
 .brand{display:flex;align-items:center;gap:14px}
 .brand svg{height:30px;width:auto;display:block}
 .prod{font-family:Poppins,sans-serif;font-weight:800;font-size:17px;letter-spacing:.12em;line-height:1;color:var(--text)}
+.prodhome{background:none;border:0;padding:0;font:inherit;letter-spacing:inherit;color:inherit;cursor:pointer;text-align:left}
 .prod small{display:block;font-family:Roboto;font-weight:500;font-size:10px;letter-spacing:.08em;margin-top:4px;text-transform:none;color:var(--muted)}
 .navlinks{display:flex;align-items:center;gap:26px;font-size:13.5px;font-weight:500}
 .navlinks button{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}
@@ -238,7 +239,7 @@ input.ctl{color:var(--text)}
 .logoLink{display:flex;align-items:center}
 .brand small a,footer a,.cta a,.steps3 a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .brand small a:hover,footer a:hover,.cta a:hover,.steps3 a:hover{color:var(--accent-ink)}
-.pill:focus-visible,.demofill:focus-visible,.signin:focus-visible,.navlinks button:focus-visible,.gen:focus-visible,.actbtn:focus-visible,.themebtn:focus-visible,.calbtn:focus-visible,a:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.prodhome:focus-visible,.pill:focus-visible,.demofill:focus-visible,.signin:focus-visible,.navlinks button:focus-visible,.gen:focus-visible,.actbtn:focus-visible,.themebtn:focus-visible,.calbtn:focus-visible,a:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 
 [data-theme="light"] .brand img{filter:invert(1)}
 
