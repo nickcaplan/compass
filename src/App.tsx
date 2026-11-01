@@ -65,6 +65,7 @@ export default function App() {
   const [cueSeq, setCueSeq] = useState(0);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
+  const [confirmFill, setConfirmFill] = useState(false);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -202,9 +203,12 @@ export default function App() {
   // the eye to the generate button (scroll + subtle pulse + focus). Demo
   // only - it never generates the plan by itself.
   function fillDemo() {
-    if (count > 0 && !window.confirm('Replace the answers you have already given with the example brief?')) {
+    const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
+    if (hasInput && !confirmFill) {
+      setConfirmFill(true);
       return;
     }
+    setConfirmFill(false);
     setHasFilled(true);
     const d = demoBrief(brief.name || undefined);
     setBrief(d);
@@ -342,6 +346,19 @@ export default function App() {
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
           <div className="demohint">Loads a complete example brief - demo only</div>
+          {confirmFill && (
+            <div className="fillwarn" role="alert">
+              <p>Replace the answers you have already given with the example brief?</p>
+              <div className="row">
+                <button type="button" className="btn" onClick={fillDemo}>
+                  Replace with example
+                </button>
+                <button type="button" className="ghost" onClick={() => setConfirmFill(false)}>
+                  Keep my answers
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
