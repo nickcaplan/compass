@@ -42,9 +42,12 @@ committed to.
   rates, audience sizes or benchmarks appear anywhere.
 - Publishers are anonymised (Publisher A, B, C) and every figure is marked
   illustrative on screen.
-- Save plan, Download PDF, Speak to a specialist, Sign in, My plans and
-  Support are visual affordances only; clicking them says they are part of
-  the full product.
+- Save plan and My plans work locally in the browser: visitors can save,
+  reopen, edit and delete plans, stored in their own browser's localStorage
+  only. Nothing leaves the device; there is still no account or sync.
+- Download PDF, Speak to a specialist and Support are visual affordances
+  only; clicking them says they are part of the full product. Sign in is a
+  preview page ahead of real accounts.
 
 ## Requirements
 
