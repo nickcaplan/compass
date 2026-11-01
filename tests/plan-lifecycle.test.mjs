@@ -35,6 +35,13 @@ async function generateExample(page) {
   await page.waitForFunction(() => !document.querySelector('.gen').disabled);
   await page.locator('.gen').click();
   await page.waitForSelector('.planin');
+  // The plan reveal sits behind the demo sign-in gate the first time.
+  if (await page.$('#f-gate-name')) {
+    await page.locator('#f-gate-name').fill('Test User');
+    await page.locator('#f-gate-email').fill('test@example.com');
+    await clickButton(page, 'See my plan');
+  }
+  await page.waitForSelector('.planin .metrics');
 }
 
 test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, async (t) => {
