@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
 import puppeteer from 'puppeteer-core';
 
 // Run npm run build first. Chrome is preinstalled on GitHub's ubuntu-latest
@@ -40,18 +41,28 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     '--port', '4173', '--strictPort',
   ], { stdio: ['ignore', 'pipe', 'pipe'] });
   let browser;
+  let serverOutput = '';
   let serverErrors = '';
+  server.stdout.on('data', (chunk) => { serverOutput += chunk.toString(); });
   server.stderr.on('data', (chunk) => { serverErrors += chunk.toString(); });
+  server.on('error', (error) => { serverErrors += error.message; });
   try {
-    await new Promise((resolve, reject) => {
-      let output = '';
-      server.stdout.on('data', (chunk) => {
-        output += chunk.toString();
-        if (output.includes('http://127.0.0.1:4173')) resolve();
-      });
-      server.once('error', reject);
-      server.once('exit', (code) => reject(new Error(`Preview exited (${code}): ${serverErrors}`)));
-    });
+    const deadline = Date.now() + 10000;
+    let ready = false;
+    while (Date.now() < deadline && server.exitCode === null) {
+      try {
+        const response = await fetch('http://127.0.0.1:4173', { signal: AbortSignal.timeout(1000) });
+        await response.body?.cancel();
+        if (response.ok) {
+          ready = true;
+          break;
+        }
+      } catch {
+        // Retry only while the preview is starting, within the deadline.
+      }
+      await delay(100);
+    }
+    assert.ok(ready, `Preview did not become ready: ${serverOutput}\n${serverErrors}`);
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
