@@ -1038,7 +1038,15 @@ export default function App() {
           )}
 
           {stage === 'gate' && (
-            <div className="planin">
+            <form
+              className="planin"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setDemoUser({ name: gateName.trim(), email: gateEmail.trim(), company: gateCompany.trim() });
+                setStage('plan');
+                showToast('Signed in for this demo - no account created');
+              }}
+            >
               <div className="planhead">
                 <h2>Your plan is ready</h2>
                 <DemoCap />
@@ -1081,14 +1089,9 @@ export default function App() {
                 />
               </div>
               <button
-                type="button"
+                type="submit"
                 className="gen"
                 disabled={!gateName.trim() || !/.+@.+\..+/.test(gateEmail.trim())}
-                onClick={() => {
-                  setDemoUser({ name: gateName.trim(), email: gateEmail.trim(), company: gateCompany.trim() });
-                  setStage('plan');
-                  showToast('Signed in for this demo - no account created');
-                }}
               >
                 See my plan <span>&rarr;</span>
               </button>
@@ -1099,7 +1102,7 @@ export default function App() {
                 Concept demo - no account is created and nothing you enter leaves this browser. Real sign-in
                 arrives with the accounts work.
               </p>
-            </div>
+            </form>
           )}
 
           {stage === 'plan' && plan && (
