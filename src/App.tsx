@@ -604,8 +604,10 @@ export default function App() {
     if (!force && !alreadyOpen) {
       const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
       const unsavedPlan = stage === 'plan' && savedEntry === null && planSavedId === null;
+      const staleEdits =
+        stage === 'plan' && savedEntry === null && planSavedId !== null && submittedBrief !== null && brief !== submittedBrief;
       const unsavedEdit = savedEntry?.mode === 'edit';
-      const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
+      const reason = unsavedEdit || staleEdits ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
       if (reason !== null) {
         setOpenTarget({ entry, reason });
         return;
