@@ -298,6 +298,7 @@ export default function App() {
   const [gateCompany, setGateCompany] = useState('');
   const gateEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gateEmail.trim());
   const showGateEmailHint = gateEmail.trim() !== '' && !gateEmailValid;
+  const showGateReqHint = !gateName.trim() || gateEmail.trim() === '';
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       return window.localStorage.getItem('compass-theme') === 'light' ? 'light' : 'dark';
@@ -1098,10 +1099,16 @@ export default function App() {
                   onChange={(e) => setGateCompany(e.target.value)}
                 />
               </div>
+              {showGateReqHint && (
+                <p className="fieldnote" id="f-gate-req">
+                  Enter your name and work email to see your plan.
+                </p>
+              )}
               <button
                 type="submit"
                 className="gen"
                 disabled={!gateName.trim() || !gateEmailValid}
+                aria-describedby={showGateReqHint ? 'f-gate-req' : undefined}
               >
                 See my plan <span>&rarr;</span>
               </button>
