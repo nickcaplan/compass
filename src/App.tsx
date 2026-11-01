@@ -611,7 +611,7 @@ export default function App() {
           )}
 
           {stage === 'plan' && plan && (
-            <>
+            <div className="planin">
               <div className="planhead">
                 <h2>Recommended plan</h2>
                 <DemoCap />
@@ -683,7 +683,7 @@ export default function App() {
                   Create another scenario
                 </button>
               </div>
-            </>
+            </div>
           )}
         </section>
       </div>
