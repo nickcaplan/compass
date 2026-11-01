@@ -615,7 +615,9 @@ export default function App() {
                 <h3>Your recommended plan builds here</h3>
                 <p>
                   As you answer, Compass checks your brief against publisher rates, audience sizes
-                  and performance benchmarks - then shows the full plan on this side.
+                  and performance benchmarks - then shows the full plan{' '}
+                  <span className="only-d">on this side</span>
+                  <span className="only-m">below</span>.
                 </p>
               </div>
               <div className="steps3">
