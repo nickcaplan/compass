@@ -212,8 +212,9 @@ input.ctl{color:var(--text)}
 .lead{border-color:var(--accent-line);color:var(--accent-ink)}
 .lead:hover{border-color:var(--accent-ink)}
 .ghost:disabled{opacity:.55;cursor:default}
-.saved{border-color:var(--green);color:var(--green)}
-.ghost.saved:disabled{opacity:1}
+.ghost.saved{border-color:var(--green);color:var(--green)}
+.ghost.saved:hover{border-color:var(--green);color:var(--green)}
+.ghost.saved:disabled{opacity:1;pointer-events:none}
 @media (max-width:980px){
   .wrap{padding:0 20px}
   .navlinks{flex-wrap:wrap;row-gap:10px}
