@@ -227,7 +227,8 @@ input.ctl{color:var(--text)}
   .act{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:10px}
   .act .num{text-align:left}
   .months{grid-template-columns:1fr}
-  .cta{flex-direction:column;align-items:flex-start}
+  .cta{flex-direction:column;align-items:flex-start;padding-left:0;padding-right:0}
+  .cta>div{padding:0 22px}
   .cta .btn{width:100%}
   .steps3{grid-template-columns:1fr}
   .skelrow{grid-template-columns:repeat(2,1fr)}
