@@ -260,6 +260,7 @@ export default function App() {
     setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
+    setConfirmFill(false);
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
