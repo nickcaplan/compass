@@ -112,7 +112,7 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     objectives: ['performance'],
     kpis: ['Lead generation'],
     audiences: ['Procurement'],
-    seniority: ['Manager'],
+    seniority: ['Manager', 'Director / Executive'],
     budget: 100000,
   },
   {
