@@ -212,6 +212,17 @@ input.ctl{color:var(--text)}
   .steps3{grid-template-columns:1fr}
   .skelrow{grid-template-columns:repeat(2,1fr)}
 }
+.only-m{display:none}
+@media (max-width:980px){
+  .only-d{display:none}
+  .only-m{display:inline}
+  .plan{padding:20px 16px;min-height:0}
+  .empty{padding:26px 14px 18px}
+  .empty .glyph{width:52px;height:52px;margin-bottom:14px}
+  .empty p{margin-bottom:18px}
+  .steps3{padding:0;margin-bottom:18px;gap:10px}
+  .skelpad{padding:0 0 18px}
+}
 @media (prefers-reduced-motion:reduce){
   .check .dot{animation:none}
   .prog .fill{transition:none}
