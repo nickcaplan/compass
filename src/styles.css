@@ -67,7 +67,7 @@ nav{display:flex;flex-wrap:wrap;row-gap:12px;align-items:center;padding:22px 0}
 .prod{font-family:Poppins,sans-serif;font-weight:800;font-size:17px;letter-spacing:.12em;line-height:1;color:var(--text)}
 .prodhome{background:none;border:0;padding:0;font:inherit;letter-spacing:inherit;color:inherit;cursor:pointer;text-align:left}
 .navlinks{display:flex;align-items:center;gap:26px;font-size:13.5px;font-weight:500}
-.navlinks button:not(.signin){background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}
+.navlinks button:not(.signin),.navlinks a.navsupport{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0;text-decoration:none}
 .themebtn{margin-left:auto;width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--line-mid)!important;background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .themebtn:hover{color:var(--accent-ink);border-color:var(--accent-line)!important}
 .signin{font:inherit;border-radius:999px;padding:9px 20px;font-weight:600;font-size:13px;cursor:pointer}
@@ -216,7 +216,7 @@ input.ctl{color:var(--text)}
   .toprow{gap:12px}
   .prod{font-size:15px}
   .navlinks{gap:12px;font-size:12.5px}
-  .navlinks>button.navsupport{display:none}
+  .navlinks>.navsupport{display:none}
   .navlinks{justify-content:flex-end}
   .themebtn{margin-left:0}
   .signin{padding:7px 12px;font-size:12px}

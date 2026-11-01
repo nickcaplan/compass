@@ -433,7 +433,7 @@ export default function App() {
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
-          <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
+          <a className="navsupport" href="mailto:info@thehybridhouse.co.uk?subject=Compass%20enquiry">Support</a>
           <button type="button" className="signin" onClick={() => go('signin')}>
             Sign in
           </button>
@@ -820,9 +820,9 @@ export default function App() {
                 media specialist can pick it up from here.
               </p>
                 </div>
-                <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                <a className="btn" href="mailto:info@thehybridhouse.co.uk?subject=Compass%20plan%20enquiry">
                   Speak to a specialist
-                </button>
+                </a>
               </div>
               <div className="secondary">
                 <button type="button" className="ghost" onClick={savePlan}>
