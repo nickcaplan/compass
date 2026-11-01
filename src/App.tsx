@@ -185,6 +185,22 @@ interface SavedPlan {
 // plans across devices need sign-in + database - not built yet.
 const PLANS_KEY = 'compass-saved-plans';
 
+function isBrief(value: unknown): value is Brief {
+  if (value === null || typeof value !== 'object') return false;
+  const b = value as Record<string, unknown>;
+  const strArr = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+  return (
+    typeof b.name === 'string' &&
+    strArr(b.objectives) &&
+    strArr(b.kpis) &&
+    strArr(b.audiences) &&
+    strArr(b.seniority) &&
+    (b.budget === null || typeof b.budget === 'number') &&
+    typeof b.start === 'string' &&
+    typeof b.end === 'string'
+  );
+}
+
 function loadPlans(): SavedPlan[] {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
@@ -196,8 +212,7 @@ function loadPlans(): SavedPlan[] {
         typeof p === 'object' &&
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
-        p.brief !== null &&
-        typeof p.brief === 'object',
+        isBrief(p.brief),
     );
   } catch {
     return [];
@@ -289,6 +304,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('planner');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
+  const [planSaved, setPlanSaved] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
@@ -340,6 +356,7 @@ export default function App() {
   );
   const viewingSaved = savedEntry !== null && savedEntry.mode === 'view' && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
+  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -476,12 +493,13 @@ export default function App() {
     planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     if (count < 6) return;
     clearCue();
+    setPlanSaved(false);
     setSubmittedBrief(brief);
     setHasGenerated(true);
     setStage('generating');
   }
 
-  function reset() {
+  function clearPlannerState() {
     clearCue();
     setBrief(EMPTY_BRIEF);
     setSubmittedBrief(null);
@@ -491,23 +509,34 @@ export default function App() {
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
+    setPlanSaved(false);
+  }
+
+  function reset() {
+    clearPlannerState();
     window.scrollTo(0, 0);
   }
 
   function persist(plans: SavedPlan[]): boolean {
-    setSavedPlans(plans);
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
-      return true;
     } catch {
       return false;
     }
+    setSavedPlans(plans);
+    return true;
   }
 
   function savePlan() {
     if (!submittedBrief) return;
     if (editingSaved && savedEntry) {
-      const updated = loadPlans().map((p) =>
+      const latest = loadPlans();
+      if (!latest.some((p) => p.id === savedEntry.id)) {
+        setSavedEntry(null);
+        showToast('That plan is no longer in My plans - save it again as a new plan');
+        return;
+      }
+      const updated = latest.map((p) =>
         p.id === savedEntry.id ? { ...p, brief: submittedBrief, savedAt: new Date().toISOString() } : p,
       );
       if (persist(updated)) {
@@ -516,6 +545,10 @@ export default function App() {
       } else {
         showToast('Could not save - browser storage is unavailable');
       }
+      return;
+    }
+    if (planSaved) {
+      showToast('Already saved to My plans');
       return;
     }
     const entry: SavedPlan = {
@@ -530,6 +563,7 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
+      setPlanSaved(true);
       showToast('Saved to My plans');
     } else {
       showToast('Could not save - browser storage is unavailable');
@@ -538,8 +572,11 @@ export default function App() {
 
   function deletePlan(id: string) {
     if (!persist(loadPlans().filter((p) => p.id !== id))) {
-      setSavedPlans(loadPlans());
       showToast('Could not delete - browser storage is unavailable');
+      return;
+    }
+    if (savedEntry?.id === id) {
+      clearPlannerState();
     }
   }
 
@@ -563,7 +600,7 @@ export default function App() {
     const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
     if (!force && !alreadyOpen) {
       const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-      const unsavedPlan = stage === 'plan' && savedEntry === null;
+      const unsavedPlan = stage === 'plan' && savedEntry === null && !planSaved;
       const unsavedEdit = savedEntry?.mode === 'edit';
       const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
       if (reason !== null) {
@@ -1066,7 +1103,10 @@ export default function App() {
                   </>
                 ) : editingSaved ? (
                   <>
-                    <button type="button" className="btn" onClick={savePlan}>
+                    {editsNotGenerated && (
+                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
+                    )}
+                    <button type="button" className="btn" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save changes
                     </button>
@@ -1077,7 +1117,10 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <button type="button" className="btn" onClick={savePlan}>
+                    {editsNotGenerated && (
+                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
+                    )}
+                    <button type="button" className="btn" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save plan
                     </button>
