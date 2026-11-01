@@ -334,7 +334,7 @@ input.ctl{color:var(--text)}
 
 /* Styled confirmation dialog (replaces native browser confirms) */
 .confirmwrap{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(10,10,14,.55)}
-.confirm{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line-mid);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+.confirm{width:100%;max-width:380px;max-height:calc(100dvh - 44px);overflow-y:auto;overflow-wrap:anywhere;background:var(--card);border:1px solid var(--line-mid);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
 .confirm b{display:block;font-family:Poppins,sans-serif;font-size:16px;color:var(--text);margin-bottom:6px}
 .confirm p{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px}
 .confirm .row{display:flex;gap:10px}
