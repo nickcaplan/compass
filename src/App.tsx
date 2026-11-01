@@ -296,6 +296,8 @@ export default function App() {
   const [gateName, setGateName] = useState('');
   const [gateEmail, setGateEmail] = useState('');
   const [gateCompany, setGateCompany] = useState('');
+  const gateEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gateEmail.trim());
+  const showGateEmailHint = gateEmail.trim() !== '' && !gateEmailValid;
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       return window.localStorage.getItem('compass-theme') === 'light' ? 'light' : 'dark';
@@ -1076,7 +1078,14 @@ export default function App() {
                   placeholder="you@company.com"
                   value={gateEmail}
                   onChange={(e) => setGateEmail(e.target.value)}
+                  aria-invalid={showGateEmailHint || undefined}
+                  aria-describedby={showGateEmailHint ? 'f-gate-email-hint' : undefined}
                 />
+                {showGateEmailHint && (
+                  <p className="fieldnote" id="f-gate-email-hint">
+                    Enter a full email address, like name@company.com
+                  </p>
+                )}
               </div>
               <div className="field">
                 <label htmlFor="f-gate-company">Company (optional)</label>
@@ -1092,7 +1101,7 @@ export default function App() {
               <button
                 type="submit"
                 className="gen"
-                disabled={!gateName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gateEmail.trim())}
+                disabled={!gateName.trim() || !gateEmailValid}
               >
                 See my plan <span>&rarr;</span>
               </button>
