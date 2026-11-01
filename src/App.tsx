@@ -63,6 +63,7 @@ export default function App() {
   const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
+  const [hasGenerated, setHasGenerated] = useState(false);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -121,7 +122,7 @@ export default function App() {
     setTicks(0);
     const interval = window.setInterval(() => {
       setTicks((t) => Math.min(t + 1, genSteps));
-    }, 650);
+    }, 950);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
@@ -202,9 +203,11 @@ export default function App() {
     if (count > 0 && !window.confirm('Replace the answers you have already given with the example brief?')) {
       return;
     }
-    const d = demoBrief();
+    const d = demoBrief(brief.name || undefined);
     setBrief(d);
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
+    setSubmittedBrief(null);
+    setStage('filling');
     setShowAllAudiences(false);
     window.clearTimeout(cueTimer.current);
     if (answeredCount(d) >= 6) {
@@ -235,6 +238,7 @@ export default function App() {
     if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
+    setHasGenerated(true);
     setStage('generating');
   }
 
@@ -245,6 +249,7 @@ export default function App() {
     setBudgetText('');
     setStage('empty');
     setShowAllAudiences(false);
+    setHasGenerated(false);
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
@@ -501,7 +506,7 @@ export default function App() {
           </div>
 
           <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
-            Generate my plan <span>&rarr;</span>
+            {hasGenerated ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
         </section>
 
