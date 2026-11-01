@@ -75,6 +75,49 @@ function SkeletonBlock() {
   );
 }
 
+function PlanOutline() {
+  return (
+    <div className="outline">
+      <div className="outlinetitle">Your new plan will appear here</div>
+      <div className="osect">
+        <div className="ok">Key figures</div>
+        <div className="ometrics">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div className="ometric" key={i}>
+              <span className="ol w40" />
+              <span className="ol w65" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="osect">
+        <div className="ok">Publishers, formats and spend split</div>
+        {[0, 1, 2].map((i) => (
+          <div className="oact" key={i}>
+            <div className="oacttop">
+              <span className="ol w45" />
+              <span className="ol pill" />
+              <span className="ol w15 r" />
+            </div>
+            <span className="ol w80" />
+          </div>
+        ))}
+      </div>
+      <div className="osect">
+        <div className="ok">Suggested timing</div>
+        <div className="omonths">
+          {[0, 1, 2].map((i) => (
+            <div className="omonth" key={i}>
+              <span className="ol w50" />
+              <span className="ol w80" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DemoCap() {
   return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
 }
@@ -654,7 +697,7 @@ export default function App() {
                   to activate it.</span>
                 </div>
               </div>
-              <SkeletonBlock />
+              <PlanOutline />
             </>
           )}
 
