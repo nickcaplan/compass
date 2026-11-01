@@ -1,5 +1,157 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import logoUrl from './assets/thh-logo.svg';
+
+const iconProps = {
+  width: 15,
+  height: 15,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.8,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': true,
+} as const;
+
+function IconSave() {
+  return (
+    <svg {...iconProps}>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function IconDownload() {
+  return (
+    <svg {...iconProps}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M12 15V3" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v8" />
+      <path d="M8 12h8" />
+    </svg>
+  );
+}
+
+function IconCancel() {
+  return (
+    <svg {...iconProps}>
+      <path d="M18 6 6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
+function IconBack() {
+  return (
+    <svg {...iconProps}>
+      <path d="M19 12H5" />
+      <path d="M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function IconCopy() {
+  return (
+    <svg {...iconProps}>
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    </svg>
+  );
+}
+
+function IconOpen() {
+  return (
+    <svg {...iconProps}>
+      <path d="M5 12h14" />
+      <path d="M12 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+type ConfirmDialogProps = {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
+// Styled replacement for native browser confirms: overlay dialog with the
+// safe option focused by default, Escape or backdrop click to cancel, and
+// Tab trapped between the two actions.
+function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const cancelCb = useRef(onCancel);
+  cancelCb.current = onCancel;
+  useEffect(() => {
+    cancelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        cancelCb.current();
+        return;
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const buttons = dialogRef.current.querySelectorAll('button');
+        if (buttons.length === 0) return;
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          last.focus();
+          e.preventDefault();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  return (
+    <div className="confirmwrap" onClick={() => cancelCb.current()}>
+      <div
+        className="confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <b>{title}</b>
+        <p>{body}</p>
+        <div className="row">
+          <button type="button" className="btn" onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+          <button type="button" className="ghost" ref={cancelRef} onClick={() => cancelCb.current()}>
+            {cancelLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 import {
   AUDIENCES,
   EMPTY_BRIEF,
@@ -144,6 +296,9 @@ export default function App() {
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
+  const [confirmFill, setConfirmFill] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SavedPlan | null>(null);
+  const [openTarget, setOpenTarget] = useState<SavedPlan | null>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -282,11 +437,13 @@ export default function App() {
   // Guided demo aid: one tap loads the complete example brief, then guides
   // the eye to the generate button (scroll + subtle pulse + focus). Demo
   // only - it never generates the plan by itself.
-  function fillDemo() {
+  function fillDemo(force = false) {
     const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
-    if (hasInput && !window.confirm('Replace the answers you have already given with the example brief?')) {
+    if (hasInput && !force) {
+      setConfirmFill(true);
       return;
     }
+    setConfirmFill(false);
     setHasFilled(true);
     const d = demoBrief(brief.name || undefined);
     setBrief(d);
@@ -385,7 +542,6 @@ export default function App() {
   }
 
   function deletePlan(id: string) {
-    if (!window.confirm('Delete this saved plan? This cannot be undone.')) return;
     if (!persist(loadPlans().filter((p) => p.id !== id))) {
       setSavedPlans(loadPlans());
       showToast('Could not delete - browser storage is unavailable');
@@ -428,11 +584,13 @@ export default function App() {
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
-  function openPlan(entry: SavedPlan) {
+  function openPlan(entry: SavedPlan, force = false) {
     const hasDraft = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
-    if (hasDraft && stage !== 'plan' && !window.confirm('Replace your current draft with this saved plan?')) {
+    if (hasDraft && stage !== 'plan' && !force) {
+      setOpenTarget(entry);
       return;
     }
+    setOpenTarget(null);
     setBrief(entry.brief);
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
@@ -548,9 +706,11 @@ export default function App() {
               </button>
               <div className="viewactions">
                 <button type="button" className="ghost" onClick={() => { const sp = loadPlans().find((p) => p.id === savedEntry?.id); if (sp) copyPlan(sp); }}>
+                  <IconCopy />
                   Copy plan
                 </button>
                 <button type="button" className="ghost" onClick={() => go('plans')}>
+                  <IconBack />
                   Back to My plans
                 </button>
               </div>
@@ -560,7 +720,7 @@ export default function App() {
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
-          <button type="button" className="demofill" onClick={fillDemo}>
+          <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
               <path d="M6 11l.9 2.4 2.4.9-2.4.9L6 17.6l-.9-2.4-2.4-.9 2.4-.9L6 11z" />
@@ -915,30 +1075,37 @@ export default function App() {
                 {viewingSaved ? (
                   <>
                     <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                      <IconDownload />
                       Download PDF
                     </button>
                     <button type="button" className="ghost" onClick={() => go('plans')}>
+                      <IconBack />
                       Back to My plans
                     </button>
                   </>
                 ) : editingSaved ? (
                   <>
-                    <button type="button" className="ghost" onClick={savePlan}>
+                    <button type="button" className="btn" onClick={savePlan}>
+                      <IconSave />
                       Save changes
                     </button>
                     <button type="button" className="ghost" onClick={cancelEditSaved}>
+                      <IconCancel />
                       Cancel
                     </button>
                   </>
                 ) : (
                   <>
-                    <button type="button" className="ghost" onClick={savePlan}>
+                    <button type="button" className="btn" onClick={savePlan}>
+                      <IconSave />
                       Save plan
                     </button>
                     <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                      <IconDownload />
                       Download PDF
                     </button>
                     <button type="button" className="ghost" onClick={reset}>
+                      <IconPlus />
                       Create another scenario
                     </button>
                   </>
@@ -1008,11 +1175,14 @@ export default function App() {
                     <div className="pc-actions">
                       <button type="button" className="btn" onClick={() => openPlan(sp)}>
                         Open plan
+                        <IconOpen />
                       </button>
                       <button type="button" className="ghost" onClick={() => copyPlan(sp)}>
+                        <IconCopy />
                         Copy
                       </button>
-                      <button type="button" className="ghost" onClick={() => deletePlan(sp.id)}>
+                      <button type="button" className="ghost" onClick={() => setDeleteTarget(sp)}>
+                        <IconTrash />
                         Delete
                       </button>
                     </div>
@@ -1119,6 +1289,42 @@ export default function App() {
         &middot; Design concept - scenario, figures and rationale are
         illustrative, adapted from the Compass brief
       </footer>
+
+      {confirmFill && (
+        <ConfirmDialog
+          title="Replace your answers?"
+          body="Replace the answers you have already given with the example brief?"
+          confirmLabel="Replace with example"
+          cancelLabel="Keep my answers"
+          onConfirm={() => fillDemo(true)}
+          onCancel={() => setConfirmFill(false)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete this saved plan?"
+          body={`"${deleteTarget.brief.name || 'Untitled campaign'}" will be permanently deleted. This cannot be undone.`}
+          confirmLabel="Delete plan"
+          cancelLabel="Keep plan"
+          onConfirm={() => {
+            deletePlan(deleteTarget.id);
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {openTarget && (
+        <ConfirmDialog
+          title="Replace your draft?"
+          body="Replace your current draft with this saved plan? Any answers you have not saved will be lost."
+          confirmLabel="Open plan"
+          cancelLabel="Keep my draft"
+          onConfirm={() => openPlan(openTarget, true)}
+          onCancel={() => setOpenTarget(null)}
+        />
+      )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>
