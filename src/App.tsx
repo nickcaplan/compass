@@ -209,7 +209,7 @@ type LoadPlansResult = { ok: true; plans: SavedPlan[] } | { ok: false };
 function loadPlans(): LoadPlansResult {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
+    const parsed = raw === null ? [] : JSON.parse(raw);
     if (!Array.isArray(parsed)) return { ok: false };
     return {
       ok: true,
@@ -312,11 +312,9 @@ export default function App() {
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
-  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
-    const result = loadPlans();
-    return result.ok ? result.plans : [];
-  });
-  const [plansLoadFailed, setPlansLoadFailed] = useState(() => !loadPlans().ok);
+  const [initialLoad] = useState<LoadPlansResult>(loadPlans);
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(initialLoad.ok ? initialLoad.plans : []);
+  const [plansLoadFailed, setPlansLoadFailed] = useState(!initialLoad.ok);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [planSavedId, setPlanSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -531,13 +529,23 @@ export default function App() {
     window.scrollTo(0, 0);
   }
 
+  function syncLoadedPlans(plans: SavedPlan[]) {
+    setSavedPlans(plans);
+    setPlansLoadFailed(false);
+  }
+
+  function noteReadFailure() {
+    setPlansLoadFailed(true);
+    showToast(STORAGE_READ_NOTE);
+  }
+
   function persist(plans: SavedPlan[]): boolean {
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
     } catch {
       return false;
     }
-    setSavedPlans(plans);
+    syncLoadedPlans(plans);
     return true;
   }
 
@@ -546,10 +554,11 @@ export default function App() {
     if (editingSaved && savedEntry) {
       const result = loadPlans();
       if (!result.ok) {
-        showToast(STORAGE_READ_NOTE);
+        noteReadFailure();
         return;
       }
       const latest = result.plans;
+      syncLoadedPlans(latest);
       if (!latest.some((p) => p.id === savedEntry.id)) {
         setSavedEntry(null);
         showToast('That plan is no longer in My plans - save it again as a new plan');
@@ -577,12 +586,12 @@ export default function App() {
     };
     const result = loadPlans();
     if (!result.ok) {
-      showToast(STORAGE_READ_NOTE);
+      noteReadFailure();
       return;
     }
     const latest = result.plans;
+    syncLoadedPlans(latest);
     if (latest.length >= 20) {
-      setSavedPlans(latest);
       showToast('My plans is full (20 plans) - delete one before saving another');
       return;
     }
@@ -597,9 +606,10 @@ export default function App() {
   function deletePlan(id: string) {
     const result = loadPlans();
     if (!result.ok) {
-      showToast(STORAGE_READ_NOTE);
+      noteReadFailure();
       return;
     }
+    syncLoadedPlans(result.plans);
     if (!persist(result.plans.filter((p) => p.id !== id))) {
       showToast('Could not delete - browser storage is unavailable');
       return;
@@ -619,12 +629,12 @@ export default function App() {
     if (!savedEntry) return;
     const result = loadPlans();
     if (!result.ok) {
-      showToast(STORAGE_READ_NOTE);
+      noteReadFailure();
       return;
     }
+    syncLoadedPlans(result.plans);
     const original = result.plans.find((p) => p.id === savedEntry.id);
     if (!original) {
-      setSavedPlans(result.plans);
       clearPlannerState();
       showToast('That plan is no longer in My plans');
       return;
@@ -1206,8 +1216,7 @@ export default function App() {
                 onClick={() => {
                   const result = loadPlans();
                   if (result.ok) {
-                    setSavedPlans(result.plans);
-                    setPlansLoadFailed(false);
+                    syncLoadedPlans(result.plans);
                   } else {
                     showToast(STORAGE_READ_NOTE);
                   }
