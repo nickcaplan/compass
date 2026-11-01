@@ -227,6 +227,15 @@ export function formatDate(iso: string): string {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCFullYear()}`;
 }
 
+export function monthsRangeLabel(start: string, end: string): string {
+  const s = new Date(start);
+  const e = new Date(end);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return '';
+  const sm = `${MONTHS[s.getUTCMonth()].slice(0, 3)} ${s.getUTCFullYear()}`;
+  const em = `${MONTHS[e.getUTCMonth()].slice(0, 3)} ${e.getUTCFullYear()}`;
+  return sm === em ? sm : `${sm} - ${em}`;
+}
+
 export function gbp(n: number): string {
   return `£${Math.round(n).toLocaleString('en-GB')}`;
 }

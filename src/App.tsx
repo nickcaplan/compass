@@ -13,6 +13,7 @@ import {
   demoBrief,
   endBeforeStart,
   formatDate,
+  monthsRangeLabel,
   gbp,
   startNotFuture,
   weeksLabel,
@@ -140,6 +141,7 @@ export default function App() {
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
+  const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
   const startRef = useRef<HTMLInputElement>(null);
@@ -186,6 +188,8 @@ export default function App() {
     () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
     [stage, submittedBrief],
   );
+  const viewingSaved = savedEntry !== null && savedEntry.mode === 'view' && stage === 'plan';
+  const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -334,6 +338,7 @@ export default function App() {
     setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
+    setSavedEntry(null);
     window.scrollTo(0, 0);
   }
 
@@ -349,6 +354,18 @@ export default function App() {
 
   function savePlan() {
     if (!submittedBrief) return;
+    if (editingSaved && savedEntry) {
+      const updated = loadPlans().map((p) =>
+        p.id === savedEntry.id ? { ...p, brief: submittedBrief, savedAt: new Date().toISOString() } : p,
+      );
+      if (persist(updated)) {
+        setSavedEntry({ id: savedEntry.id, mode: 'view' });
+        showToast('Plan updated');
+      } else {
+        showToast('Could not save - browser storage is unavailable');
+      }
+      return;
+    }
     const entry: SavedPlan = {
       id: `${Date.now()}`,
       savedAt: new Date().toISOString(),
@@ -375,6 +392,42 @@ export default function App() {
     }
   }
 
+  function copyPlan(sp: SavedPlan) {
+    const latest = loadPlans();
+    if (latest.length >= 20) {
+      setSavedPlans(latest);
+      showToast('My plans is full (20 plans) - delete one before copying');
+      return;
+    }
+    const base = sp.brief.name || 'Untitled campaign';
+    const copy: SavedPlan = {
+      id: `${Date.now()}`,
+      savedAt: new Date().toISOString(),
+      brief: { ...sp.brief, name: `Copy of ${base}` },
+    };
+    if (persist([copy, ...latest])) {
+      showToast('Copied to My plans');
+    } else {
+      showToast('Could not copy - browser storage is unavailable');
+    }
+  }
+
+  function editSavedPlan() {
+    setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
+  }
+
+  function cancelEditSaved() {
+    if (!savedEntry) return;
+    const original = loadPlans().find((p) => p.id === savedEntry.id);
+    if (original) {
+      setBrief(original.brief);
+      setSubmittedBrief(original.brief);
+      setBudgetText(original.brief.budget !== null ? original.brief.budget.toLocaleString('en-GB') : '');
+      setStage('plan');
+    }
+    setSavedEntry({ id: savedEntry.id, mode: 'view' });
+  }
+
   function openPlan(entry: SavedPlan) {
     const hasDraft = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasDraft && stage !== 'plan' && !window.confirm('Replace your current draft with this saved plan?')) {
@@ -384,6 +437,7 @@ export default function App() {
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
     setStage('plan');
+    setSavedEntry({ id: entry.id, mode: 'view' });
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
@@ -473,7 +527,36 @@ export default function App() {
       </header>
 
       <div className="layout">
-        <section className="card form" aria-label="Plan a campaign">
+        <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
+          {viewingSaved ? (
+            <>
+              <div className="planhead">
+                <h2>Your brief</h2>
+                <div className="cap">SAVED PLAN - READ ONLY</div>
+              </div>
+              <div className="bsum">
+                <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
+                <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
+                <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
+                <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
+                <div><div className="k">Seniority</div><div className="v">{brief.seniority.join(' + ') || '-'}</div></div>
+                <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
+                <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
+              </div>
+              <button type="button" className="gen" onClick={editSavedPlan}>
+                Edit plan <span>&rarr;</span>
+              </button>
+              <div className="viewactions">
+                <button type="button" className="ghost" onClick={() => { const sp = loadPlans().find((p) => p.id === savedEntry?.id); if (sp) copyPlan(sp); }}>
+                  Copy plan
+                </button>
+                <button type="button" className="ghost" onClick={() => go('plans')}>
+                  Back to My plans
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
@@ -658,6 +741,8 @@ export default function App() {
           <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
             {hasGenerated ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
+            </>
+          )}
         </section>
 
         <section ref={planRef} className="card plan" aria-live="polite">
@@ -765,8 +850,10 @@ export default function App() {
           {stage === 'plan' && plan && (
             <div className="planin">
               <div className="planhead">
-                <h2>Recommended plan</h2>
-                <DemoCap />
+                <h2>{viewingSaved
+                  ? `${viewBrief.name || 'Untitled campaign'}${monthsRangeLabel(viewBrief.start, viewBrief.end) ? ` · ${monthsRangeLabel(viewBrief.start, viewBrief.end)}` : ''}`
+                  : 'Recommended plan'}</h2>
+                {viewingSaved ? <div className="cap">SAVED PLAN - READ ONLY</div> : <DemoCap />}
               </div>
               <div className="metrics">
                 {plan.metrics.map((m) => (
@@ -825,15 +912,37 @@ export default function App() {
                 </button>
               </div>
               <div className="secondary">
-                <button type="button" className="ghost" onClick={savePlan}>
-                  Save plan
-                </button>
-                <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-                  Download PDF
-                </button>
-                <button type="button" className="ghost" onClick={reset}>
-                  Create another scenario
-                </button>
+                {viewingSaved ? (
+                  <>
+                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                      Download PDF
+                    </button>
+                    <button type="button" className="ghost" onClick={() => go('plans')}>
+                      Back to My plans
+                    </button>
+                  </>
+                ) : editingSaved ? (
+                  <>
+                    <button type="button" className="ghost" onClick={savePlan}>
+                      Save changes
+                    </button>
+                    <button type="button" className="ghost" onClick={cancelEditSaved}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="ghost" onClick={savePlan}>
+                      Save plan
+                    </button>
+                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                      Download PDF
+                    </button>
+                    <button type="button" className="ghost" onClick={reset}>
+                      Create another scenario
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -875,7 +984,10 @@ export default function App() {
                 return (
                   <div className="plancard" key={sp.id}>
                     <div className="pc-main">
-                      <b>{sp.brief.name || 'Untitled campaign'}</b>
+                      <b>
+                        {sp.brief.name || 'Untitled campaign'}
+                        {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
+                      </b>
                       <div className="chips">
                         {objLabels && <span className="chip">{objLabels}</span>}
                         {sp.brief.audiences.length > 0 && (
@@ -896,6 +1008,9 @@ export default function App() {
                     <div className="pc-actions">
                       <button type="button" className="btn" onClick={() => openPlan(sp)}>
                         Open plan
+                      </button>
+                      <button type="button" className="ghost" onClick={() => copyPlan(sp)}>
+                        Copy
                       </button>
                       <button type="button" className="ghost" onClick={() => deletePlan(sp.id)}>
                         Delete

@@ -310,3 +310,10 @@ input.ctl{color:var(--text)}
   .omonths{grid-template-columns:1fr}
   .outline{padding:16px}
 }
+
+/* Saved plan read-only brief summary */
+.bsum{display:flex;flex-direction:column;gap:13px;margin:18px 0 22px}
+.bsum .k{font-family:Roboto,system-ui,sans-serif;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.bsum .v{font-size:14px;font-weight:600;margin-top:3px;line-height:1.4}
+.viewactions{display:flex;gap:10px;margin-top:14px}
+.viewactions .ghost{flex:1;text-align:center}
