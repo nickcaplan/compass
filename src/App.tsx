@@ -916,7 +916,7 @@ export default function App() {
           </div>
 
           <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
-            {hasGenerated ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
+            {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
             </>
           )}
