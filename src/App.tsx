@@ -366,11 +366,22 @@ export default function App() {
     <div className="wrap">
       <nav>
         <div className="toprow">
-          <span className="prod">
-            <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
-              COMPASS
-            </button>
-          </span>
+          <div className="brand lockup">
+            <span className="prod">
+              <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
+                COMPASS
+              </button>
+            </span>
+            <a
+              className="logoLink"
+              href="https://thehybridhouse.co.uk"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="The Hybrid House website"
+            >
+              <img src={logoUrl} alt="The Hybrid House" height={30} />
+            </a>
+          </div>
           <div className="navlinks">
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
@@ -398,17 +409,6 @@ export default function App() {
             )}
           </button>
           </div>
-        </div>
-        <div className="brand">
-          <a
-            className="logoLink"
-            href="https://thehybridhouse.co.uk"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="The Hybrid House website"
-          >
-            <img src={logoUrl} alt="The Hybrid House" height={30} />
-          </a>
         </div>
       </nav>
 
