@@ -202,23 +202,32 @@ function isBrief(value: unknown): value is Brief {
   );
 }
 
-function loadPlans(): SavedPlan[] {
+type LoadPlansResult = { ok: true; plans: SavedPlan[] } | { ok: false };
+
+// Read failures are reported separately from "no plans saved" so a storage
+// error never looks like a deleted plan and existing state is kept.
+function loadPlans(): LoadPlansResult {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (p): p is SavedPlan =>
-        p !== null &&
-        typeof p === 'object' &&
-        typeof p.id === 'string' &&
-        typeof p.savedAt === 'string' &&
-        isBrief(p.brief),
-    );
+    if (!Array.isArray(parsed)) return { ok: false };
+    return {
+      ok: true,
+      plans: parsed.filter(
+        (p): p is SavedPlan =>
+          p !== null &&
+          typeof p === 'object' &&
+          typeof p.id === 'string' &&
+          typeof p.savedAt === 'string' &&
+          isBrief(p.brief),
+      ),
+    };
   } catch {
-    return [];
+    return { ok: false };
   }
 }
+
+const STORAGE_READ_NOTE = 'Could not read your saved plans - browser storage is unavailable';
 
 function SkeletonBlock() {
   return (
@@ -303,7 +312,11 @@ export default function App() {
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
-  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
+    const result = loadPlans();
+    return result.ok ? result.plans : [];
+  });
+  const [plansLoadFailed, setPlansLoadFailed] = useState(() => !loadPlans().ok);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [planSavedId, setPlanSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -531,7 +544,12 @@ export default function App() {
   function savePlan() {
     if (!submittedBrief) return;
     if (editingSaved && savedEntry) {
-      const latest = loadPlans();
+      const result = loadPlans();
+      if (!result.ok) {
+        showToast(STORAGE_READ_NOTE);
+        return;
+      }
+      const latest = result.plans;
       if (!latest.some((p) => p.id === savedEntry.id)) {
         setSavedEntry(null);
         showToast('That plan is no longer in My plans - save it again as a new plan');
@@ -557,7 +575,12 @@ export default function App() {
       savedAt: new Date().toISOString(),
       brief: submittedBrief,
     };
-    const latest = loadPlans();
+    const result = loadPlans();
+    if (!result.ok) {
+      showToast(STORAGE_READ_NOTE);
+      return;
+    }
+    const latest = result.plans;
     if (latest.length >= 20) {
       setSavedPlans(latest);
       showToast('My plans is full (20 plans) - delete one before saving another');
@@ -572,7 +595,12 @@ export default function App() {
   }
 
   function deletePlan(id: string) {
-    if (!persist(loadPlans().filter((p) => p.id !== id))) {
+    const result = loadPlans();
+    if (!result.ok) {
+      showToast(STORAGE_READ_NOTE);
+      return;
+    }
+    if (!persist(result.plans.filter((p) => p.id !== id))) {
       showToast('Could not delete - browser storage is unavailable');
       return;
     }
@@ -589,10 +617,14 @@ export default function App() {
 
   function cancelEditSaved() {
     if (!savedEntry) return;
-    const latest = loadPlans();
-    const original = latest.find((p) => p.id === savedEntry.id);
+    const result = loadPlans();
+    if (!result.ok) {
+      showToast(STORAGE_READ_NOTE);
+      return;
+    }
+    const original = result.plans.find((p) => p.id === savedEntry.id);
     if (!original) {
-      setSavedPlans(latest);
+      setSavedPlans(result.plans);
       clearPlannerState();
       showToast('That plan is no longer in My plans');
       return;
@@ -1161,7 +1193,30 @@ export default function App() {
           <p className="pagesub">
             Plans you save land here so you can pick up where you left off.
           </p>
-          {savedPlans.length === 0 ? (
+          {plansLoadFailed ? (
+            <div className="empty">
+              <h3>Could not load your saved plans</h3>
+              <p>
+                Browser storage is unavailable, so My plans cannot be read right now. Any plans you saved are
+                likely still there - check that your browser allows site storage and try again.
+              </p>
+              <button
+                type="button"
+                className="btn pagebtn"
+                onClick={() => {
+                  const result = loadPlans();
+                  if (result.ok) {
+                    setSavedPlans(result.plans);
+                    setPlansLoadFailed(false);
+                  } else {
+                    showToast(STORAGE_READ_NOTE);
+                  }
+                }}
+              >
+                Try again
+              </button>
+            </div>
+          ) : savedPlans.length === 0 ? (
             <div className="empty">
               <div className="glyph">
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">

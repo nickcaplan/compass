@@ -192,6 +192,19 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await clickButton(page, 'My plans');
       assert.equal(await page.$('.plancard'), null);
     });
+    await t.test('storage read failure keeps state and reports a storage error', async () => {
+      await page.evaluate(() => window.localStorage.setItem('compass-saved-plans', '{corrupted'));
+      await page.reload();
+      await clickButton(page, 'My plans');
+      await page.waitForSelector('.empty');
+      assert.match(await page.$eval('.empty', (empty) => empty.textContent), /Could not load your saved plans/);
+      await clickButton(page, 'Try again');
+      await page.waitForFunction(() =>
+        document.querySelector('.toast')?.textContent?.includes('Could not read your saved plans'));
+      await page.evaluate(() => window.localStorage.setItem('compass-saved-plans', '[]'));
+      await clickButton(page, 'Try again');
+      await page.waitForFunction(() => document.querySelector('.empty h3')?.textContent === 'No saved plans yet');
+    });
   } finally {
     await browser?.close();
     server.kill();
