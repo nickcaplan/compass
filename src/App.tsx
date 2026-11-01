@@ -792,8 +792,7 @@ export default function App() {
             <DemoCap />
           </div>
           <p className="pagesub">
-            Plans you save land here so you can pick up where you left off. In this demo they are
-            stored in this browser only - sign-in will sync them across devices in the full product.
+            Plans you save land here so you can pick up where you left off.
           </p>
           {savedPlans.length === 0 ? (
             <div className="empty">
