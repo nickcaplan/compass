@@ -301,6 +301,7 @@ export default function App() {
     };
     const latest = loadPlans();
     if (latest.length >= 20) {
+      setSavedPlans(latest);
       showToast('My plans is full (20 plans) - delete one before saving another');
       return;
     }
