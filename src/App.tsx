@@ -802,7 +802,7 @@ export default function App() {
                 </svg>
               </div>
               <h3>No saved plans yet</h3>
-              <p>Generate a plan and save it, and it will be waiting here next time.</p>
+              <p>Your saved plans will be waiting here.</p>
               <button type="button" className="btn pagebtn" onClick={() => go('planner')}>
                 Plan a campaign
               </button>
