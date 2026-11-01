@@ -14,7 +14,7 @@ async function clickButton(page, label) {
   // The mobile toast temporarily overlays navigation; wait for it to clear.
   await page.waitForSelector('.toast', { hidden: true });
   const handle = await page.evaluateHandle((text) =>
-    [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === text), label);
+    [...document.querySelectorAll('button')].find((button) => button.textContent.trim().replace(/\s*→$/, '') === text), label);
   try {
     const button = handle.asElement();
     assert.ok(button, `Button not found: ${label}`);
@@ -138,6 +138,53 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Replace your current plan/);
       await page.locator('.confirm .ghost').click();
       await page.waitForSelector('[role="alertdialog"]', { hidden: true });
+    });
+
+    await t.test('long confirmation content stays inside a short viewport', async () => {
+      await page.evaluate(() => {
+        const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
+        plans[0].brief.name = 'Long campaign name '.repeat(100);
+        localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
+      });
+      await page.reload();
+      await page.setViewport({ width: 412, height: 300 });
+      await clickButton(page, 'My plans');
+      await page.waitForSelector('.pc-actions');
+      await clickButton(page, 'Delete');
+      await page.waitForSelector('[role="alertdialog"]');
+      const bounds = await page.$eval('.confirm', (dialog) => {
+        const rect = dialog.getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom, height: window.innerHeight };
+      });
+      assert.ok(bounds.top >= 0 && bounds.bottom <= bounds.height, 'Dialog must fit inside the viewport');
+      await page.locator('.confirm .ghost').click();
+      await page.waitForSelector('[role="alertdialog"]', { hidden: true });
+      await page.setViewport({ width: 1440, height: 900 });
+    });
+
+    await t.test('cancelling after another tab deletes the plan clears the saved view', async () => {
+      await openSavedPlan(page);
+      await page.waitForSelector('.bsum');
+      await clickButton(page, 'Edit plan');
+      await page.locator('#f-name').fill('Unsaved edit to deleted plan');
+      const otherPage = await context.newPage();
+      try {
+        await otherPage.goto('http://127.0.0.1:4173');
+        await clickButton(otherPage, 'My plans');
+        await otherPage.waitForSelector('.pc-actions');
+        await clickButton(otherPage, 'Delete');
+        await otherPage.waitForSelector('[role="alertdialog"]');
+        await otherPage.locator('.confirm .btn').click();
+        await otherPage.waitForSelector('.plancard', { hidden: true });
+      } finally {
+        await otherPage.close();
+      }
+      await clickButton(page, 'Cancel');
+      await page.waitForSelector('.bsum', { hidden: true });
+      assert.equal(await page.$eval('#f-name', (input) => input.value), '');
+      assert.match(await page.$eval('.toast', (toast) => toast.textContent), /no longer in My plans/);
+      await clickButton(page, 'My plans');
+      assert.equal(await page.$('.plancard'), null);
     });
   } finally {
     await browser?.close();
