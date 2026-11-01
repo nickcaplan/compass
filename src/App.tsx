@@ -233,7 +233,8 @@ export default function App() {
   // the eye to the generate button (scroll + subtle pulse + focus). Demo
   // only - it never generates the plan by itself.
   function fillDemo() {
-    if (count > 0 && !window.confirm('Replace the answers you have already given with the example brief?')) {
+    const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
+    if (hasInput && !window.confirm('Replace the answers you have already given with the example brief?')) {
       return;
     }
     const d = demoBrief();
@@ -299,7 +300,11 @@ export default function App() {
       brief: submittedBrief,
     };
     const latest = loadPlans();
-    if (persist([entry, ...latest].slice(0, 20))) {
+    if (latest.length >= 20) {
+      showToast('My plans is full (20 plans) - delete one before saving another');
+      return;
+    }
+    if (persist([entry, ...latest])) {
       showToast('Saved to My plans - stored in this browser only (demo)');
     } else {
       showToast('Could not save - browser storage is unavailable');
@@ -315,6 +320,10 @@ export default function App() {
   }
 
   function openPlan(entry: SavedPlan) {
+    const hasDraft = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
+    if (hasDraft && stage !== 'plan' && !window.confirm('Replace your current draft with this saved plan?')) {
+      return;
+    }
     setBrief(entry.brief);
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
