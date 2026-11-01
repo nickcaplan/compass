@@ -292,6 +292,8 @@ input.ctl{color:var(--text)}
   .includegrid{grid-template-columns:1fr}
   .plancard{flex-direction:column;align-items:stretch}
   .pc-actions{justify-content:flex-start}
+  .secondary{flex-direction:column}
+  .secondary .btn,.secondary .ghost{width:100%;flex:none}
 }
 
 .outline{margin-top:18px;border:1px dashed var(--line-strong);border-radius:16px;padding:20px 22px}

@@ -96,6 +96,7 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
   const cancelCb = useRef(onCancel);
   cancelCb.current = onCancel;
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cancelRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -117,7 +118,10 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (opener && document.contains(opener)) opener.focus();
+    };
   }, []);
   return (
     <div className="confirmwrap" onClick={() => cancelCb.current()}>
@@ -289,7 +293,7 @@ export default function App() {
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavedPlan | null>(null);
-  const [openTarget, setOpenTarget] = useState<SavedPlan | null>(null);
+  const [openTarget, setOpenTarget] = useState<{ entry: SavedPlan; reason: 'draft' | 'unsaved' | 'edit' } | null>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -556,10 +560,16 @@ export default function App() {
   }
 
   function openPlan(entry: SavedPlan, force = false) {
-    const hasDraft = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
-    if (hasDraft && stage !== 'plan' && !force) {
-      setOpenTarget(entry);
-      return;
+    const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
+    if (!force && !alreadyOpen) {
+      const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+      const unsavedPlan = stage === 'plan' && savedEntry === null;
+      const unsavedEdit = savedEntry?.mode === 'edit';
+      const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
+      if (reason !== null) {
+        setOpenTarget({ entry, reason });
+        return;
+      }
     }
     setOpenTarget(null);
     setBrief(entry.brief);
@@ -1045,6 +1055,10 @@ export default function App() {
                       <IconDownload />
                       Download PDF
                     </button>
+                    <button type="button" className="ghost" onClick={reset}>
+                      <IconPlus />
+                      Create another scenario
+                    </button>
                     <button type="button" className="ghost" onClick={() => go('plans')}>
                       <IconBack />
                       Back to My plans
@@ -1280,11 +1294,17 @@ export default function App() {
 
       {openTarget && (
         <ConfirmDialog
-          title="Replace your draft?"
-          body="Replace your current draft with this saved plan? Any answers you have not saved will be lost."
+          title={openTarget.reason === 'edit' ? 'Discard unsaved changes?' : openTarget.reason === 'unsaved' ? 'Replace your current plan?' : 'Replace your draft?'}
+          body={
+            openTarget.reason === 'edit'
+              ? 'Opening this saved plan will discard the changes you have not saved.'
+              : openTarget.reason === 'unsaved'
+                ? 'Your current plan has not been saved. Replace it with this saved plan?'
+                : 'Replace your current draft with this saved plan? Any answers you have not saved will be lost.'
+          }
           confirmLabel="Open plan"
-          cancelLabel="Keep my draft"
-          onConfirm={() => openPlan(openTarget, true)}
+          cancelLabel={openTarget.reason === 'edit' ? 'Keep editing' : openTarget.reason === 'unsaved' ? 'Keep my plan' : 'Keep my draft'}
+          onConfirm={() => openPlan(openTarget.entry, true)}
           onCancel={() => setOpenTarget(null)}
         />
       )}
