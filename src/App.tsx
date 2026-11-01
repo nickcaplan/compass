@@ -168,7 +168,7 @@ import {
   type ObjectiveId,
 } from './data';
 
-type Stage = 'empty' | 'filling' | 'generating' | 'plan';
+type Stage = 'empty' | 'filling' | 'generating' | 'gate' | 'plan';
 
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
@@ -292,6 +292,10 @@ export default function App() {
   const [budgetText, setBudgetText] = useState('');
   const [stage, setStage] = useState<Stage>('empty');
   const [ticks, setTicks] = useState(0);
+  const [demoUser, setDemoUser] = useState<{ name: string; email: string; company: string } | null>(null);
+  const [gateName, setGateName] = useState('');
+  const [gateEmail, setGateEmail] = useState('');
+  const [gateCompany, setGateCompany] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       return window.localStorage.getItem('compass-theme') === 'light' ? 'light' : 'dark';
@@ -330,7 +334,7 @@ export default function App() {
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
-  const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
+  const viewBrief = (stage === 'generating' || stage === 'gate' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
@@ -381,9 +385,11 @@ export default function App() {
   useEffect(() => {
     if (stage !== 'generating') return;
     if (ticks < genSteps) return;
-    const id = window.setTimeout(() => setStage('plan'), 500);
+    // Plans are gated behind sign-in: with no demo sign-in yet, show the
+    // gate first; the brief and generated plan stay intact behind it.
+    const id = window.setTimeout(() => setStage(demoUser ? 'plan' : 'gate'), 500);
     return () => window.clearTimeout(id);
-  }, [stage, ticks, genSteps]);
+  }, [stage, ticks, genSteps, demoUser]);
 
   function showToast(message: string) {
     setToast(message);
@@ -1029,6 +1035,71 @@ export default function App() {
               </div>
               <SkeletonBlock />
             </>
+          )}
+
+          {stage === 'gate' && (
+            <div className="planin">
+              <div className="planhead">
+                <h2>Your plan is ready</h2>
+                <DemoCap />
+              </div>
+              <p className="pagesub">
+                Sign in to see it. In the full product, signing in saves your plans so you can pick up where
+                you left off, on any device.
+              </p>
+              <div className="field">
+                <label htmlFor="f-gate-name">Name</label>
+                <input
+                  id="f-gate-name"
+                  className="ctl"
+                  type="text"
+                  placeholder="Your name"
+                  value={gateName}
+                  onChange={(e) => setGateName(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="f-gate-email">Work email</label>
+                <input
+                  id="f-gate-email"
+                  className="ctl"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={gateEmail}
+                  onChange={(e) => setGateEmail(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="f-gate-company">Company (optional)</label>
+                <input
+                  id="f-gate-company"
+                  className="ctl"
+                  type="text"
+                  placeholder="Company"
+                  value={gateCompany}
+                  onChange={(e) => setGateCompany(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className="gen"
+                disabled={!gateName.trim() || !/.+@.+\..+/.test(gateEmail.trim())}
+                onClick={() => {
+                  setDemoUser({ name: gateName.trim(), email: gateEmail.trim(), company: gateCompany.trim() });
+                  setStage('plan');
+                  showToast('Signed in for this demo - no account created');
+                }}
+              >
+                See my plan <span>&rarr;</span>
+              </button>
+              <button type="button" className="ghost" onClick={() => setStage('filling')}>
+                Back to my brief
+              </button>
+              <p className="finenote">
+                Concept demo - no account is created and nothing you enter leaves this browser. Real sign-in
+                arrives with the accounts work.
+              </p>
+            </div>
           )}
 
           {stage === 'plan' && plan && (
