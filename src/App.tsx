@@ -192,6 +192,7 @@ function isBrief(value: unknown): value is Brief {
   return (
     typeof b.name === 'string' &&
     strArr(b.objectives) &&
+    (b.objectives as string[]).every((id) => OBJECTIVES.some((o) => o.id === id)) &&
     strArr(b.kpis) &&
     strArr(b.audiences) &&
     strArr(b.seniority) &&
@@ -304,7 +305,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('planner');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
-  const [planSaved, setPlanSaved] = useState(false);
+  const [planSavedId, setPlanSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
@@ -493,7 +494,7 @@ export default function App() {
     planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     if (count < 6) return;
     clearCue();
-    setPlanSaved(false);
+    setPlanSavedId(null);
     setSubmittedBrief(brief);
     setHasGenerated(true);
     setStage('generating');
@@ -509,7 +510,7 @@ export default function App() {
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
-    setPlanSaved(false);
+    setPlanSavedId(null);
   }
 
   function reset() {
@@ -547,7 +548,7 @@ export default function App() {
       }
       return;
     }
-    if (planSaved) {
+    if (planSavedId !== null) {
       showToast('Already saved to My plans');
       return;
     }
@@ -563,7 +564,7 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
-      setPlanSaved(true);
+      setPlanSavedId(entry.id);
       showToast('Saved to My plans');
     } else {
       showToast('Could not save - browser storage is unavailable');
@@ -577,6 +578,8 @@ export default function App() {
     }
     if (savedEntry?.id === id) {
       clearPlannerState();
+    } else if (planSavedId === id) {
+      setPlanSavedId(null);
     }
   }
 
@@ -600,7 +603,7 @@ export default function App() {
     const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
     if (!force && !alreadyOpen) {
       const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-      const unsavedPlan = stage === 'plan' && savedEntry === null && !planSaved;
+      const unsavedPlan = stage === 'plan' && savedEntry === null && planSavedId === null;
       const unsavedEdit = savedEntry?.mode === 'edit';
       const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
       if (reason !== null) {
