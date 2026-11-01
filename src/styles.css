@@ -228,6 +228,7 @@ input.ctl{color:var(--text)}
   .act .num{text-align:left}
   .months{grid-template-columns:1fr}
   .cta{flex-direction:column;align-items:flex-start}
+  .cta .btn{width:100%}
   .steps3{grid-template-columns:1fr}
   .skelrow{grid-template-columns:repeat(2,1fr)}
   .toast{bottom:auto;top:12px;left:12px;right:12px;transform:none;text-align:center}
