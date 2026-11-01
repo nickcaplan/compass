@@ -21,6 +21,14 @@ function IconSave() {
   );
 }
 
+function IconCheck() {
+  return (
+    <svg {...iconProps}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 function IconDownload() {
   return (
     <svg {...iconProps}>
@@ -542,16 +550,12 @@ export default function App() {
       );
       if (persist(updated)) {
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
-        showToast('Plan updated');
       } else {
         showToast('Could not save - browser storage is unavailable');
       }
       return;
     }
-    if (planSavedId !== null) {
-      showToast('Already saved to My plans');
-      return;
-    }
+    if (planSavedId !== null) return;
     const entry: SavedPlan = {
       id: `${Date.now()}`,
       savedAt: new Date().toISOString(),
@@ -565,7 +569,6 @@ export default function App() {
     }
     if (persist([entry, ...latest])) {
       setPlanSavedId(entry.id);
-      showToast('Saved to My plans');
     } else {
       showToast('Could not save - browser storage is unavailable');
     }
@@ -1130,9 +1133,23 @@ export default function App() {
                     {editsNotGenerated && (
                       <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
                     )}
-                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
-                      <IconSave />
-                      Save plan
+                    <button
+                      type="button"
+                      className={planSavedId !== null ? 'ghost saved' : 'ghost lead'}
+                      onClick={savePlan}
+                      disabled={planSavedId !== null || editsNotGenerated}
+                    >
+                      {planSavedId !== null ? (
+                        <>
+                          <IconCheck />
+                          Saved
+                        </>
+                      ) : (
+                        <>
+                          <IconSave />
+                          Save plan
+                        </>
+                      )}
                     </button>
                     <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
                       <IconDownload />
