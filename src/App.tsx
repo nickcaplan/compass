@@ -1040,6 +1040,7 @@ export default function App() {
           {stage === 'gate' && (
             <form
               className="planin"
+              noValidate
               onSubmit={(e) => {
                 e.preventDefault();
                 setDemoUser({ name: gateName.trim(), email: gateEmail.trim(), company: gateCompany.trim() });
