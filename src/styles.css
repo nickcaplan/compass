@@ -208,6 +208,10 @@ input.ctl{color:var(--text)}
   .form{position:static}
   .navlinks{gap:14px;font-size:12.5px}
   .navlinks>button.navsupport{display:none}
+  .navlinks{justify-content:flex-end}
+  .themebtn{margin-left:0}
+  .brand{flex-direction:column;align-items:flex-start;gap:8px}
+  .brand .logoLink{order:2}
   .signin{padding:7px 14px;font-size:12px}
   .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
   .act{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:10px}
