@@ -378,6 +378,9 @@ export default function App() {
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           <button type="button" className={page === 'pricing' ? 'navon' : ''} onClick={() => go('pricing')}>Pricing</button>
           <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
+          <button type="button" className="signin" onClick={() => go('signin')}>
+            Sign in
+          </button>
           <button
             type="button"
             className="themebtn"
@@ -395,9 +398,6 @@ export default function App() {
                 <path d="M20 13.5A8.5 8.5 0 1 1 10.5 4a7 7 0 0 0 9.5 9.5z" />
               </svg>
             )}
-          </button>
-          <button type="button" className="signin" onClick={() => go('signin')}>
-            Sign in
           </button>
         </div>
       </nav>
