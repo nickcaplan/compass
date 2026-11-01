@@ -245,7 +245,7 @@ input.ctl{color:var(--text)}
 /* design proposal pages */
 .pagecard{padding:28px 30px 26px;margin:10px 0 26px;max-width:760px;margin-left:auto;margin-right:auto}
 .pagesub{color:var(--muted);font-size:13.5px;max-width:560px;margin-bottom:22px}
-.pagebtn{margin-top:6px;border:0;border-radius:12px;padding:12px 22px;font-family:Poppins,sans-serif;font-weight:700;font-size:14px;cursor:pointer}
+.pagebtn{margin-top:6px;border:0;border-radius:12px;padding:12px 22px;font-family:Poppins,sans-serif;font-weight:700;font-size:14px;cursor:pointer;background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent)}
 .planlist{display:grid;gap:14px}
 .plancard{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:var(--inset)}
 .plancard .pc-main{min-width:0;flex:1}
