@@ -10,6 +10,7 @@ import {
   buildPlan,
   campaignWeeks,
   checklistFor,
+  demoBrief,
   endBeforeStart,
   formatDate,
   gbp,
@@ -60,8 +61,15 @@ export default function App() {
     }
   });
   const [showAllAudiences, setShowAllAudiences] = useState(false);
+  const [cueGen, setCueGen] = useState(false);
+  const [cueSeq, setCueSeq] = useState(0);
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [hasFilled, setHasFilled] = useState(false);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
+  const genRef = useRef<HTMLButtonElement>(null);
+  const planRef = useRef<HTMLElement>(null);
+  const cueTimer = useRef<number | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
 
@@ -116,7 +124,7 @@ export default function App() {
     setTicks(0);
     const interval = window.setInterval(() => {
       setTicks((t) => Math.min(t + 1, genSteps));
-    }, 650);
+    }, 950);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
@@ -190,18 +198,64 @@ export default function App() {
     }));
   }
 
+  // Guided demo aid: one tap loads the complete example brief, then guides
+  // the eye to the generate button (scroll + subtle pulse + focus). Demo
+  // only - it never generates the plan by itself.
+  function fillDemo() {
+    if (count > 0 && !window.confirm('Replace the answers you have already given with the example brief?')) {
+      return;
+    }
+    setHasFilled(true);
+    const d = demoBrief(brief.name || undefined);
+    setBrief(d);
+    setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
+    setSubmittedBrief(null);
+    setStage('filling');
+    setShowAllAudiences(false);
+    window.clearTimeout(cueTimer.current);
+    if (answeredCount(d) >= 6) {
+      setCueSeq((n) => n + 1);
+      setCueGen(true);
+      cueTimer.current = window.setTimeout(() => setCueGen(false), 6000);
+    }
+  }
+
+  useEffect(() => {
+    if (!cueGen) return;
+    const el = genRef.current;
+    if (!el) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const id = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+      el.focus({ preventScroll: true });
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, [cueGen, cueSeq]);
+
+  function clearCue() {
+    window.clearTimeout(cueTimer.current);
+    setCueGen(false);
+  }
+
   function generate() {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     if (count < 6) return;
+    clearCue();
     setSubmittedBrief(brief);
+    setHasGenerated(true);
     setStage('generating');
   }
 
   function reset() {
+    clearCue();
     setBrief(EMPTY_BRIEF);
     setSubmittedBrief(null);
     setBudgetText('');
     setStage('empty');
     setShowAllAudiences(false);
+    setHasGenerated(false);
+    setHasFilled(false);
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
@@ -278,6 +332,16 @@ export default function App() {
         <section className="card form" aria-label="Plan a campaign">
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
+
+          <button type="button" className="demofill" onClick={fillDemo}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
+              <path d="M6 11l.9 2.4 2.4.9-2.4.9L6 17.6l-.9-2.4-2.4-.9 2.4-.9L6 11z" />
+              <path d="M17.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" />
+            </svg>
+            {hasFilled ? 'Try another example' : 'Fill it in for me'}
+          </button>
+          <div className="demohint">Loads a complete example brief - demo only</div>
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
@@ -447,12 +511,12 @@ export default function App() {
             )}
           </div>
 
-          <button className="gen" type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
-            Generate my plan <span>&rarr;</span>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
+            {hasGenerated ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
         </section>
 
-        <section className="card plan" aria-live="polite">
+        <section ref={planRef} className="card plan" aria-live="polite">
           {stage === 'empty' && (
             <>
               <div className="empty">
@@ -553,7 +617,7 @@ export default function App() {
           )}
 
           {stage === 'plan' && plan && (
-            <>
+            <div className="planin">
               <div className="planhead">
                 <h2>Recommended plan</h2>
                 <DemoCap />
@@ -625,7 +689,7 @@ export default function App() {
                   Create another scenario
                 </button>
               </div>
-            </>
+            </div>
           )}
         </section>
       </div>
