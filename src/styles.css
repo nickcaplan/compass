@@ -317,3 +317,6 @@ input.ctl{color:var(--text)}
 .bsum .v{font-size:14px;font-weight:600;margin-top:3px;line-height:1.4}
 .viewactions{display:flex;gap:10px;margin-top:14px}
 .viewactions .ghost{flex:1;text-align:center}
+
+/* Keep the example-fill confirmation's primary action on-brand once the warning fix merges in from main */
+.fillwarn .btn{border:0;background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent);font-weight:700;font-family:Poppins,sans-serif;border-radius:10px;cursor:pointer}
