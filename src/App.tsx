@@ -67,6 +67,7 @@ export default function App() {
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
+  const planRef = useRef<HTMLElement>(null);
   const cueTimer = useRef<number | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -235,6 +236,8 @@ export default function App() {
   }
 
   function generate() {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
@@ -510,7 +513,7 @@ export default function App() {
           </button>
         </section>
 
-        <section className="card plan" aria-live="polite">
+        <section ref={planRef} className="card plan" aria-live="polite">
           {stage === 'empty' && (
             <>
               <div className="empty">
