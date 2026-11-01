@@ -11,6 +11,8 @@ const chromePath = process.platform === 'darwin'
   : '/usr/bin/google-chrome';
 
 async function clickButton(page, label) {
+  // The mobile toast temporarily overlays navigation; wait for it to clear.
+  await page.waitForSelector('.toast', { hidden: true });
   const handle = await page.evaluateHandle((text) =>
     [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === text), label);
   try {
@@ -66,6 +68,8 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
+    page.setDefaultTimeout(10000);
+    await page.setViewport({ width: 1440, height: 900 });
     await page.goto('http://127.0.0.1:4173');
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
