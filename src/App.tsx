@@ -227,7 +227,7 @@ function loadPlans(): LoadPlansResult {
   }
 }
 
-const STORAGE_READ_NOTE = 'Could not read your saved plans - browser storage is unavailable';
+const STORAGE_READ_NOTE = 'Could not read your saved plans from this browser - please try again';
 
 function SkeletonBlock() {
   return (
@@ -1197,8 +1197,8 @@ export default function App() {
             <div className="empty">
               <h3>Could not load your saved plans</h3>
               <p>
-                Browser storage is unavailable, so My plans cannot be read right now. Any plans you saved are
-                likely still there - check that your browser allows site storage and try again.
+                Your saved plans could not be read from this browser. Try again - if it keeps happening, your
+                browser may be blocking site storage.
               </p>
               <button
                 type="button"
