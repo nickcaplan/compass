@@ -589,13 +589,18 @@ export default function App() {
 
   function cancelEditSaved() {
     if (!savedEntry) return;
-    const original = loadPlans().find((p) => p.id === savedEntry.id);
-    if (original) {
-      setBrief(original.brief);
-      setSubmittedBrief(original.brief);
-      setBudgetText(original.brief.budget !== null ? original.brief.budget.toLocaleString('en-GB') : '');
-      setStage('plan');
+    const latest = loadPlans();
+    const original = latest.find((p) => p.id === savedEntry.id);
+    if (!original) {
+      setSavedPlans(latest);
+      clearPlannerState();
+      showToast('That plan is no longer in My plans');
+      return;
     }
+    setBrief(original.brief);
+    setSubmittedBrief(original.brief);
+    setBudgetText(original.brief.budget !== null ? original.brief.budget.toLocaleString('en-GB') : '');
+    setStage('plan');
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
