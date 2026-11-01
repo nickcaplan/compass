@@ -376,7 +376,7 @@ export default function App() {
         <div className="navlinks">
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
-          <button type="button" className={page === 'pricing' ? 'navon' : ''} onClick={() => go('pricing')}>Pricing</button>
+          {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
           <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button type="button" className="signin" onClick={() => go('signin')}>
             Sign in
