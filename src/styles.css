@@ -258,8 +258,9 @@ input.ctl{color:var(--text)}
 .navon{color:var(--accent-ink)!important}
 .signincard{max-width:480px}
 .ssolist{display:grid;gap:10px;margin-bottom:18px}
-.sso{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;border:1px solid var(--line-mid);border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;background:var(--card);color:var(--text);font-family:Roboto,system-ui,sans-serif}
+.sso{position:relative;display:flex;align-items:center;justify-content:center;gap:11px;width:100%;border:1px solid var(--line-mid);border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;background:var(--card);color:var(--text);font-family:Roboto,system-ui,sans-serif}
 .sso:hover{border-color:var(--accent-line)}
+.sso svg{position:absolute;left:22px}
 .divider{display:flex;align-items:center;gap:12px;margin:4px 0 16px;color:var(--faint);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
 .finenote{font-size:11.5px;color:var(--faint);margin-top:16px;line-height:1.5}
