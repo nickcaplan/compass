@@ -354,7 +354,13 @@ export default function App() {
   return (
     <div className="wrap">
       <nav>
-        <div className="navlinks">
+        <div className="toprow">
+          <span className="prod">
+            <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
+              COMPASS
+            </button>
+          </span>
+          <div className="navlinks">
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
@@ -380,6 +386,7 @@ export default function App() {
               </svg>
             )}
           </button>
+          </div>
         </div>
         <div className="brand">
           <a
@@ -391,11 +398,6 @@ export default function App() {
           >
             <img src={logoUrl} alt="The Hybrid House" height={30} />
           </a>
-          <span className="prod">
-            <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
-              COMPASS
-            </button>
-          </span>
         </div>
       </nav>
 

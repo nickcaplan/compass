@@ -56,7 +56,8 @@
 body{font-family:Roboto,system-ui,sans-serif;font-size:15px;line-height:1.55}
 .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
 nav{display:flex;flex-wrap:wrap;row-gap:12px;align-items:center;padding:22px 0}
-.navlinks{width:100%}
+.toprow{display:flex;align-items:center;gap:20px;width:100%}
+.navlinks{flex:1;min-width:0}
 .brand{width:100%}
 .brand{display:flex;align-items:center;gap:14px}
 .brand svg{height:30px;width:auto;display:block}
@@ -206,13 +207,13 @@ input.ctl{color:var(--text)}
   h1{font-size:37px}
   .layout{grid-template-columns:1fr}
   .form{position:static}
-  .navlinks{gap:14px;font-size:12.5px}
+  .toprow{gap:12px}
+  .prod{font-size:15px}
+  .navlinks{gap:12px;font-size:12.5px}
   .navlinks>button.navsupport{display:none}
   .navlinks{justify-content:flex-end}
   .themebtn{margin-left:0}
-  .brand{flex-direction:column;align-items:flex-start;gap:8px}
-  .brand .logoLink{order:2}
-  .signin{padding:7px 14px;font-size:12px}
+  .signin{padding:7px 12px;font-size:12px}
   .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
   .act{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:10px}
   .act .num{text-align:left}
