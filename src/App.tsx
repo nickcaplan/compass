@@ -372,15 +372,18 @@ export default function App() {
                 COMPASS
               </button>
             </span>
-            <a
-              className="logoLink"
-              href="https://thehybridhouse.co.uk"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="The Hybrid House website"
-            >
-              <img src={logoUrl} alt="The Hybrid House" height={30} />
-            </a>
+            <span className="byline">
+              <span className="by">by</span>
+              <a
+                className="logoLink"
+                href="https://thehybridhouse.co.uk"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="The Hybrid House website"
+              >
+                <img src={logoUrl} alt="The Hybrid House" height={26} />
+              </a>
+            </span>
           </div>
           <div className="navlinks">
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
