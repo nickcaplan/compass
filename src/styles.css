@@ -134,7 +134,7 @@ input[type="date"].ctl::-webkit-calendar-picker-indicator{display:none}
 .cta p{font-size:13px;margin-top:2px;opacity:.8}
 .cta .btn{white-space:nowrap;font-weight:700;font-family:Poppins,sans-serif;border-radius:12px;padding:12px 18px;font-size:14px;cursor:pointer;border:0}
 .secondary{display:flex;gap:10px;margin-top:14px}
-.ghost{flex:1;text-align:center;border-radius:12px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;background:none;font-family:Roboto,system-ui,sans-serif}
+.ghost{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center;border-radius:12px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;background:var(--inset);font-family:Roboto,system-ui,sans-serif;transition:border-color .15s,color .15s}
 footer{padding:24px 0 40px;font-size:11.5px;font-family:Roboto,system-ui,sans-serif;letter-spacing:.04em;opacity:.75;color:var(--muted)}
 /* journey states */
 .dim{opacity:.45}
@@ -206,6 +206,9 @@ input.ctl{color:var(--text)}
 .cta p{color:var(--muted)}
 .cta .btn{background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent)}
 .ghost{border:1px solid var(--line-mid);color:var(--muted)}
+.ghost:hover{border-color:var(--accent-line);color:var(--accent-ink)}
+.ghost:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.ghost svg{flex:none}
 @media (max-width:980px){
   .wrap{padding:0 20px}
   .navlinks{flex-wrap:wrap;row-gap:10px}
@@ -289,6 +292,8 @@ input.ctl{color:var(--text)}
   .includegrid{grid-template-columns:1fr}
   .plancard{flex-direction:column;align-items:stretch}
   .pc-actions{justify-content:flex-start}
+  .secondary{flex-direction:column}
+  .secondary .btn,.secondary .ghost{width:100%;flex:none}
 }
 
 .outline{margin-top:18px;border:1px dashed var(--line-strong);border-radius:16px;padding:20px 22px}
@@ -311,8 +316,31 @@ input.ctl{color:var(--text)}
   .outline{padding:16px}
 }
 
-/* Inline replace confirmation for the example fill (replaces native dialog) */
-.fillwarn{margin:10px 0 2px;padding:12px 14px;border:1px solid var(--line-mid);border-radius:12px;background:rgba(254,202,10,.08)}
-.fillwarn p{margin:0 0 10px;font-size:12.5px;line-height:1.45}
-.fillwarn .row{display:flex;gap:8px;flex-wrap:wrap}
-.fillwarn .btn,.fillwarn .ghost{padding:8px 12px;font-size:12px}
+/* Saved plan read-only brief summary */
+.bsum{display:flex;flex-direction:column;gap:13px;margin:18px 0 22px}
+.bsum .k{font-family:Roboto,system-ui,sans-serif;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.bsum .v{font-size:14px;font-weight:600;margin-top:3px;line-height:1.4}
+.viewactions{display:flex;gap:10px;margin-top:14px}
+.viewactions .ghost{flex:1;text-align:center}
+
+/* Keep the example-fill confirmation's primary action on-brand once the warning fix merges in from main */
+.fillwarn .btn{border:0;background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent);font-weight:700;font-family:Poppins,sans-serif;border-radius:10px;cursor:pointer}
+
+/* Plan action buttons: icons + clear primary/secondary hierarchy */
+.btn{border:0;background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent);font-weight:700;font-family:Poppins,sans-serif;border-radius:12px;padding:11px 18px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.secondary .btn{flex:1}
+.pc-actions .btn{display:inline-flex;align-items:center;gap:7px}
+
+/* Styled confirmation dialog (replaces native browser confirms) */
+.confirmwrap{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(10,10,14,.55)}
+.confirm{width:100%;max-width:380px;max-height:calc(100dvh - 44px);overflow-y:auto;overflow-wrap:anywhere;background:var(--card);border:1px solid var(--line-mid);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+.confirm b{display:block;font-family:Poppins,sans-serif;font-size:16px;color:var(--text);margin-bottom:6px}
+.confirm p{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 16px}
+.confirm .row{display:flex;gap:10px}
+.confirm .btn,.confirm .ghost{flex:1;padding:10px 14px;font-size:13px}
+
+/* Save buttons: disabled until the plan is regenerated after form edits */
+.btn:disabled{opacity:.55;cursor:default}
+.secondary{flex-wrap:wrap}
+.savenote{flex-basis:100%;margin:0;font-size:12.5px;color:var(--muted)}
