@@ -310,3 +310,9 @@ input.ctl{color:var(--text)}
   .omonths{grid-template-columns:1fr}
   .outline{padding:16px}
 }
+
+/* Inline replace confirmation for the example fill (replaces native dialog) */
+.fillwarn{margin:10px 0 2px;padding:12px 14px;border:1px solid var(--line-mid);border-radius:12px;background:rgba(254,202,10,.08)}
+.fillwarn p{margin:0 0 10px;font-size:12.5px;line-height:1.45}
+.fillwarn .row{display:flex;gap:8px;flex-wrap:wrap}
+.fillwarn .btn,.fillwarn .ghost{padding:8px 12px;font-size:12px}
