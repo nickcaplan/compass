@@ -59,15 +59,6 @@ function IconBack() {
   );
 }
 
-function IconCopy() {
-  return (
-    <svg {...iconProps}>
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
 function IconTrash() {
   return (
     <svg {...iconProps}>
@@ -175,7 +166,7 @@ import {
 
 type Stage = 'empty' | 'filling' | 'generating' | 'plan';
 
-const FULL_PRODUCT_NOTE = 'Part of the full product - not active in this concept demo';
+const FULL_PRODUCT_NOTE = 'Not available yet';
 
 type Page = 'planner' | 'plans' | 'signin' | 'pricing';
 
@@ -535,7 +526,7 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
-      showToast('Saved to My plans - stored in this browser only (demo)');
+      showToast('Saved to My plans');
     } else {
       showToast('Could not save - browser storage is unavailable');
     }
@@ -545,26 +536,6 @@ export default function App() {
     if (!persist(loadPlans().filter((p) => p.id !== id))) {
       setSavedPlans(loadPlans());
       showToast('Could not delete - browser storage is unavailable');
-    }
-  }
-
-  function copyPlan(sp: SavedPlan) {
-    const latest = loadPlans();
-    if (latest.length >= 20) {
-      setSavedPlans(latest);
-      showToast('My plans is full (20 plans) - delete one before copying');
-      return;
-    }
-    const base = sp.brief.name || 'Untitled campaign';
-    const copy: SavedPlan = {
-      id: `${Date.now()}`,
-      savedAt: new Date().toISOString(),
-      brief: { ...sp.brief, name: `Copy of ${base}` },
-    };
-    if (persist([copy, ...latest])) {
-      showToast('Copied to My plans');
-    } else {
-      showToast('Could not copy - browser storage is unavailable');
     }
   }
 
@@ -705,10 +676,6 @@ export default function App() {
                 Edit plan <span>&rarr;</span>
               </button>
               <div className="viewactions">
-                <button type="button" className="ghost" onClick={() => { const sp = loadPlans().find((p) => p.id === savedEntry?.id); if (sp) copyPlan(sp); }}>
-                  <IconCopy />
-                  Copy plan
-                </button>
                 <button type="button" className="ghost" onClick={() => go('plans')}>
                   <IconBack />
                   Back to My plans
@@ -728,7 +695,7 @@ export default function App() {
             </svg>
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
-          <div className="demohint">Loads a complete example brief - demo only</div>
+          <div className="demohint">Loads a complete example brief</div>
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
@@ -1177,10 +1144,6 @@ export default function App() {
                         Open plan
                         <IconOpen />
                       </button>
-                      <button type="button" className="ghost" onClick={() => copyPlan(sp)}>
-                        <IconCopy />
-                        Copy
-                      </button>
                       <button type="button" className="ghost" onClick={() => setDeleteTarget(sp)}>
                         <IconTrash />
                         Delete
@@ -1200,7 +1163,7 @@ export default function App() {
             <h2>Sign in to Compass</h2>
             <DemoCap />
           </div>
-          <p className="pagesub">Save your plans and pick them up on any device.</p>
+          <p className="pagesub">Save your plans and pick up where you left off.</p>
           <div className="ssolist">
             <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
               <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
