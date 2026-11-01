@@ -1,0 +1,131 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import test from 'node:test';
+import puppeteer from 'puppeteer-core';
+
+// Run npm run build first. Chrome is preinstalled on GitHub's ubuntu-latest
+// runner; on macOS this uses the standard Google Chrome application path.
+const chromePath = process.platform === 'darwin'
+  ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  : '/usr/bin/google-chrome';
+
+async function clickButton(page, label) {
+  const handle = await page.evaluateHandle((text) =>
+    [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === text), label);
+  try {
+    const button = handle.asElement();
+    assert.ok(button, `Button not found: ${label}`);
+    await button.click();
+  } finally {
+    await handle.dispose();
+  }
+}
+
+async function openSavedPlan(page) {
+  await clickButton(page, 'My plans');
+  await page.waitForSelector('.pc-actions');
+  await clickButton(page, 'Open plan');
+}
+
+async function generateExample(page) {
+  await clickButton(page, 'Fill it in for me');
+  await page.waitForFunction(() => !document.querySelector('.gen').disabled);
+  await page.locator('.gen').click();
+  await page.waitForSelector('.planin');
+}
+
+test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, async (t) => {
+  const server = spawn(process.execPath, [
+    'node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1',
+    '--port', '4173', '--strictPort',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let browser;
+  let serverErrors = '';
+  server.stderr.on('data', (chunk) => { serverErrors += chunk.toString(); });
+  try {
+    await new Promise((resolve, reject) => {
+      let output = '';
+      server.stdout.on('data', (chunk) => {
+        output += chunk.toString();
+        if (output.includes('http://127.0.0.1:4173')) resolve();
+      });
+      server.once('error', reject);
+      server.once('exit', (code) => reject(new Error(`Preview exited (${code}): ${serverErrors}`)));
+    });
+    browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    await page.goto('http://127.0.0.1:4173');
+    await generateExample(page);
+    const originalName = await page.$eval('#f-name', (input) => input.value);
+    await clickButton(page, 'Save plan');
+    await page.waitForFunction(() => document.querySelector('.toast')?.textContent === 'Saved to My plans');
+
+    await t.test('saved new plan still warns after its form is edited', async () => {
+      await page.locator('#f-name').fill('Unsaved campaign name');
+      await page.waitForFunction(() => document.querySelector('.secondary .btn').disabled);
+      await openSavedPlan(page);
+      await page.waitForSelector('[role="alertdialog"]');
+      assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Discard unsaved changes/);
+      await page.locator('.confirm .ghost').click();
+      await page.waitForSelector('[role="alertdialog"]', { hidden: true });
+      await clickButton(page, 'Planner');
+      assert.equal(await page.$eval('#f-name', (input) => input.value), 'Unsaved campaign name');
+
+      await openSavedPlan(page);
+      await page.waitForSelector('[role="alertdialog"]');
+      await page.locator('.confirm .btn').click();
+      await page.waitForSelector('.bsum');
+      assert.equal(await page.$eval('.bsum .v', (value) => value.textContent), originalName);
+      assert.equal(await page.$('[role="alertdialog"]'), null);
+    });
+
+    await t.test('reopening an unchanged saved view needs no confirmation', async () => {
+      await openSavedPlan(page);
+      await page.waitForSelector('.bsum');
+      assert.equal(await page.$('[role="alertdialog"]'), null);
+    });
+
+    await t.test('saved-plan edit mode still warns and cancellation keeps edits', async () => {
+      await clickButton(page, 'Edit plan');
+      await page.locator('#f-name').fill('Edited saved plan');
+      await openSavedPlan(page);
+      await page.waitForSelector('[role="alertdialog"]');
+      await page.locator('.confirm .ghost').click();
+      await page.waitForSelector('[role="alertdialog"]', { hidden: true });
+      await clickButton(page, 'Planner');
+      assert.equal(await page.$eval('#f-name', (input) => input.value), 'Edited saved plan');
+      await clickButton(page, 'Cancel');
+      await page.waitForSelector('.bsum');
+    });
+
+    await t.test('draft replacement warns and Escape preserves answers', async () => {
+      await clickButton(page, 'Create another scenario');
+      await page.locator('#f-name').fill('Unfinished draft');
+      await openSavedPlan(page);
+      await page.waitForSelector('[role="alertdialog"]');
+      assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Replace your draft/);
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('[role="alertdialog"]', { hidden: true });
+      await clickButton(page, 'Planner');
+      assert.equal(await page.$eval('#f-name', (input) => input.value), 'Unfinished draft');
+      await openSavedPlan(page);
+      await page.waitForSelector('[role="alertdialog"]');
+      await page.locator('.confirm .btn').click();
+      await page.waitForSelector('.bsum');
+    });
+
+    await t.test('an unsaved generated plan still requires confirmation', async () => {
+      await clickButton(page, 'Create another scenario');
+      await generateExample(page);
+      await openSavedPlan(page);
+      await page.waitForSelector('[role="alertdialog"]');
+      assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Replace your current plan/);
+      await page.locator('.confirm .ghost').click();
+      await page.waitForSelector('[role="alertdialog"]', { hidden: true });
+    });
+  } finally {
+    await browser?.close();
+    server.kill();
+  }
+});
