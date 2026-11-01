@@ -103,23 +103,65 @@ export const EMPTY_BRIEF: Brief = {
 // can reach the plan without filling every field by hand. Demo-only - this
 // is not user data and does not persist anything. Dates are computed
 // relative to today so the example never goes stale.
-export function demoBrief(): Brief {
+// Example briefs for the guided demo fill. All demo-only: valid combinations
+// from the same objectives, KPIs, audiences and seniority lists the form
+// offers, with plausible illustrative budgets and 12-week flights.
+const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
+  {
+    name: 'UK Laboratory Procurement Campaign',
+    objectives: ['performance'],
+    kpis: ['Lead generation'],
+    audiences: ['Procurement'],
+    seniority: ['Manager', 'Director / Executive'],
+    budget: 100000,
+  },
+  {
+    name: 'European R&D Awareness Drive',
+    objectives: ['awareness'],
+    kpis: ['Reach', 'Impressions'],
+    audiences: ['Scientist / Researcher', 'R&D'],
+    seniority: ['Senior Manager / Head'],
+    budget: 150000,
+  },
+  {
+    name: 'Quality and Compliance Enquiry Push',
+    objectives: ['performance'],
+    kpis: ['Enquiries', 'Form completions'],
+    audiences: ['Quality / Compliance'],
+    seniority: ['Manager', 'Senior Manager / Head'],
+    budget: 75000,
+  },
+  {
+    name: 'Lab Manager Content Engagement',
+    objectives: ['consideration'],
+    kpis: ['Content downloads', 'Article engagement'],
+    audiences: ['Laboratory Manager'],
+    seniority: ['Manager'],
+    budget: 60000,
+  },
+  {
+    name: 'Operations Webinar Programme',
+    objectives: ['consideration'],
+    kpis: ['Webinar registrations'],
+    audiences: ['Operations', 'Engineering'],
+    seniority: ['Director / Executive'],
+    budget: 120000,
+  },
+];
+
+export function demoBrief(excludeName?: string): Brief {
+  const pool =
+    excludeName && DEMO_VARIANTS.length > 1
+      ? DEMO_VARIANTS.filter((v) => v.name !== excludeName)
+      : DEMO_VARIANTS;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
   const start = new Date();
   start.setDate(start.getDate() + 30);
   const end = new Date(start);
   end.setDate(end.getDate() + 83); // 12 weeks
   const iso = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return {
-    name: 'UK Laboratory Procurement Campaign',
-    objectives: ['performance'],
-    kpis: ['Lead generation'],
-    audiences: ['Procurement'],
-    seniority: ['Manager'],
-    budget: 100000,
-    start: iso(start),
-    end: iso(end),
-  };
+  return { ...pick, kpis: [...pick.kpis], audiences: [...pick.audiences], seniority: [...pick.seniority], objectives: [...pick.objectives], start: iso(start), end: iso(end) };
 }
 
 export function answeredCount(b: Brief): number {

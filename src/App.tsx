@@ -97,9 +97,12 @@ export default function App() {
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [hasFilled, setHasFilled] = useState(false);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
+  const planRef = useRef<HTMLElement>(null);
   const cueTimer = useRef<number | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -155,7 +158,7 @@ export default function App() {
     setTicks(0);
     const interval = window.setInterval(() => {
       setTicks((t) => Math.min(t + 1, genSteps));
-    }, 650);
+    }, 950);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
@@ -237,9 +240,12 @@ export default function App() {
     if (hasInput && !window.confirm('Replace the answers you have already given with the example brief?')) {
       return;
     }
-    const d = demoBrief();
+    setHasFilled(true);
+    const d = demoBrief(brief.name || undefined);
     setBrief(d);
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
+    setSubmittedBrief(null);
+    setStage('filling');
     setShowAllAudiences(false);
     window.clearTimeout(cueTimer.current);
     if (answeredCount(d) >= 6) {
@@ -267,9 +273,12 @@ export default function App() {
   }
 
   function generate() {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
+    setHasGenerated(true);
     setStage('generating');
   }
 
@@ -280,6 +289,8 @@ export default function App() {
     setBudgetText('');
     setStage('empty');
     setShowAllAudiences(false);
+    setHasGenerated(false);
+    setHasFilled(false);
   }
 
   function persist(plans: SavedPlan[]): boolean {
@@ -425,7 +436,7 @@ export default function App() {
               <path d="M6 11l.9 2.4 2.4.9-2.4.9L6 17.6l-.9-2.4-2.4-.9 2.4-.9L6 11z" />
               <path d="M17.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" />
             </svg>
-            Fill it in for me
+            {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
           <div className="demohint">Loads a complete example brief - demo only</div>
 
@@ -598,11 +609,11 @@ export default function App() {
           </div>
 
           <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
-            Generate my plan <span>&rarr;</span>
+            {hasGenerated ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
         </section>
 
-        <section className="card plan" aria-live="polite">
+        <section ref={planRef} className="card plan" aria-live="polite">
           {stage === 'empty' && (
             <>
               <div className="empty">
@@ -705,7 +716,7 @@ export default function App() {
           )}
 
           {stage === 'plan' && plan && (
-            <>
+            <div className="planin">
               <div className="planhead">
                 <h2>Recommended plan</h2>
                 <DemoCap />
@@ -777,7 +788,7 @@ export default function App() {
                   Create another scenario
                 </button>
               </div>
-            </>
+            </div>
           )}
         </section>
       </div>

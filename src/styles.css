@@ -144,7 +144,10 @@ footer{padding:24px 0 40px;font-size:11.5px;font-family:Roboto,system-ui,sans-se
 .step3 .n{font-family:Roboto,system-ui,sans-serif;font-weight:500;color:var(--accent-ink);font-size:11.5px;letter-spacing:.08em;margin-bottom:6px}
 .step3 b{display:block;font-size:13.5px;font-weight:600;margin-bottom:3px;color:var(--text)}
 .step3 span{color:var(--muted);font-size:12px}
-.skel{border-radius:12px;background:linear-gradient(100deg,var(--skel1),var(--skel2) 45%,var(--skel1));border:1px solid var(--line)}
+@keyframes skelsweep{0%{background-position:130% 0}100%{background-position:-130% 0}}
+.skel{border-radius:12px;background:linear-gradient(100deg,var(--skel1),var(--skel2) 45%,var(--skel1));background-size:220% 100%;border:1px solid var(--line);animation:skelsweep 1.8s ease-in-out infinite}
+@keyframes planin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.planin{animation:planin .55s ease-out both}
 .skelrow{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
 .skel.h14{height:64px}
 .skel.h9{height:52px}
@@ -235,6 +238,8 @@ input.ctl{color:var(--text)}
   .skelpad{padding:0 0 18px}
 }
 @media (prefers-reduced-motion:reduce){
+  .skel{animation:none}
+  .planin{animation:none}
   .check .dot{animation:none}
   .prog .fill{transition:none}
   .gen.cue{animation:none;outline:3px solid var(--accent-ink);outline-offset:3px}
