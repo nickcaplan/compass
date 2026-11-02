@@ -955,6 +955,7 @@ export default function App() {
           <div className="brand lockup">
             <span className="prod">
               <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
+                <svg className="mark" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)"><path className="mu" d="M32 4 L46 32 L18 32Z" /><path className="md" d="M32 60 L46 32 L18 32Z" /></g><circle className="mc" cx="32" cy="32" r="3.5" /></svg>
                 COMPASS
               </button>
             </span>
