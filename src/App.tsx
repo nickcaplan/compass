@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import logoUrl from './assets/thh-logo.svg';
 
@@ -322,6 +323,23 @@ export default function App() {
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
   const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [profileName, setProfileName] = useState('');
+  const [profileCompany, setProfileCompany] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
+    typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
+  const canViewPlan = Boolean(authEmail && profileComplete);
+
+  function applyAuthUser(user: User | null) {
+    setAuthUser(user);
+    setAuthEmail(user?.email ?? null);
+    setProfileName(typeof user?.user_metadata.full_name === 'string' ? user.user_metadata.full_name :
+      typeof user?.user_metadata.name === 'string' ? user.user_metadata.name : '');
+    setProfileCompany(typeof user?.user_metadata.company === 'string' ? user.user_metadata.company : '');
+    setProfileError(null);
+  }
   const [signinEmail, setSigninEmail] = useState('');
   const [magicLinkTo, setMagicLinkTo] = useState<string | null>(null);
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
@@ -358,6 +376,7 @@ export default function App() {
       const snap = {
         brief,
         submittedBrief,
+        savedEntry,
         budgetText,
         stage: stage === 'generating' ? 'filling' : stage,
         ts: Date.now(),
@@ -374,6 +393,12 @@ export default function App() {
       window.localStorage.removeItem(AUTH_DRAFT_KEY);
       const snap: unknown = JSON.parse(raw);
       if (!isAuthDraft(snap) || Date.now() - snap.ts > 60 * 60 * 1000) return;
+      const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
+      if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') &&
+          loadPlans().some((p) => p.id === entry.id)) {
+        setSavedEntry({ id: entry.id, mode: entry.mode });
+        if (entry.mode === 'view') setPlanSavedId(entry.id);
+      }
       setBrief(snap.brief);
       setSubmittedBrief(snap.submittedBrief);
       setBudgetText(snap.budgetText);
@@ -386,11 +411,11 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setAuthEmail(data.session?.user.email ?? null);
+      applyAuthUser(data.session?.user ?? null);
       if (data.session) restoreAuthDraft();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setAuthEmail(session?.user.email ?? null);
+      applyAuthUser(session?.user ?? null);
       // Auth events also arrive from other tabs: re-gate a visible plan when
       // the session is gone, and stop re-stashing the draft once signed in.
       // Draft restore stays on the getSession path so only the freshly loaded
@@ -404,11 +429,11 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // A signed-in user never needs the sign-in gate: if they authenticate while
-  // it is showing, move straight to the plan.
+  // Reveal a plan only after authentication and first-time profile completion.
   useEffect(() => {
-    if (stage === 'gate' && authEmail) setStage('plan');
-  }, [stage, authEmail]);
+    if (stage === 'gate' && canViewPlan) setStage('plan');
+    if (stage === 'plan' && !canViewPlan) setStage('gate');
+  }, [stage, canViewPlan]);
 
   // The email link does not leave the page, so keep the stashed draft current
   // while a sign-in link is pending; otherwise the restore would lose edits.
@@ -472,9 +497,9 @@ export default function App() {
     if (ticks < genSteps) return;
     // Plans are gated behind sign-in: without a session, show the gate
     // first; the brief and generated plan stay intact behind it.
-    const id = window.setTimeout(() => setStage(authEmail ? 'plan' : 'gate'), 500);
+    const id = window.setTimeout(() => setStage(canViewPlan ? 'plan' : 'gate'), 500);
     return () => window.clearTimeout(id);
-  }, [stage, ticks, genSteps, authEmail]);
+  }, [stage, ticks, genSteps, canViewPlan]);
 
   function showToast(message: string) {
     setToast(message);
@@ -691,7 +716,7 @@ export default function App() {
     setBrief(original.brief);
     setSubmittedBrief(original.brief);
     setBudgetText(original.brief.budget !== null ? original.brief.budget.toLocaleString('en-GB') : '');
-    setStage('plan');
+    setStage(canViewPlan ? 'plan' : 'gate');
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
@@ -713,7 +738,7 @@ export default function App() {
     setBrief(entry.brief);
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
-    setStage('plan');
+    setStage(canViewPlan ? 'plan' : 'gate');
     setSavedEntry({ id: entry.id, mode: 'view' });
     window.clearTimeout(toastTimer.current);
     setToast(null);
@@ -748,6 +773,49 @@ export default function App() {
     }
   }
 
+  async function completeProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profileName.trim() || profileSaving) return;
+    setProfileSaving(true);
+    setProfileError(null);
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { full_name: profileName.trim(), company: profileCompany.trim(), compass_profile_complete: true },
+      });
+      if (error || !data.user) {
+        setProfileError('Could not save your details. Please try again.');
+        return;
+      }
+      applyAuthUser(data.user);
+    } catch {
+      setProfileError('Could not save your details. Please try again.');
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  function renderProfileFields(idPrefix: string) {
+    return (
+      <form onSubmit={(event) => { void completeProfile(event); }} aria-label="Complete your profile">
+        <p className="pagesub">Signed in as {authEmail}. Add your details to continue.</p>
+        <div className="field">
+          <label htmlFor={`${idPrefix}-name`}>Name</label>
+          <input id={`${idPrefix}-name`} className="ctl" autoComplete="name" required maxLength={160}
+            value={profileName} disabled={profileSaving} onChange={(event) => setProfileName(event.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor={`${idPrefix}-company`}>Company <span className="muted">(optional)</span></label>
+          <input id={`${idPrefix}-company`} className="ctl" autoComplete="organization" maxLength={160}
+            value={profileCompany} disabled={profileSaving} onChange={(event) => setProfileCompany(event.target.value)} />
+        </div>
+        {profileError && <p className="fieldnote" role="alert">{profileError}</p>}
+        <button type="submit" className="gen" disabled={profileSaving || !profileName.trim()}>
+          {profileSaving ? 'Saving details...' : 'Continue'}
+        </button>
+      </form>
+    );
+  }
+
   function renderSignInFields(idPrefix: string) {
     return (
       <>
@@ -777,7 +845,7 @@ export default function App() {
 
   async function signOut() {
     await supabase.auth.signOut();
-    setAuthEmail(null);
+    applyAuthUser(null);
     // A signed-out visitor should not keep seeing a gated plan.
     if (stage === 'plan') setStage('gate');
     setMagicLinkTo(null);
@@ -1192,9 +1260,9 @@ export default function App() {
                 <DemoCap />
               </div>
               <p className="pagesub">
-                Sign in to see it. Your plan stays saved on this device while you sign in.
+                Sign in to see it. Your brief is kept while you sign in.
               </p>
-              {magicLinkTo ? (
+              {authEmail ? renderProfileFields('f-gate-profile') : magicLinkTo ? (
                 <p className="pagesub">
                   Check your inbox - we sent a sign-in link to {magicLinkTo}. Open it to see your plan.
                 </p>
@@ -1207,7 +1275,7 @@ export default function App() {
             </div>
           )}
 
-          {stage === 'plan' && plan && (
+          {stage === 'plan' && canViewPlan && plan && (
             <div className="planin">
               <div className="planhead">
                 <h2>{viewingSaved
@@ -1403,11 +1471,11 @@ export default function App() {
       {page === 'signin' && (
         <section className="card pagecard signincard" aria-label="Sign in">
           <div className="planhead">
-            <h2>Sign in to Compass</h2>
+            <h2>{authEmail && !profileComplete ? 'Complete your profile' : 'Sign in to Compass'}</h2>
             <DemoCap />
           </div>
           <p className="pagesub">Save your plans and pick up where you left off.</p>
-          {authEmail ? (
+          {authEmail && !profileComplete ? renderProfileFields('f-signin-profile') : authEmail ? (
             <>
               <p className="pagesub">You are signed in as {authEmail}.</p>
               <button type="button" className="gen" onClick={() => { void signOut(); }}>

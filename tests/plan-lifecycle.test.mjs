@@ -55,7 +55,7 @@ async function signInTestUser(page) {
         role: 'authenticated',
         email: 'test@example.com',
         app_metadata: {},
-        user_metadata: {},
+        user_metadata: { full_name: 'Test User', compass_profile_complete: true },
         created_at: '2026-01-01T00:00:00Z',
       },
     };
