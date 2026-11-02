@@ -299,7 +299,8 @@ const REEL_INDUSTRIES = ['Life sciences', 'Technology', 'Retail', 'Finance', 'He
 
 function IndustryReel() {
   return (
-    <div className="eyebrow industry-eyebrow" aria-label="Life sciences media planning">
+    <div className="eyebrow industry-eyebrow">
+      <span className="industry-accessible">Life sciences media planning</span>
       <span className="industry-reel" aria-hidden="true">
         <span className="industry-reel-track">
           {REEL_INDUSTRIES.map((industry, index) => <span key={index}>{industry}</span>)}
