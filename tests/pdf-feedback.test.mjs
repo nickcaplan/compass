@@ -39,6 +39,14 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
         const overlap=await page.evaluate(()=>{const a=document.querySelector('.cs-label').getBoundingClientRect();const b=document.querySelector('.cs-bubble').getBoundingClientRect();return a.right>b.left});assert.equal(overlap,false);
         await page.keyboard.press('Escape');await page.waitForSelector('.cs-bubble',{hidden:true});
+        await page.locator('.cs-wrap button').click();
+        await new Promise(resolve=>setTimeout(resolve,450));
+        const focused=await page.$('.cs-wrap button');
+        await page.locator('.cs-wrap button').click();
+        const washTime=await page.$eval('.cs-wrap button',e=>e.getAnimations()[0]?.currentTime);
+        assert.ok(washTime!==undefined && washTime<200,'Repeated activation restarts wash');
+        assert.equal(await focused.evaluate(e=>e===document.activeElement),true,'Focused button is preserved');
+        await page.keyboard.press('Escape');
         const start=await page.evaluate(()=>{document.querySelector('.cs-wrap button').click();return performance.now()});await page.waitForSelector('.cs-bubble');await page.waitForSelector('.cs-bubble',{hidden:true});const elapsed=await page.evaluate(t=>performance.now()-t,start);assert.ok(elapsed>=900&&elapsed<=1600,`feedback lasted ${elapsed}ms`);
       }
       await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await page.locator('.cs-wrap button').click();await page.waitForSelector('.cs-bubble');assert.equal(await page.$eval('.cs-bubble',e=>e.getAnimations().length),0);await page.close();
