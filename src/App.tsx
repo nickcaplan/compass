@@ -422,10 +422,7 @@ export default function App() {
     try {
       // Never replace work entered after an explicit non-planner landing.
       const current = currentDraftState.current;
-      if (answeredCount(current.brief) > 0 || current.brief.name.trim() || current.brief.start || current.brief.end || current.budgetText.trim() || current.stage !== 'empty') {
-        window.localStorage.removeItem(AUTH_DRAFT_KEY);
-        return;
-      }
+      if (answeredCount(current.brief) > 0 || current.brief.name.trim() || current.brief.start || current.brief.end || current.budgetText.trim() || current.stage !== 'empty') return;
       const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
       if (!raw) return;
       window.localStorage.removeItem(AUTH_DRAFT_KEY);
