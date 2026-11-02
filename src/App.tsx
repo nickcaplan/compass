@@ -904,7 +904,7 @@ export default function App() {
       provider: 'google',
       options: { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
     });
-    if (error) showToast('Google log-in failed - please try again');
+    if (error) setAuthNotice('Google log-in failed - please try again');
   }
 
   async function completeProfile(event: React.FormEvent<HTMLFormElement>) {
@@ -983,7 +983,7 @@ export default function App() {
     setAuthNotice(null);
     // A signed-out visitor should not keep seeing a gated plan.
     if (stage === 'plan') setStage('gate');
-    showToast(failed ? 'Log-out encountered an error. Other sessions may still be active.' : 'Logged out');
+    setAuthNotice(failed ? 'Log-out encountered an error. Other sessions may still be active.' : 'Logged out');
   }
 
   function go(p: Page) {
