@@ -101,6 +101,20 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       assert.equal(await page.$('[role="alertdialog"]'), null);
     });
 
+    await t.test('saving an edited plan confirms with the Saved state', async () => {
+      await clickButton(page, 'Edit plan');
+      await page.locator('#f-name').fill('Edited saved plan');
+      await page.locator('.gen').click();
+      await page.waitForSelector('.planin');
+      await clickButton(page, 'Save changes');
+      await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
+      await page.waitForSelector('.bsum');
+      await delay(300);
+      assert.equal(await page.$('.toast'), null);
+      const savedName = await page.evaluate(() => JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.name);
+      assert.equal(savedName, 'Edited saved plan');
+    });
+
     await t.test('saved-plan edit mode still warns and cancellation keeps edits', async () => {
       await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Edited saved plan');

@@ -314,6 +314,7 @@ export default function App() {
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [planSavedId, setPlanSavedId] = useState<string | null>(null);
+  const [editSavedId, setEditSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
@@ -519,6 +520,7 @@ export default function App() {
     setHasFilled(false);
     setSavedEntry(null);
     setPlanSavedId(null);
+    setEditSavedId(null);
   }
 
   function reset() {
@@ -550,6 +552,7 @@ export default function App() {
       );
       if (persist(updated)) {
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
+        setEditSavedId(savedEntry.id);
       } else {
         showToast('Could not save - browser storage is unavailable');
       }
@@ -587,6 +590,7 @@ export default function App() {
   }
 
   function editSavedPlan() {
+    setEditSavedId(null);
     setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
   }
 
@@ -627,6 +631,7 @@ export default function App() {
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
     setStage('plan');
     setSavedEntry({ id: entry.id, mode: 'view' });
+    setEditSavedId(null);
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
@@ -1101,6 +1106,12 @@ export default function App() {
               <div className="secondary">
                 {viewingSaved ? (
                   <>
+                    {editSavedId === savedEntry?.id && (
+                      <button type="button" className="ghost saved" disabled>
+                        <IconCheck />
+                        Saved
+                      </button>
+                    )}
                     <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
                       <IconDownload />
                       Download PDF
