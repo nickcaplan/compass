@@ -71,6 +71,17 @@ test('example walkthrough generates automatically and respects interruptions', {
     await delay(1300);
     assert.equal(await page.$('.planin .metrics'), null);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
+    // Replacement confirmation during the fill pause must stop that pause.
+    await page.reload();
+    await clickButton(page, 'Fill it in for me');
+    await page.waitForSelector('.demohint');
+    await clickButton(page, 'Try another example');
+    await page.waitForSelector('[role="alertdialog"]');
+    await delay(1300);
+    assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('[role="alertdialog"]', {hidden:true});
     // A confirmed replacement runs again, with reduced motion too.
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
     await clickButton(page, 'Try another example');

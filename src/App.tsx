@@ -493,6 +493,7 @@ export default function App() {
   function fillDemo(force = false) {
     const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
+      clearCue();
       setConfirmFill(true);
       return;
     }
