@@ -1,0 +1,39 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import test from 'node:test';
+import puppeteer from 'puppeteer-core';
+const u={id:'test-user',aud:'authenticated',role:'authenticated',email:'test@example.com',app_metadata:{},user_metadata:{full_name:'Test User',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'};
+const session={access_token:'test-access-token',refresh_token:'test-refresh-token',expires_in:3600,token_type:'bearer',user:u};
+test('email signup, failed signin, successful signin, and recovery stay in the app', {timeout:60000}, async()=>{
+ const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
+ try{
+  const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk;const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
+  browser=await puppeteer.launch({executablePath:process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+  for(const width of [390,1440]){
+   const context=await browser.createBrowserContext();const p=await context.newPage();p.setDefaultTimeout(8000);await p.setViewport({width,height:900});let loginFail=true;let recover=0;let signup=0;let updates=0;
+   await p.setRequestInterception(true);p.on('request',req=>{
+    if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();
+    const headers={'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS','access-control-allow-headers':'*'};
+    if(req.method()==='OPTIONS')return req.respond({status:204,headers});
+    let status=200,body={};
+    if(req.url().includes('/signup')){signup++;body={user:u,session:null};}
+    else if(req.url().includes('/token')){status=loginFail?400:200;body=loginFail?{msg:'Invalid login credentials'}:session;}
+    else if(req.url().includes('/recover')){recover++;}
+    else if(req.url().includes('/user')){if(req.method()==='PUT')updates++;body=u;}
+    return req.respond({status,headers,contentType:'application/json',body:JSON.stringify(body)});
+   });
+   await p.goto(url);await p.waitForSelector('#f-name');await p.locator('#f-name').fill('Draft before email sign in');await p.locator('.signin').click();await p.waitForSelector('#f-signin-password');
+   await p.evaluate(()=>[...document.querySelectorAll('.email-modes button')].find(e=>e.textContent==='Create account').click());
+   await p.locator('#f-signin-email').fill('test@example.com');await p.locator('#f-signin-password').fill('example-test-only');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('[role=status]');assert.equal(signup,1);assert.equal(await p.$eval('#f-signin-password',e=>e.value),'');
+   await p.evaluate(()=>document.querySelector('.email-modes button').click());await p.locator('#f-signin-password').fill('example-test-only');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('[role=alert]');assert.match(await p.$eval('[role=alert]',e=>e.textContent),/Could not sign in/);
+   await p.locator('.email-forgot').click();await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('[role=status]');assert.equal(recover,1);assert.match(await p.$eval('[role=status]',e=>e.textContent),/If an account exists/);
+   await p.evaluate(()=>document.querySelector('.email-modes button').click());await p.locator('#f-signin-password').fill('example-test-only');const resetDraft=await p.evaluate(()=>localStorage.getItem('compass-auth-draft'));loginFail=false;await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('#f-name');assert.equal(await p.$eval('#f-name',e=>e.value),'Draft before email sign in');assert.equal(await p.$('#f-signin-password'),null);
+   // Recovery is a new callback, not another sent email or real provider call.
+   await p.evaluate(d=>{localStorage.removeItem('sb-ctailpmcoyvaplwbwskf-auth-token');localStorage.setItem('compass-auth-draft',d)},resetDraft);
+   await p.goto(url+'#access_token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjQwMDAwMDAwMDB9.fake-signature&refresh_token=test-refresh&expires_in=3600&token_type=bearer&type=recovery');await p.reload();
+   await p.waitForFunction(()=>document.querySelector('.email-heading')?.textContent==='Choose a new password');assert.equal(await p.$('.metrics'),null);assert.equal(await p.$('.ssolist'),null);
+   await p.locator('#f-signin-password').fill('new-test-password');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('#f-name');assert.equal(updates,1);assert.equal(await p.$eval('#f-name',e=>e.value),'Draft before email sign in');
+   await p.goto(url+'#error=access_denied&error_code=otp_expired&error_description=expired');await p.reload();await p.waitForSelector('[role=alert]');assert.match(await p.$eval('[role=alert]',e=>e.textContent),/invalid or has expired/);await context.close();
+  }
+ }finally{await browser?.close();server.kill()}
+});

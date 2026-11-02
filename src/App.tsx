@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import EmailAuth from './EmailAuth';
 import logoUrl from './assets/thh-logo.svg';
 
 const iconProps = {
@@ -355,9 +356,11 @@ export default function App() {
   const [profileCompany, setProfileCompany] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [recoveringPassword, setRecoveringPassword] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery');
   const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
-  const canViewPlan = Boolean(authEmail && profileComplete);
+  const canViewPlan = Boolean(authEmail && profileComplete && !recoveringPassword);
 
   function applyAuthUser(user: User | null) {
     setAuthUser(user);
@@ -367,8 +370,6 @@ export default function App() {
     setProfileCompany(typeof user?.user_metadata.company === 'string' ? user.user_metadata.company : '');
     setProfileError(null);
   }
-  const [signinEmail, setSigninEmail] = useState('');
-  const [magicLinkTo, setMagicLinkTo] = useState<string | null>(null);
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
@@ -415,7 +416,7 @@ export default function App() {
   }
   function restoreAuthDraft() {
     // An explicit bookmarked page wins over an older pending auth draft.
-    if (pageFromUrl() !== 'planner') return;
+    if (pageFromUrl() !== 'planner' && !recoveringPassword) return;
     try {
       const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
       if (!raw) return;
@@ -435,14 +436,15 @@ export default function App() {
       // Back to the brief is navigation, not an edit. Keep an unchanged
       // generated plan available after the sign-in round trip.
       setStage(snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage);
-      setPage('planner');
-      writePageUrl('planner', true);
+      if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
     } catch {
       /* corrupted or unavailable storage */
     }
   }
 
   useEffect(() => {
+    const callbackError = new URLSearchParams(window.location.hash.slice(1)).get('error_description');
+    if (callbackError) { setAuthNotice('This sign-in or reset link is invalid or has expired. Sign in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
     supabase.auth.getSession().then(({ data }) => {
       applyAuthUser(data.session?.user ?? null);
       if (data.session) restoreAuthDraft();
@@ -457,7 +459,7 @@ export default function App() {
         setStage((s) => (s === 'plan' ? 'gate' : s));
         setSavedEntry(null);
       }
-      if (event === 'SIGNED_IN') setMagicLinkTo(null);
+      if (event === 'PASSWORD_RECOVERY') { setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -468,12 +470,9 @@ export default function App() {
     if (stage === 'plan' && !canViewPlan) setStage('gate');
   }, [stage, canViewPlan]);
 
-  // The email link does not leave the page, so keep the stashed draft current
-  // while a sign-in link is pending; otherwise the restore would lose edits.
   useEffect(() => {
-    if (magicLinkTo) stashAuthDraft();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [magicLinkTo, brief, submittedBrief, budgetText, stage]);
+    if (recoveringPassword && page !== 'signin') { setPage('signin'); writePageUrl('signin', true); }
+  }, [recoveringPassword, page]);
 
   // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
   // regains focus, so a page left open across midnight shows today's state.
@@ -794,24 +793,6 @@ export default function App() {
     if (error) showToast('Google sign-in failed - please try again');
   }
 
-  async function continueWithEmail() {
-    const email = signinEmail.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      showToast('Enter a full email address, like name@company.com');
-      return;
-    }
-    stashAuthDraft();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) {
-      showToast('Could not send the sign-in link - please try again');
-    } else {
-      setMagicLinkTo(email);
-    }
-  }
-
   async function completeProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!profileName.trim() || profileSaving) return;
@@ -858,7 +839,7 @@ export default function App() {
   function renderSignInFields(idPrefix: string) {
     return (
       <>
-        <div className="ssolist">
+        {!recoveringPassword && <><div className="ssolist">
           <button type="button" className="sso" onClick={() => { void continueWithGoogle(); }}>
             <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
@@ -869,15 +850,8 @@ export default function App() {
             Continue with Google
           </button>
         </div>
-        <div className="divider"><span>or</span></div>
-        <div className="field">
-          <label htmlFor={`${idPrefix}-email`}>Work email</label>
-          <input id={`${idPrefix}-email`} className="ctl" type="email" placeholder="you@company.com"
-            value={signinEmail} onChange={(e) => setSigninEmail(e.target.value)} />
-        </div>
-        <button type="button" className="gen" onClick={() => { void continueWithEmail(); }}>
-          Continue with email <span>&rarr;</span>
-        </button>
+        <div className="divider"><span>or</span></div></>}
+        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={stashAuthDraft} onAuthenticated={user => { applyAuthUser(user); setRecoveringPassword(false); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
       </>
     );
   }
@@ -887,7 +861,6 @@ export default function App() {
     applyAuthUser(null);
     // A signed-out visitor should not keep seeing a gated plan.
     if (stage === 'plan') setStage('gate');
-    setMagicLinkTo(null);
     showToast('Signed out');
   }
 
@@ -1302,13 +1275,7 @@ export default function App() {
               <p className="pagesub">
                 Sign in to see it. Your brief is kept while you sign in.
               </p>
-              {authEmail ? renderProfileFields('f-gate-profile') : magicLinkTo ? (
-                <p className="pagesub">
-                  Check your inbox - we sent a sign-in link to {magicLinkTo}. Open it to see your plan.
-                </p>
-              ) : (
-                renderSignInFields('f-gate')
-              )}
+              {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
               {savedBriefReadOnly ? <button type="button" className="ghost" onClick={() => go('plans')}>View all plans</button> :
                 <button type="button" className="ghost" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
             </div>
@@ -1521,27 +1488,19 @@ export default function App() {
             <DemoCap />
           </div>
           <p className="pagesub">Save your plans and pick up where you left off.</p>
-          {authEmail && !profileComplete ? renderProfileFields('f-signin-profile') : authEmail ? (
+          {authNotice && <p className="fieldnote" role="alert">{authNotice}</p>}
+          {recoveringPassword ? renderSignInFields('f-signin') : authEmail && !profileComplete ? renderProfileFields('f-signin-profile') : authEmail ? (
             <>
               <p className="pagesub">You are signed in as {authEmail}.</p>
               <button type="button" className="gen" onClick={() => { void signOut(); }}>
                 Sign out
               </button>
             </>
-          ) : magicLinkTo ? (
-            <>
-              <p className="pagesub">
-                Check your inbox - we sent a sign-in link to {magicLinkTo}.
-              </p>
-              <button type="button" className="gen" onClick={() => { setMagicLinkTo(null); setSigninEmail(''); }}>
-                Use a different email
-              </button>
-            </>
           ) : (
           <>
           {renderSignInFields('f-signin')}
           <p className="finenote">
-            Sign in with Google, or get a sign-in link emailed to you - no password needed.
+            Use Google, or create an account with your email and a password.
           </p>
           </>
           )}
