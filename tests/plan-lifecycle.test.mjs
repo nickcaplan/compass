@@ -74,11 +74,13 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
-    await page.waitForFunction(() => document.querySelector('.toast')?.textContent === 'Saved to My plans');
+    await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
+    await page.waitForSelector('.bsum');
+    assert.match(await page.$eval('.viewactions', (actions) => actions.textContent), /View all plans/);
 
     await t.test('saved new plan still warns after its form is edited', async () => {
+      await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Unsaved campaign name');
-      await page.waitForFunction(() => document.querySelector('.secondary .btn').disabled);
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
       assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Discard unsaved changes/);
@@ -99,6 +101,71 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await openSavedPlan(page);
       await page.waitForSelector('.bsum');
       assert.equal(await page.$('[role="alertdialog"]'), null);
+    });
+
+    await t.test('saving an edited plan confirms with the Saved state', async () => {
+      await clickButton(page, 'Edit plan');
+      await page.locator('#f-name').fill('Saved spring rename');
+      await page.locator('.gen').click();
+      await page.waitForSelector('.planin');
+      await clickButton(page, 'Save changes');
+      await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
+      await page.waitForSelector('.bsum');
+      await delay(300);
+      assert.equal(await page.$('.toast'), null);
+      const savedName = await page.evaluate(() => JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.name);
+      assert.equal(savedName, 'Saved spring rename');
+    });
+
+    await t.test('a campaign past its end date shows an Expired chip in My plans', async () => {
+      const originalDates = await page.evaluate(() => {
+        const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
+        const { start, end } = plans[0].brief;
+        plans[0].brief.start = '2019-12-01';
+        plans[0].brief.end = '2020-02-01';
+        localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
+        return { start, end };
+      });
+      await page.reload();
+      await clickButton(page, 'My plans');
+      await page.waitForSelector('.plancard');
+      const firstChip = await page.$eval('.plancard .chips .chip', (chip) => chip.textContent);
+      assert.equal(firstChip, 'Expired');
+      await page.evaluate(({ start, end }) => {
+        const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
+        plans[0].brief.start = start;
+        plans[0].brief.end = end;
+        localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
+      }, originalDates);
+      await page.reload();
+      await clickButton(page, 'My plans');
+      await page.waitForSelector('.plancard');
+      const restoredChip = await page.$eval('.plancard .chips .chip', (chip) => chip.textContent);
+      assert.notEqual(restoredChip, 'Expired');
+      await page.evaluate(() => {
+        const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
+        const now = new Date();
+        const iso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        plans[0].brief.start = iso;
+        plans[0].brief.end = iso;
+        localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
+      });
+      await page.reload();
+      await clickButton(page, 'My plans');
+      await page.waitForSelector('.plancard');
+      const todayChips = await page.$$eval('.plancard .chips .chip', (chips) => chips.map((chip) => chip.textContent));
+      assert.equal(todayChips.includes('Expired'), false);
+      await page.evaluate(({ start, end }) => {
+        const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
+        plans[0].brief.start = start;
+        plans[0].brief.end = end;
+        localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
+      }, originalDates);
+      await page.reload();
+      await clickButton(page, 'My plans');
+      await page.waitForSelector('.plancard');
+      await clickButton(page, 'Open plan');
+      await page.waitForSelector('.bsum');
     });
 
     await t.test('saved-plan edit mode still warns and cancellation keeps edits', async () => {

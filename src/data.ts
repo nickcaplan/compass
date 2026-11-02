@@ -196,6 +196,17 @@ export function endBeforeStart(start: string, end: string): boolean {
   return e < s;
 }
 
+// A campaign is expired once its end date has passed; a campaign ending
+// today is still in flight. Date-only comparison, matching endBeforeStart.
+export function campaignEnded(end: string): boolean {
+  if (!end) return false;
+  const e = new Date(end + 'T00:00:00').getTime();
+  if (Number.isNaN(e)) return false;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return e < today;
+}
+
 export function campaignWeeks(start: string, end: string): number {
   const s = new Date(start).getTime();
   const e = new Date(end).getTime();

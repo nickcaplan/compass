@@ -21,6 +21,14 @@ function IconSave() {
   );
 }
 
+function IconCheck() {
+  return (
+    <svg {...iconProps}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 function IconDownload() {
   return (
     <svg {...iconProps}>
@@ -163,6 +171,7 @@ import {
   monthsRangeLabel,
   gbp,
   startNotFuture,
+  campaignEnded,
   weeksLabel,
   type Brief,
   type ObjectiveId,
@@ -305,7 +314,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('planner');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
-  const [planSavedId, setPlanSavedId] = useState<string | null>(null);
+  const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
@@ -327,6 +336,17 @@ export default function App() {
       /* private mode */
     }
   }, [theme]);
+
+  // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
+  // regains focus, so a page left open across midnight shows today's state.
+  const [, setDayTick] = useState(0);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') setDayTick((t) => t + 1);
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, []);
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
@@ -494,7 +514,6 @@ export default function App() {
     planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     if (count < 6) return;
     clearCue();
-    setPlanSavedId(null);
     setSubmittedBrief(brief);
     setHasGenerated(true);
     setStage('generating');
@@ -510,7 +529,7 @@ export default function App() {
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
-    setPlanSavedId(null);
+    setJustSavedId(null);
   }
 
   function reset() {
@@ -542,14 +561,10 @@ export default function App() {
       );
       if (persist(updated)) {
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
-        showToast('Plan updated');
+        setJustSavedId(savedEntry.id);
       } else {
         showToast('Could not save - browser storage is unavailable');
       }
-      return;
-    }
-    if (planSavedId !== null) {
-      showToast('Already saved to My plans');
       return;
     }
     const entry: SavedPlan = {
@@ -564,8 +579,8 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
-      setPlanSavedId(entry.id);
-      showToast('Saved to My plans');
+      setSavedEntry({ id: entry.id, mode: 'view' });
+      setJustSavedId(entry.id);
     } else {
       showToast('Could not save - browser storage is unavailable');
     }
@@ -578,12 +593,11 @@ export default function App() {
     }
     if (savedEntry?.id === id) {
       clearPlannerState();
-    } else if (planSavedId === id) {
-      setPlanSavedId(null);
     }
   }
 
   function editSavedPlan() {
+    setJustSavedId(null);
     setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
   }
 
@@ -608,11 +622,9 @@ export default function App() {
     const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
     if (!force && !alreadyOpen) {
       const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-      const unsavedPlan = stage === 'plan' && savedEntry === null && planSavedId === null;
-      const staleEdits =
-        stage === 'plan' && savedEntry === null && planSavedId !== null && submittedBrief !== null && brief !== submittedBrief;
+      const unsavedPlan = stage === 'plan' && savedEntry === null;
       const unsavedEdit = savedEntry?.mode === 'edit';
-      const reason = unsavedEdit || staleEdits ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
+      const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
       if (reason !== null) {
         setOpenTarget({ entry, reason });
         return;
@@ -624,6 +636,7 @@ export default function App() {
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
     setStage('plan');
     setSavedEntry({ id: entry.id, mode: 'view' });
+    setJustSavedId(null);
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
@@ -735,7 +748,7 @@ export default function App() {
               <div className="viewactions">
                 <button type="button" className="ghost" onClick={() => go('plans')}>
                   <IconBack />
-                  Back to My plans
+                  View all plans
                 </button>
               </div>
             </>
@@ -1098,6 +1111,12 @@ export default function App() {
               <div className="secondary">
                 {viewingSaved ? (
                   <>
+                    {justSavedId === savedEntry?.id && (
+                      <button type="button" className="ghost saved" disabled>
+                        <IconCheck />
+                        Saved
+                      </button>
+                    )}
                     <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
                       <IconDownload />
                       Download PDF
@@ -1108,7 +1127,7 @@ export default function App() {
                     </button>
                     <button type="button" className="ghost" onClick={() => go('plans')}>
                       <IconBack />
-                      Back to My plans
+                      View all plans
                     </button>
                   </>
                 ) : editingSaved ? (
@@ -1116,7 +1135,7 @@ export default function App() {
                     {editsNotGenerated && (
                       <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
                     )}
-                    <button type="button" className="btn" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save changes
                     </button>
@@ -1130,7 +1149,7 @@ export default function App() {
                     {editsNotGenerated && (
                       <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
                     )}
-                    <button type="button" className="btn" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save plan
                     </button>
@@ -1190,6 +1209,7 @@ export default function App() {
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
+                        {campaignEnded(sp.brief.end) && <span className="chip soft">Expired</span>}
                         {objLabels && <span className="chip">{objLabels}</span>}
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
