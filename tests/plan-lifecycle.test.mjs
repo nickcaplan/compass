@@ -32,8 +32,7 @@ async function openSavedPlan(page) {
 
 async function generateExample(page) {
   await clickButton(page, 'Fill it in for me');
-  await page.waitForFunction(() => !document.querySelector('.gen').disabled);
-  await page.locator('.gen').click();
+
   await page.waitForSelector('.planin');
 }
 
