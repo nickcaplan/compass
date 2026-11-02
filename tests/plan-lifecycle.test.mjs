@@ -237,6 +237,8 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     });
 
     await t.test('cancelling after another tab deletes the plan clears the saved view', async () => {
+      const savedName = await page.evaluate(() =>
+        JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.name);
       await openSavedPlan(page);
       await page.waitForSelector('.bsum');
       await clickButton(page, 'Edit plan');
@@ -246,16 +248,16 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         await otherPage.goto('http://127.0.0.1:4173');
         await clickButton(otherPage, 'My plans');
         await otherPage.waitForSelector('.pc-actions');
-        const deleteHandle = await otherPage.evaluateHandle(() =>
-          [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes('Saved spring rename'))?.querySelector('button.ghost'));
+        const deleteHandle = await otherPage.evaluateHandle((n) =>
+          [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes(n))?.querySelector('button.ghost'), savedName);
         const deleteButton = deleteHandle.asElement();
         assert.ok(deleteButton, 'saved plan card not found');
         await deleteButton.click();
         await deleteHandle.dispose();
         await otherPage.waitForSelector('[role="alertdialog"]');
         await otherPage.locator('.confirm .btn').click();
-        await otherPage.waitForFunction(() =>
-          ![...document.querySelectorAll('.plancard')].some((c) => c.textContent.includes('Saved spring rename')));
+        await otherPage.waitForFunction((n) =>
+          ![...document.querySelectorAll('.plancard')].some((c) => c.textContent.includes(n)), savedName);
       } finally {
         await otherPage.close();
       }
@@ -264,8 +266,8 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       assert.equal(await page.$eval('#f-name', (input) => input.value), '');
       assert.match(await page.$eval('.toast', (toast) => toast.textContent), /no longer in My plans/);
       await clickButton(page, 'My plans');
-      const stillThere = await page.$$eval('.plancard', (cards) =>
-        cards.some((c) => c.textContent.includes('Saved spring rename')));
+      const stillThere = await page.$$eval('.plancard', (cards, n) =>
+        cards.some((c) => c.textContent.includes(n)), savedName);
       assert.equal(stillThere, false);
     });
   } finally {
