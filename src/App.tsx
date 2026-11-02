@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+
 import logoUrl from './assets/thh-logo.svg';
 
 const iconProps = {
@@ -104,7 +105,7 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const cancelCb = useRef(onCancel);
-  cancelCb.current = onCancel;
+  useLayoutEffect(() => { cancelCb.current = onCancel; }, [onCancel]);
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cancelRef.current?.focus();
@@ -181,9 +182,71 @@ import {
 
 type Stage = 'empty' | 'filling' | 'generating' | 'gate' | 'plan';
 
+function ComingSoonButton() {
+  const [notice, setNotice] = useState(0);
+  const wrap = useRef<HTMLSpanElement>(null);
+  const description = `pdf-coming-soon-${useId()}`;
+
+  useEffect(() => {
+    if (!notice) return;
+    // Repeated clicks renew the badge, wash and timer together without replacing the focused button.
+    wrap.current?.querySelector('button')?.getAnimations().forEach(animation => {
+      animation.currentTime = 0;
+      animation.play();
+    });
+    const dismiss = () => setNotice(0);
+    const timer = window.setTimeout(dismiss, 1000);
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !wrap.current?.contains(event.target)) dismiss();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dismiss();
+    };
+    const onFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !wrap.current?.contains(event.target)) dismiss();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('focusin', onFocus);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('focusin', onFocus);
+    };
+  }, [notice]);
+
+  return (
+    <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
+      <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
+        {notice > 0 && (
+          <span className="cs-bubble" id={description} key={notice}>
+            Coming soon
+          </span>
+        )}
+      </span>
+      <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
+        <span className="cs-label"><IconDownload />Download PDF</span>
+      </button>
+    </span>
+  );
+}
+
+
+
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
 type Page = 'planner' | 'plans' | 'signin' | 'pricing';
+const PAGE_ROUTES: Record<Page, string> = { planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing' };
+function pageFromUrl(): Page {
+  return (Object.keys(PAGE_ROUTES) as Page[]).find(page => PAGE_ROUTES[page] === window.location.hash) ?? 'planner';
+}
+function writePageUrl(page: Page, replace = false) {
+  const url = new URL(window.location.href);
+  url.hash = PAGE_ROUTES[page];
+  window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
+}
+
 
 interface SavedPlan {
   id: string;
@@ -314,7 +377,24 @@ function DemoCap() {
   return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
 }
 
+const REEL_INDUSTRIES = ['Life sciences', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Life sciences'];
+
+function IndustryReel() {
+  return (
+    <div className="eyebrow industry-eyebrow">
+      <span className="industry-accessible">Life sciences media planning</span>
+      <span className="industry-reel" aria-hidden="true">
+        <span className="industry-reel-track">
+          {REEL_INDUSTRIES.map((industry, index) => <span key={index}>{industry}</span>)}
+        </span>
+      </span>
+      <span aria-hidden="true">media planning</span>
+    </div>
+  );
+}
+
 export default function App() {
+  const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
   const [budgetText, setBudgetText] = useState('');
@@ -330,7 +410,15 @@ export default function App() {
   const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
-  const [page, setPage] = useState<Page>('planner');
+  const [page, setPage] = useState<Page>(pageFromUrl);
+  useEffect(() => {
+    const syncPage = () => { setPage(pageFromUrl()); window.scrollTo(0, 0); };
+    window.addEventListener('popstate', syncPage);
+    window.addEventListener('hashchange', syncPage);
+    // Leave OAuth fragments intact for the auth client to consume.
+    if (!window.location.hash) writePageUrl(pageFromUrl(), true);
+    return () => { window.removeEventListener('popstate', syncPage); window.removeEventListener('hashchange', syncPage); };
+  }, []);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [profileName, setProfileName] = useState('');
@@ -341,9 +429,13 @@ export default function App() {
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
   const canViewPlan = Boolean(authEmail && profileComplete);
 
-  function applyAuthUser(user: User | null) {
+  const profileSource = useRef<string | null>(null);
+  function applyAuthUser(user: User | null, reseed = false) {
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
+    const source = user?.id ?? null;
+    if (user && profileSource.current === source && !reseed) return;
+    profileSource.current = source;
     setProfileName(typeof user?.user_metadata.full_name === 'string' ? user.user_metadata.full_name :
       typeof user?.user_metadata.name === 'string' ? user.user_metadata.name : '');
     setProfileCompany(typeof user?.user_metadata.company === 'string' ? user.user_metadata.company : '');
@@ -395,8 +487,18 @@ export default function App() {
       /* private mode */
     }
   }
+  const currentDraftState = useRef({ brief, budgetText, stage });
+  useLayoutEffect(() => {
+    currentDraftState.current = { brief, budgetText, stage };
+  }, [brief, budgetText, stage]);
+  const mayRestoreAuthDraft = useRef(false);
   function restoreAuthDraft() {
+    // An explicit bookmarked page wins over an older pending auth draft.
+    if (!mayRestoreAuthDraft.current || pageFromUrl() !== 'planner') return;
     try {
+      // Never replace work entered after an explicit non-planner landing.
+      const current = currentDraftState.current;
+      if (answeredCount(current.brief) > 0 || current.brief.name.trim() || current.brief.start || current.brief.end || current.budgetText.trim() || current.stage !== 'empty') return;
       const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
       if (!raw) return;
       window.localStorage.removeItem(AUTH_DRAFT_KEY);
@@ -416,6 +518,7 @@ export default function App() {
       // generated plan available after the sign-in round trip.
       setStage(snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage);
       setPage('planner');
+      writePageUrl('planner', true);
     } catch {
       /* corrupted or unavailable storage */
     }
@@ -424,6 +527,9 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       applyAuthUser(data.session?.user ?? null);
+      // Only a tab loaded with a session may consume the shared snapshot.
+      // A later cross-tab SIGNED_IN must leave it for the callback tab.
+      mayRestoreAuthDraft.current = Boolean(data.session);
       if (data.session) restoreAuthDraft();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -433,6 +539,7 @@ export default function App() {
       // Draft restore stays on the getSession path so only the freshly loaded
       // tab consumes it; this tab keeps its in-memory brief.
       if (!session) {
+        mayRestoreAuthDraft.current = false;
         setStage((s) => (s === 'plan' ? 'gate' : s));
         setSavedEntry(null);
       }
@@ -440,6 +547,13 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // An explicit saved-plans landing defers the pending draft until Planner.
+  useEffect(() => {
+    if (page === 'planner' && authUser) restoreAuthDraft();
+    // Only a route/session transition may consume the pending snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, authUser?.id]);
 
   // Reveal a plan only after authentication and first-time profile completion.
   useEffect(() => {
@@ -532,6 +646,7 @@ export default function App() {
   }
 
   function openDatePicker(ref: React.RefObject<HTMLInputElement | null>) {
+    clearCue();
     const el = ref.current;
     if (!el) return;
     try {
@@ -542,10 +657,12 @@ export default function App() {
   }
 
   function patch(p: Partial<Brief>) {
+    clearCue();
     setBrief((b) => ({ ...b, ...p }));
   }
 
   function toggleObjective(id: ObjectiveId) {
+    clearCue();
     setBrief((b) => {
       const objectives = b.objectives.includes(id)
         ? b.objectives.filter((o) => o !== id)
@@ -556,6 +673,7 @@ export default function App() {
   }
 
   function toggleKpi(k: string) {
+    clearCue();
     setBrief((b) => ({
       ...b,
       kpis: b.kpis.includes(k) ? b.kpis.filter((x) => x !== k) : [...b.kpis, k],
@@ -563,6 +681,7 @@ export default function App() {
   }
 
   function toggleAudience(a: string) {
+    clearCue();
     setBrief((b) => ({
       ...b,
       audiences: b.audiences.includes(a)
@@ -579,6 +698,7 @@ export default function App() {
   }
 
   function toggleSeniority(level: string) {
+    clearCue();
     setBrief((b) => ({
       ...b,
       seniority: b.seniority.includes(level)
@@ -587,12 +707,11 @@ export default function App() {
     }));
   }
 
-  // Guided demo aid: one tap loads the complete example brief, then guides
-  // the eye to the generate button (scroll + subtle pulse + focus). Demo
-  // only - it never generates the plan by itself.
+  // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
     const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
+      clearCue();
       setConfirmFill(true);
       return;
     }
@@ -608,12 +727,12 @@ export default function App() {
     if (answeredCount(d) >= 6) {
       setCueSeq((n) => n + 1);
       setCueGen(true);
-      cueTimer.current = window.setTimeout(() => setCueGen(false), 6000);
     }
   }
 
   useEffect(() => {
     if (!cueGen) return;
+    if (page !== 'planner') { clearCue(); return; }
     const el = genRef.current;
     if (!el) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -621,17 +740,25 @@ export default function App() {
       el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
       el.focus({ preventScroll: true });
     }, 60);
-    return () => window.clearTimeout(id);
-  }, [cueGen, cueSeq]);
+    cueTimer.current = window.setTimeout(() => generate(), 1000);
+    return () => { window.clearTimeout(id); window.clearTimeout(cueTimer.current); };
+    // brief is the populated example; edits cancel the walkthrough below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cueGen, cueSeq, page]);
 
   function clearCue() {
     window.clearTimeout(cueTimer.current);
     setCueGen(false);
   }
 
-  function generate() {
+  useEffect(() => {
+    if (stage !== 'generating') return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    const frame = requestAnimationFrame(() => planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }));
+    return () => cancelAnimationFrame(frame);
+  }, [stage]);
+
+  function generate() {
     if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
@@ -653,6 +780,7 @@ export default function App() {
   }
 
   function reset() {
+    try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* private mode */ }
     clearPlannerState();
     window.scrollTo(0, 0);
   }
@@ -760,6 +888,7 @@ export default function App() {
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
+    writePageUrl('planner');
     window.scrollTo(0, 0);
   }
 
@@ -767,7 +896,7 @@ export default function App() {
     stashAuthDraft();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
     });
     if (error) showToast('Google sign-in failed - please try again');
   }
@@ -781,7 +910,7 @@ export default function App() {
     stashAuthDraft();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
     });
     if (error) {
       showToast('Could not send the sign-in link - please try again');
@@ -803,7 +932,7 @@ export default function App() {
         setProfileError('Could not save your details. Please try again.');
         return;
       }
-      applyAuthUser(data.user);
+      applyAuthUser(data.user, true);
     } catch {
       setProfileError('Could not save your details. Please try again.');
     } finally {
@@ -862,6 +991,7 @@ export default function App() {
 
   async function signOut() {
     await supabase.auth.signOut();
+    mayRestoreAuthDraft.current = false;
     applyAuthUser(null);
     // A signed-out visitor should not keep seeing a gated plan.
     if (stage === 'plan') setStage('gate');
@@ -872,6 +1002,7 @@ export default function App() {
   function go(p: Page) {
     window.clearTimeout(toastTimer.current);
     setToast(null);
+    if (pageFromUrl() !== p || window.location.hash !== PAGE_ROUTES[p]) writePageUrl(p);
     setPage(p);
     window.scrollTo(0, 0);
   }
@@ -941,7 +1072,7 @@ export default function App() {
       {page === 'planner' && (
         <>
       <header className="hero">
-        <div className="eyebrow">Life sciences media planning</div>
+        <IndustryReel />
         <h1>
           Your media plan, <em>in minutes.</em>
         </h1>
@@ -983,6 +1114,7 @@ export default function App() {
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
+          {demoMode && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
@@ -991,7 +1123,8 @@ export default function App() {
             </svg>
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
-          <div className="demohint">Loads a complete example brief</div>
+          <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
+          </>}
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
@@ -1109,6 +1242,8 @@ export default function App() {
                   aria-label="Start date"
                   className="ctl"
                   type="date"
+                  onFocus={clearCue}
+                  onPointerDown={clearCue}
                   value={brief.start}
                   min={tomorrowISO}
                   onChange={(e) => patch({ start: e.target.value })}
@@ -1131,6 +1266,8 @@ export default function App() {
                   aria-label="End date"
                   className="ctl"
                   type="date"
+                  onFocus={clearCue}
+                  onPointerDown={clearCue}
                   value={brief.end}
                   min={brief.start || tomorrowISO}
                   onChange={(e) => patch({ end: e.target.value })}
@@ -1364,10 +1501,7 @@ export default function App() {
                         Saved
                       </button>
                     )}
-                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-                      <IconDownload />
-                      Download PDF
-                    </button>
+                    <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
                       Create another scenario
@@ -1400,10 +1534,7 @@ export default function App() {
                       <IconSave />
                       Save plan
                     </button>
-                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-                      <IconDownload />
-                      Download PDF
-                    </button>
+                    <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
                       Create another scenario
@@ -1579,7 +1710,7 @@ export default function App() {
         illustrative, adapted from the Compass brief
       </footer>
 
-      {confirmFill && (
+      {demoMode && confirmFill && (
         <ConfirmDialog
           title="Replace your answers?"
           body="Replace the answers you have already given with the example brief?"

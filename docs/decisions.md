@@ -90,8 +90,10 @@ Nick chose an emailed sign-in link over a password mechanism ("happy with an
 email link", 2 Nov 2026). The sign-in page offers Continue with Google
 (Supabase OAuth, redirecting back to the current origin) and Continue with
 email (Supabase magic link). Supabase Auth holds the accounts; the app only
-ever sees the publishable key, and row level security on saved_plans protects
-each user's rows.
+ever sees the publishable key. Saved plans remain in browser localStorage,
+not a server-side saved_plans table. The sign-in gate is a product UI gate,
+not data access control; generated demo plans are computed in the browser.
+Server-side storage would need its own row-level security before use.
 
 ## 2026-11-02 - Sign-in gate uses real auth; demo bypass removed
 
