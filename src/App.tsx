@@ -1173,11 +1173,16 @@ export default function App() {
         </div>
         <div className="divider"><span>or</span></div></>}
         <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={stashAuthDraft} onAuthenticated={user => { restoreAuthDraft(true); applyAuthUser(user); setRecoveringPassword(false); setAuthNotice(null); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
+        {recoveringPassword && (
+          <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
+            Cancel password reset
+          </button>
+        )}
       </>
     );
   }
 
-  async function signOut() {
+  async function signOut(notice = 'Logged out') {
     let failed = false;
     try {
       const { error } = await supabase.auth.signOut();
@@ -1190,7 +1195,12 @@ export default function App() {
     setAuthNotice(null);
     // A signed-out visitor should not keep seeing a gated plan.
     if (stage === 'plan') setStage('gate');
-    setAuthNotice(failed ? 'Log-out encountered an error. Other sessions may still be active.' : 'Logged out');
+    setAuthNotice(failed ? 'Log-out encountered an error. Other sessions may still be active.' : notice);
+  }
+
+  async function cancelRecovery() {
+    await signOut('Password reset cancelled - log in with your current password.');
+    setRecoveringPassword(false);
   }
 
   function go(p: Page) {
