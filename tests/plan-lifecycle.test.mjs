@@ -314,10 +314,11 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     assert.match(await page.$eval('.notice', (n) => n.textContent), /could not be read on this device/);
     const stored = await page.evaluate(() => ({
       main: localStorage.getItem('compass-saved-plans'),
-      backup: localStorage.getItem('compass-saved-plans-corrupt'),
+      backups: JSON.parse(localStorage.getItem('compass-saved-plans-corrupt')),
     }));
     assert.equal(stored.main, null);
-    assert.equal(stored.backup, '{not json');
+    assert.equal(stored.backups.length, 1);
+    assert.equal(stored.backups[0].payload, '{not json');
 
     // Dismissing the notice hides it, and a reload does not bring it back.
     await page.locator('.notice .ghost').click();
@@ -334,10 +335,51 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
     const after = await page.evaluate(() => ({
       plans: JSON.parse(localStorage.getItem('compass-saved-plans')),
-      backup: localStorage.getItem('compass-saved-plans-corrupt'),
+      backups: JSON.parse(localStorage.getItem('compass-saved-plans-corrupt')),
     }));
     assert.equal(after.plans.length, 1);
-    assert.equal(after.backup, '{not json');
+    assert.equal(after.backups.length, 1);
+    assert.equal(after.backups[0].payload, '{not json');
+
+    // A second, different unreadable payload is preserved alongside the first
+    // backup, never silently discarded behind it.
+    await page.evaluate(() => localStorage.setItem('compass-saved-plans', '["broken too"'));
+    await page.reload();
+    await clickButton(page, 'My plans');
+    await page.waitForSelector('.notice');
+    const twice = await page.evaluate(() => ({
+      main: localStorage.getItem('compass-saved-plans'),
+      backups: JSON.parse(localStorage.getItem('compass-saved-plans-corrupt')),
+    }));
+    assert.equal(twice.main, null);
+    assert.equal(twice.backups.length, 2);
+    assert.deepEqual(twice.backups.map((b) => b.payload), ['{not json', '["broken too"']);
+
+    // When the backup write itself fails (quota/security), the original
+    // payload is left untouched and no recovery notice is shown.
+    const blockedContext = await browser.createBrowserContext();
+    const blocked = await blockedContext.newPage();
+    blocked.setDefaultTimeout(10000);
+    await blocked.evaluateOnNewDocument(() => {
+      const original = Storage.prototype.setItem;
+      Storage.prototype.setItem = function setItem(key, value) {
+        if (key === 'compass-saved-plans-corrupt') throw new DOMException('quota', 'QuotaExceededError');
+        return original.call(this, key, value);
+      };
+    });
+    await blocked.goto('http://127.0.0.1:4174');
+    await blocked.evaluate(() => localStorage.setItem('compass-saved-plans', '{still here'));
+    await blocked.reload();
+    await clickButton(blocked, 'My plans');
+    await blocked.waitForSelector('.empty');
+    assert.equal(await blocked.$('.notice'), null);
+    const kept = await blocked.evaluate(() => ({
+      main: localStorage.getItem('compass-saved-plans'),
+      backups: localStorage.getItem('compass-saved-plans-corrupt'),
+    }));
+    assert.equal(kept.main, '{still here');
+    assert.equal(kept.backups, null);
+    await blocked.close();
   } finally {
     if (browser) await browser.close();
     server.kill();

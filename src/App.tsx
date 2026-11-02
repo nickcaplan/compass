@@ -217,9 +217,11 @@ const PLANS_CORRUPT_KEY = 'compass-saved-plans-corrupt';
 let plansRecovered = false;
 
 // A saved-plans payload that cannot be read at all (invalid JSON or not an
-// array) used to silently show an empty My plans. Move the unreadable copy
-// aside once and start a fresh list, so nothing is lost silently and the
-// visitor can keep saving normally.
+// array) used to silently show an empty My plans. Append the unreadable copy
+// to a backup list and start a fresh list, so nothing is lost silently and
+// the visitor can keep saving normally. The main payload is only reset after
+// the backup write succeeds; if storage fails, everything is left untouched
+// and no recovery is presented.
 function recoverCorruptPlans(): void {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
@@ -231,13 +233,25 @@ function recoverCorruptPlans(): void {
       parsed = undefined;
     }
     if (Array.isArray(parsed)) return;
-    if (window.localStorage.getItem(PLANS_CORRUPT_KEY) === null) {
-      window.localStorage.setItem(PLANS_CORRUPT_KEY, raw);
+    // Every unreadable payload is kept: append to the backup list so a newer
+    // unreadable payload is never silently discarded behind an older backup.
+    const existing = window.localStorage.getItem(PLANS_CORRUPT_KEY);
+    let backups: unknown[] = [];
+    if (existing !== null) {
+      try {
+        const b: unknown = JSON.parse(existing);
+        backups = Array.isArray(b) ? b : [existing];
+      } catch {
+        backups = [existing];
+      }
     }
+    backups.push({ foundAt: new Date().toISOString(), payload: raw });
+    window.localStorage.setItem(PLANS_CORRUPT_KEY, JSON.stringify(backups));
     window.localStorage.removeItem(PLANS_KEY);
     plansRecovered = true;
   } catch {
-    // Storage unavailable - leave everything as it is.
+    // Storage unavailable or the backup write failed - leave the original
+    // payload untouched and do not present recovery as successful.
   }
 }
 
