@@ -40,7 +40,7 @@ test('industry reel settles in 2.6 seconds and never blocks interaction', { time
     for (const width of [390, 1440]) {
       const page = await browser.newPage();
       await page.setViewport({ width, height: 900 });
-      await page.goto(previewUrl);
+      await page.goto(previewUrl+'?demo=1');
       await page.waitForSelector('.industry-reel-track');
       await page.evaluate(() => document.fonts.ready);
       const before = await page.$eval('.hero', e => e.getBoundingClientRect().toJSON());

@@ -71,7 +71,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4173');
+    await page.goto('http://127.0.0.1:4173/?demo=1');
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');

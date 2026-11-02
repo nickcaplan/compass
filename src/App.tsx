@@ -364,6 +364,7 @@ function IndustryReel() {
 }
 
 export default function App() {
+  const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
   const [budgetText, setBudgetText] = useState('');
@@ -838,6 +839,7 @@ export default function App() {
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
+          {demoMode && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
@@ -847,6 +849,7 @@ export default function App() {
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
+          </>}
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
@@ -1419,7 +1422,7 @@ export default function App() {
         illustrative, adapted from the Compass brief
       </footer>
 
-      {confirmFill && (
+      {demoMode && confirmFill && (
         <ConfirmDialog
           title="Replace your answers?"
           body="Replace the answers you have already given with the example brief?"
