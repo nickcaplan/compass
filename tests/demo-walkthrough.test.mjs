@@ -58,8 +58,16 @@ test('example walkthrough generates automatically and respects interruptions', {
     assert.ok(await page.$('.planin .metrics'));
     // Editing during the fill beat cancels automatic generation.
     await clickButton(page, 'Create another scenario');
-    await clickButton(page, 'Fill it in for me');
-    await page.locator('#f-name').fill('My own draft');
+    // Dispatch the edit in the fill task, before the intentional 1s pause.
+    // Remote click/type round trips can exceed that pause on a busy runner.
+    await page.evaluate(async () => {
+      [...document.querySelectorAll('button')].find(e => e.textContent.trim() === 'Fill it in for me').click();
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const e = document.querySelector('#f-name');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(e, 'My own draft');
+      e.dispatchEvent(new Event('input', { bubbles: true }));
+    });
     await delay(1300);
     assert.equal(await page.$('.planin .metrics'), null);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
