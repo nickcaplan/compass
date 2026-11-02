@@ -171,6 +171,7 @@ import {
   monthsRangeLabel,
   gbp,
   startNotFuture,
+  campaignEnded,
   weeksLabel,
   type Brief,
   type ObjectiveId,
@@ -336,6 +337,17 @@ export default function App() {
       /* private mode */
     }
   }, [theme]);
+
+  // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
+  // regains focus, so a page left open across midnight shows today's state.
+  const [, setDayTick] = useState(0);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') setDayTick((t) => t + 1);
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, []);
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
@@ -1218,6 +1230,7 @@ export default function App() {
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
+                        {campaignEnded(sp.brief.end) && <span className="chip soft">Expired</span>}
                         {objLabels && <span className="chip">{objLabels}</span>}
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
