@@ -357,6 +357,13 @@ input.ctl{color:var(--text)}
 
 .savenote{grid-column:1/-1;margin:0;font-size:12.5px;color:var(--muted)}
 
+.planfilters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.planfilters button{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-mid);border-radius:999px;padding:8px 14px;background:transparent;color:var(--text2);font:600 13px Roboto,system-ui,sans-serif;cursor:pointer}
+.planfilters button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.planfilters button span{font-size:11px;opacity:.75}
+.planfilters button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+.chip.expired{border-color:var(--accent-line);color:var(--accent-ink);font-weight:700}
+.filterempty{padding:24px 0;color:var(--text2);font-size:14px;line-height:1.6}
 /* Inline PDF feedback: stable dimensions, readable label and gold reveal. */
 .cs-wrap{position:relative;display:inline-flex;max-width:100%;min-width:0;isolation:isolate}
 .secondary .cs-wrap{flex:1 1 0;min-width:0}
@@ -391,3 +398,13 @@ input.ctl{color:var(--text)}
 .industry-accessible{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 
 .eyebrow:has(.industry-reel){color:var(--muted)}
+.notice{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--accent-line);border-radius:12px;padding:12px 16px;margin-bottom:18px}
+.notice p{margin:0;color:var(--muted);font-size:13px}
+@media (max-width:640px){.notice{flex-direction:column;align-items:flex-start}}
+
+/* Expired status is readable and separate from campaign attributes. */
+.plancard.is-expired{position:relative;padding-top:52px}
+.plancard>.expired{position:absolute;right:16px;top:14px;margin:0;font-size:11px;letter-spacing:.025em;display:inline-flex;align-items:center;gap:5px;border:1px solid #854b50;color:#f0b5ba;background:#382125;border-radius:999px;padding:4px 9px}
+.plancard>.expired::before{content:'◷';font-size:14px}
+.plancard.is-expired .pc-main>b{color:var(--text2)}
+:root[data-theme=light] .plancard>.expired{border-color:#d4a9ac;color:#8f353d;background:#f8e9eb}
