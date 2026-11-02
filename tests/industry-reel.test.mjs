@@ -9,6 +9,17 @@ const chromePath = process.platform === 'darwin'
   ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
   : '/usr/bin/google-chrome';
 
+async function visibleIndustry(page) {
+  return page.$eval('.industry-reel', reel => {
+    const viewport = reel.getBoundingClientRect();
+    const center = viewport.top + viewport.height / 2;
+    return [...reel.querySelectorAll('.industry-reel-track > span')].find(row => {
+      const bounds = row.getBoundingClientRect();
+      return center >= bounds.top && center < bounds.bottom;
+    })?.textContent;
+  });
+}
+
 test('industry reel settles in two seconds and never blocks interaction', { timeout: 60000 }, async () => {
   const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
   let browser;
@@ -41,10 +52,11 @@ test('industry reel settles in two seconds and never blocks interaction', { time
       assert.equal(await page.$eval('#f-name', e => e.value), 'Typing during the spin');
       await page.$eval('.industry-reel-track', e => e.getAnimations()[0].currentTime = 2000);
       assert.deepEqual(await page.$eval('.hero', e => e.getBoundingClientRect().toJSON()), before);
-      assert.equal(await page.$eval('.industry-reel-track', e => e.lastElementChild.textContent), 'Life sciences');
+      assert.equal(await visibleIndustry(page), 'Life sciences');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
       assert.equal(await page.$eval('.industry-reel-track', e => e.getAnimations().length), 0);
+      assert.equal(await visibleIndustry(page), 'Life sciences');
       await page.close();
     }
   } finally { await browser?.close(); server.kill(); }
