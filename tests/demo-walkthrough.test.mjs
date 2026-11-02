@@ -37,14 +37,25 @@ async function generateExample(page) {
 }
 
 test('example walkthrough generates automatically and respects interruptions', { timeout: 60000 }, async () => {
-  const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '4185', '--strictPort'], { stdio: 'ignore' });
+  const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'] });
   let browser;
   try {
-    for (let i = 0; i < 50; i++) { try { if ((await fetch('http://127.0.0.1:4185')).ok) break; } catch {} await delay(100); }
+    // Use only the URL announced by this child, never an unrelated process.
+    const previewUrl = await new Promise((resolve, reject) => {
+      let output = '';
+      const timeout = setTimeout(() => reject(new Error('Preview server did not become ready')), 10000);
+      server.once('error', error => { clearTimeout(timeout); reject(error); });
+      server.once('exit', code => { clearTimeout(timeout); reject(new Error(`Preview exited early: ${code}`)); });
+      server.stdout.on('data', chunk => {
+        output += chunk.toString();
+        const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
+        if (match) { clearTimeout(timeout); resolve(match[0]); }
+      });
+    });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     const page = await browser.newPage();
     await page.setViewport({ width: 390, height: 844 });
-    await page.goto('http://127.0.0.1:4185');
+    await page.goto(previewUrl);
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
     assert.match(await page.$eval('.demohint', e => e.textContent), /Example filled/);
@@ -62,6 +73,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     await page.locator('#f-name').fill('My own draft');
     await delay(1300);
     assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
     assert.equal(await page.$eval('#f-name', e => e.value), 'My own draft');
     // A confirmed replacement runs again, with reduced motion too.
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
@@ -74,6 +86,8 @@ test('example walkthrough generates automatically and respects interruptions', {
     await clickButton(page, 'My plans');
     await delay(1300);
     await clickButton(page, 'Planner');
+    await delay(1300);
     assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
   } finally { await browser?.close(); server.kill(); }
 });
