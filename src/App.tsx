@@ -428,6 +428,7 @@ export default function App() {
   }
 
   function openDatePicker(ref: React.RefObject<HTMLInputElement | null>) {
+    clearCue();
     const el = ref.current;
     if (!el) return;
     try {
@@ -910,6 +911,8 @@ export default function App() {
                   aria-label="Start date"
                   className="ctl"
                   type="date"
+                  onFocus={clearCue}
+                  onPointerDown={clearCue}
                   value={brief.start}
                   min={tomorrowISO}
                   onChange={(e) => patch({ start: e.target.value })}
@@ -932,6 +935,8 @@ export default function App() {
                   aria-label="End date"
                   className="ctl"
                   type="date"
+                  onFocus={clearCue}
+                  onPointerDown={clearCue}
                   value={brief.end}
                   min={brief.start || tomorrowISO}
                   onChange={(e) => patch({ end: e.target.value })}

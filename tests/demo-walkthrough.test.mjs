@@ -63,6 +63,14 @@ test('example walkthrough generates automatically and respects interruptions', {
     assert.equal(await page.$('.planin .metrics'), null);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
     assert.equal(await page.$eval('#f-name', e => e.value), 'My own draft');
+    // Opening a date field cancels the example before a date is committed.
+    await page.reload();
+    await clickButton(page, 'Fill it in for me');
+    await page.waitForSelector('.demohint');
+    await page.focus('input[type=date]');
+    await delay(1300);
+    assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
     // A confirmed replacement runs again, with reduced motion too.
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
     await clickButton(page, 'Try another example');
