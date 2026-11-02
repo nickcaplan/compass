@@ -43,7 +43,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     const page = await browser.newPage();
     await page.setViewport({ width: 390, height: 844 });
-    await page.goto(previewUrl);
+    await page.goto(previewUrl+'?demo=1');
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
     assert.match(await page.$eval('.demohint', e => e.textContent), /Example filled/);
