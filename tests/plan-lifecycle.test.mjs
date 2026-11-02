@@ -140,6 +140,28 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.waitForSelector('.plancard');
       const restoredChip = await page.$eval('.plancard .chips .chip', (chip) => chip.textContent);
       assert.notEqual(restoredChip, 'Expired');
+      await page.evaluate(() => {
+        const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
+        const now = new Date();
+        const iso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        plans[0].brief.start = iso;
+        plans[0].brief.end = iso;
+        localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
+      });
+      await page.reload();
+      await clickButton(page, 'My plans');
+      await page.waitForSelector('.plancard');
+      const todayChips = await page.$$eval('.plancard .chips .chip', (chips) => chips.map((chip) => chip.textContent));
+      assert.equal(todayChips.includes('Expired'), false);
+      await page.evaluate(({ start, end }) => {
+        const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
+        plans[0].brief.start = start;
+        plans[0].brief.end = end;
+        localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
+      }, originalDates);
+      await page.reload();
+      await clickButton(page, 'My plans');
+      await page.waitForSelector('.plancard');
       await clickButton(page, 'Open plan');
       await page.waitForSelector('.bsum');
     });
