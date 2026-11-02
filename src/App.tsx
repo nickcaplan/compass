@@ -293,13 +293,6 @@ export default function App() {
   const [budgetText, setBudgetText] = useState('');
   const [stage, setStage] = useState<Stage>('empty');
   const [ticks, setTicks] = useState(0);
-  const [demoUser, setDemoUser] = useState<{ name: string; email: string; company: string } | null>(null);
-  const [gateName, setGateName] = useState('');
-  const [gateEmail, setGateEmail] = useState('');
-  const [gateCompany, setGateCompany] = useState('');
-  const gateEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gateEmail.trim());
-  const showGateEmailHint = gateEmail.trim() !== '' && !gateEmailValid;
-  const showGateReqHint = !gateName.trim() || gateEmail.trim() === '';
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       return window.localStorage.getItem('compass-theme') === 'light' ? 'light' : 'dark';
@@ -339,13 +332,58 @@ export default function App() {
     }
   }, [theme]);
 
+  // A sign-in round trip (Google redirect or emailed link) reloads the app,
+  // so the in-progress brief and generated plan are stashed on this device
+  // first and restored when the user lands back. Expires after an hour.
+  const AUTH_DRAFT_KEY = 'compass-auth-draft';
+  function stashAuthDraft() {
+    try {
+      const snap = {
+        brief,
+        submittedBrief,
+        budgetText,
+        stage: stage === 'generating' ? 'filling' : stage,
+        ts: Date.now(),
+      };
+      window.localStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify(snap));
+    } catch {
+      /* private mode */
+    }
+  }
+  function restoreAuthDraft() {
+    try {
+      const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
+      if (!raw) return;
+      window.localStorage.removeItem(AUTH_DRAFT_KEY);
+      const snap = JSON.parse(raw) as { brief: Brief; submittedBrief: Brief | null; budgetText: string; stage: Stage; ts: number };
+      if (Date.now() - snap.ts > 60 * 60 * 1000) return;
+      setBrief(snap.brief);
+      setSubmittedBrief(snap.submittedBrief);
+      setBudgetText(snap.budgetText);
+      setStage(snap.stage);
+      setPage('planner');
+    } catch {
+      /* corrupted or unavailable storage */
+    }
+  }
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setAuthEmail(data.session?.user.email ?? null));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthEmail(data.session?.user.email ?? null);
+      if (data.session) restoreAuthDraft();
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setAuthEmail(session?.user.email ?? null);
+      if (event === 'SIGNED_IN') restoreAuthDraft();
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // A signed-in user never needs the sign-in gate: if they authenticate while
+  // it is showing, move straight to the plan.
+  useEffect(() => {
+    if (stage === 'gate' && authEmail) setStage('plan');
+  }, [stage, authEmail]);
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
@@ -400,11 +438,11 @@ export default function App() {
   useEffect(() => {
     if (stage !== 'generating') return;
     if (ticks < genSteps) return;
-    // Plans are gated behind sign-in: with no demo sign-in yet, show the
-    // gate first; the brief and generated plan stay intact behind it.
-    const id = window.setTimeout(() => setStage(demoUser ? 'plan' : 'gate'), 500);
+    // Plans are gated behind sign-in: without a session, show the gate
+    // first; the brief and generated plan stay intact behind it.
+    const id = window.setTimeout(() => setStage(authEmail ? 'plan' : 'gate'), 500);
     return () => window.clearTimeout(id);
-  }, [stage, ticks, genSteps, demoUser]);
+  }, [stage, ticks, genSteps, authEmail]);
 
   function showToast(message: string) {
     setToast(message);
@@ -652,6 +690,7 @@ export default function App() {
   }
 
   async function continueWithGoogle() {
+    stashAuthDraft();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
@@ -665,6 +704,7 @@ export default function App() {
       showToast('Enter a full email address, like name@company.com');
       return;
     }
+    stashAuthDraft();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: window.location.origin },
@@ -674,6 +714,33 @@ export default function App() {
     } else {
       setMagicLinkTo(email);
     }
+  }
+
+  function renderSignInFields(idPrefix: string) {
+    return (
+      <>
+        <div className="ssolist">
+          <button type="button" className="sso" onClick={() => { void continueWithGoogle(); }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
+              <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z" />
+              <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.3 6.8C.5 8.4 0 10.1 0 12s.5 3.6 1.3 5.2l3.9-2.9z" />
+              <path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.8 1.3 6.8l3.9 2.9c.9-2.9 3.6-5 6.8-5z" />
+            </svg>
+            Continue with Google
+          </button>
+        </div>
+        <div className="divider"><span>or</span></div>
+        <div className="field">
+          <label htmlFor={`${idPrefix}-email`}>Work email</label>
+          <input id={`${idPrefix}-email`} className="ctl" type="email" placeholder="you@company.com"
+            value={signinEmail} onChange={(e) => setSigninEmail(e.target.value)} />
+        </div>
+        <button type="button" className="gen" onClick={() => { void continueWithEmail(); }}>
+          Continue with email <span>&rarr;</span>
+        </button>
+      </>
+    );
   }
 
   async function signOut() {
@@ -1084,85 +1151,25 @@ export default function App() {
           )}
 
           {stage === 'gate' && (
-            <form
-              className="planin"
-              noValidate
-              onSubmit={(e) => {
-                e.preventDefault();
-                setDemoUser({ name: gateName.trim(), email: gateEmail.trim(), company: gateCompany.trim() });
-                setStage('plan');
-                showToast('Signed in for this demo - no account created');
-              }}
-            >
+            <div className="planin">
               <div className="planhead">
                 <h2>Your plan is ready</h2>
                 <DemoCap />
               </div>
               <p className="pagesub">
-                Sign in to see it. In the full product, signing in saves your plans so you can pick up where
-                you left off, on any device.
+                Sign in to see it. Your plan stays saved on this device while you sign in.
               </p>
-              <div className="field">
-                <label htmlFor="f-gate-name">Name</label>
-                <input
-                  id="f-gate-name"
-                  className="ctl"
-                  type="text"
-                  placeholder="Your name"
-                  value={gateName}
-                  onChange={(e) => setGateName(e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="f-gate-email">Work email</label>
-                <input
-                  id="f-gate-email"
-                  className="ctl"
-                  type="email"
-                  placeholder="you@company.com"
-                  value={gateEmail}
-                  onChange={(e) => setGateEmail(e.target.value)}
-                  aria-invalid={showGateEmailHint || undefined}
-                  aria-describedby={showGateEmailHint ? 'f-gate-email-hint' : undefined}
-                />
-                {showGateEmailHint && (
-                  <p className="fieldnote" id="f-gate-email-hint">
-                    Enter a full email address, like name@company.com
-                  </p>
-                )}
-              </div>
-              <div className="field">
-                <label htmlFor="f-gate-company">Company (optional)</label>
-                <input
-                  id="f-gate-company"
-                  className="ctl"
-                  type="text"
-                  placeholder="Company"
-                  value={gateCompany}
-                  onChange={(e) => setGateCompany(e.target.value)}
-                />
-              </div>
-              {showGateReqHint && (
-                <p className="fieldnote" id="f-gate-req">
-                  Enter your name and work email to see your plan.
+              {magicLinkTo ? (
+                <p className="pagesub">
+                  Check your inbox - we sent a sign-in link to {magicLinkTo}. Open it to see your plan.
                 </p>
+              ) : (
+                renderSignInFields('f-gate')
               )}
-              <button
-                type="submit"
-                className="gen"
-                disabled={!gateName.trim() || !gateEmailValid}
-                aria-describedby={showGateReqHint ? 'f-gate-req' : undefined}
-              >
-                See my plan <span>&rarr;</span>
-              </button>
               <button type="button" className="ghost" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>
                 Back to my brief
               </button>
-              <p className="finenote">
-                Concept demo - no account is created and nothing you enter leaves this browser. Real sign-in
-                arrives with the accounts work.
-              </p>
-            </form>
+            </div>
           )}
 
           {stage === 'plan' && plan && (
@@ -1383,26 +1390,7 @@ export default function App() {
             </>
           ) : (
           <>
-          <div className="ssolist">
-            <button type="button" className="sso" onClick={() => { void continueWithGoogle(); }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
-                <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z" />
-                <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.3 6.8C.5 8.4 0 10.1 0 12s.5 3.6 1.3 5.2l3.9-2.9z" />
-                <path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.8 1.3 6.8l3.9 2.9c.9-2.9 3.6-5 6.8-5z" />
-              </svg>
-              Continue with Google
-            </button>
-          </div>
-          <div className="divider"><span>or</span></div>
-          <div className="field">
-            <label htmlFor="f-email">Work email</label>
-            <input id="f-email" className="ctl" type="email" placeholder="you@company.com"
-              value={signinEmail} onChange={(e) => setSigninEmail(e.target.value)} />
-          </div>
-          <button type="button" className="gen" onClick={() => { void continueWithEmail(); }}>
-            Continue with email <span>&rarr;</span>
-          </button>
+          {renderSignInFields('f-signin')}
           <p className="finenote">
             Sign in with Google, or get a sign-in link emailed to you - no password needed.
           </p>

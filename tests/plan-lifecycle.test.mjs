@@ -30,22 +30,37 @@ async function openSavedPlan(page) {
   await clickButton(page, 'Open plan');
 }
 
-async function generateExample(page, { expectGate }) {
+async function generateExample(page) {
   await clickButton(page, 'Fill it in for me');
   await page.waitForFunction(() => !document.querySelector('.gen').disabled);
   await page.locator('.gen').click();
-  await page.waitForSelector('.planin');
-  if (expectGate) {
-    // The first generation in a new context shows the demo sign-in gate.
-    assert.ok(await page.$('#f-gate-name'), 'First generation must show the demo sign-in gate');
-    await page.locator('#f-gate-name').fill('Test User');
-    await page.locator('#f-gate-email').fill('test@example.com');
-    await clickButton(page, 'See my plan');
-  } else {
-    // After demo sign-in, later generations go straight to the plan.
-    assert.equal(await page.$('#f-gate-name'), null, 'Later generations must skip the gate');
-  }
   await page.waitForSelector('.planin .metrics');
+}
+
+// Plants a stored Supabase session so the app loads as signed in, the way it
+// would after a real OAuth or magic-link round trip. supabase-js accepts an
+// unexpired stored session without a network call, so this needs no live
+// Supabase project or credentials.
+async function signInTestUser(page) {
+  await page.evaluateOnNewDocument(() => {
+    const session = {
+      access_token: 'test-access-token',
+      token_type: 'bearer',
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      refresh_token: 'test-refresh-token',
+      user: {
+        id: 'test-user-id',
+        aud: 'authenticated',
+        role: 'authenticated',
+        email: 'test@example.com',
+        app_metadata: {},
+        user_metadata: {},
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    };
+    window.localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token', JSON.stringify(session));
+  });
 }
 
 test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, async (t) => {
@@ -82,7 +97,21 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
     await page.goto('http://127.0.0.1:4173');
-    await generateExample(page, { expectGate: true });
+
+    // Anonymous first generation is gated behind real sign-in: the gate shows
+    // the sign-in options and keeps the plan hidden.
+    await clickButton(page, 'Fill it in for me');
+    await page.waitForFunction(() => !document.querySelector('.gen').disabled);
+    await page.locator('.gen').click();
+    await page.waitForSelector('.planin');
+    assert.ok(await page.$('#f-gate-email'), 'First generation must show the sign-in gate');
+    assert.ok(await page.$('.sso'), 'Gate must offer Continue with Google');
+    assert.equal(await page.$('.planin .metrics'), null, 'Plan stays behind the gate');
+
+    // With a signed-in session, generation goes straight to the plan.
+    await signInTestUser(page);
+    await page.reload();
+    await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
     await page.waitForFunction(() => document.querySelector('.toast')?.textContent === 'Saved to My plans');
@@ -143,7 +172,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
 
     await t.test('an unsaved generated plan still requires confirmation', async () => {
       await clickButton(page, 'Create another scenario');
-      await generateExample(page, { expectGate: false });
+      await generateExample(page);
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
       assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Replace your current plan/);
