@@ -32,7 +32,12 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         else setNotice('Check your inbox to confirm your email, then return to sign in. If you already have an account, sign in instead.');
       } else if (activeMode === 'update') {
         const result = await supabase.auth.updateUser({ password });
-        if (result.error || !result.data.user) { setError('Could not update your password. Request a fresh reset link if this one has expired.'); return; }
+        if (result.error || !result.data.user) {
+          setError(result.error?.code === 'same_password' ? 'Choose a different password from your current one.' :
+            result.error?.code === 'weak_password' ? 'Choose a stronger password with at least 8 characters.' :
+            'Could not update your password. Try again, or request a fresh reset link if this one has expired.');
+          return;
+        }
         setPassword(''); onAuthenticated(result.data.user);
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });

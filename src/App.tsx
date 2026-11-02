@@ -362,9 +362,13 @@ export default function App() {
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
   const canViewPlan = Boolean(authEmail && profileComplete && !recoveringPassword);
 
+  const profileSource = useRef<string | null>(null);
   function applyAuthUser(user: User | null) {
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
+    const source = user ? JSON.stringify([user.id, user.user_metadata]) : null;
+    if (user && profileSource.current === source) return;
+    profileSource.current = source;
     setProfileName(typeof user?.user_metadata.full_name === 'string' ? user.user_metadata.full_name :
       typeof user?.user_metadata.name === 'string' ? user.user_metadata.name : '');
     setProfileCompany(typeof user?.user_metadata.company === 'string' ? user.user_metadata.company : '');
@@ -1485,12 +1489,12 @@ export default function App() {
       {page === 'signin' && (
         <section className="card pagecard signincard" aria-label="Sign in">
           <div className="planhead">
-            <h2>{authEmail && !profileComplete ? 'Complete your profile' : 'Sign in to Compass'}</h2>
+            <h2>{recoveringPassword ? 'Reset your password' : authEmail && !profileComplete ? 'Complete your profile' : 'Sign in to Compass'}</h2>
             <DemoCap />
           </div>
           <p className="pagesub">Save your plans and pick up where you left off.</p>
           {authNotice && <p className="fieldnote" role="alert">{authNotice}</p>}
-          {recoveringPassword ? renderSignInFields('f-signin') : authEmail && !profileComplete ? renderProfileFields('f-signin-profile') : authEmail ? (
+          {recoveringPassword ? renderSignInFields('f-signin') : authEmail && !profileComplete ? <>{renderProfileFields('f-signin-profile')}<button type="button" className="email-forgot" disabled={profileSaving} onClick={() => { void signOut(); }}>Sign out</button></> : authEmail ? (
             <>
               <p className="pagesub">You are signed in as {authEmail}.</p>
               <button type="button" className="gen" onClick={() => { void signOut(); }}>
