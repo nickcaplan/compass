@@ -410,7 +410,11 @@ export default function App() {
       setBrief(snap.brief);
       setSubmittedBrief(snap.submittedBrief);
       setBudgetText(snap.budgetText);
-      setStage(snap.stage);
+      // Back to the brief is navigation, not an edit. Keep an unchanged
+      // generated plan available after the sign-in round trip.
+      const unchangedPlan = snap.submittedBrief !== null &&
+        JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
+      setStage(snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage);
       setPage('planner');
     } catch {
       /* corrupted or unavailable storage */
