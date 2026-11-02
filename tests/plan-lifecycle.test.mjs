@@ -443,7 +443,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     await page.reload();
     await clickButton(page, 'My plans');
     await page.waitForSelector('.notice');
-    assert.match(await page.$eval('.notice', (n) => n.textContent), /could not be read on this device/);
+    assert.match(await page.$eval('.notice', (n) => n.textContent), /could not be fully read on this device/);
     const stored = await page.evaluate(() => ({
       main: localStorage.getItem('compass-saved-plans'),
       backups: JSON.parse(localStorage.getItem('compass-saved-plans-corrupt')),

@@ -402,7 +402,7 @@ let plansLoadFailed = false;
 
 // A saved-plans payload that cannot be read at all (invalid JSON or not an
 // array) used to silently show an empty My plans. Append the unreadable copy
-// to a backup list and start a fresh list, so nothing is lost silently and
+// to a backup list and keep any still-valid entries, so nothing is lost silently and
 // the visitor can keep saving normally. The main payload is only reset after
 // the backup write succeeds; if storage fails, everything is left untouched
 // and no recovery is presented.
@@ -1481,7 +1481,7 @@ export default function App() {
             <>
           {storageRecovered && (
             <div className="notice" role="status">
-              <p>Your previously saved plans could not be read on this device, so a fresh list was started.</p>
+              <p>Your previously saved plans could not be fully read on this device. Any readable plans were kept, and the unreadable data was backed up.</p>
               <button type="button" className="ghost" onClick={() => setStorageRecovered(false)}>
                 Dismiss
               </button>
