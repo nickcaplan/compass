@@ -186,6 +186,11 @@ function ComingSoonButton() {
 
   useEffect(() => {
     if (!notice) return;
+    // Repeated clicks renew the badge, wash and timer together without replacing the focused button.
+    wrap.current?.querySelector('button')?.getAnimations().forEach(animation => {
+      animation.currentTime = 0;
+      animation.play();
+    });
     const dismiss = () => setNotice(0);
     const timer = window.setTimeout(dismiss, 1000);
     const onPointerDown = (event: PointerEvent) => {
