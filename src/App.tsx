@@ -488,7 +488,8 @@ export default function App() {
     () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
     [stage, submittedBrief],
   );
-  const viewingSaved = savedEntry !== null && savedEntry.mode === 'view' && stage === 'plan';
+  const savedBriefReadOnly = savedEntry !== null && savedEntry.mode === 'view';
+  const viewingSaved = savedBriefReadOnly && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
 
@@ -947,8 +948,8 @@ export default function App() {
       </header>
 
       <div className="layout">
-        <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
-          {viewingSaved ? (
+        <section className="card form" aria-label={savedBriefReadOnly ? 'Saved plan brief' : 'Plan a campaign'}>
+          {savedBriefReadOnly ? (
             <>
               <div className="planhead">
                 <h2>Your brief</h2>
@@ -963,9 +964,9 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <button type="button" className="gen" onClick={editSavedPlan}>
+              {canViewPlan && <button type="button" className="gen" onClick={editSavedPlan}>
                 Edit plan <span>&rarr;</span>
-              </button>
+              </button>}
               <div className="viewactions">
                 <button type="button" className="ghost" onClick={() => go('plans')}>
                   <IconBack />
@@ -1281,9 +1282,8 @@ export default function App() {
               ) : (
                 renderSignInFields('f-gate')
               )}
-              <button type="button" className="ghost" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>
-                Back to my brief
-              </button>
+              {savedBriefReadOnly ? <button type="button" className="ghost" onClick={() => go('plans')}>View all plans</button> :
+                <button type="button" className="ghost" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
             </div>
           )}
 
