@@ -49,6 +49,22 @@ committed to.
   only; clicking them says they are part of the full product. Sign in is a
   preview page ahead of real accounts.
 
+## Outstanding work (2 November 2026)
+
+These are separate unmerged previews, not current production capabilities:
+
+- PR9: Support and specialist email links to info@thehybridhouse.co.uk.
+- PR14/25: sign-in design and real Google/email-link authentication, first-time
+  Name and optional Company, and sign-in before plan viewing. Provider access
+  remains restricted; account-backed plan storage is not implemented.
+- PR27: recovery of unreadable local plans, backup preservation and honest failure.
+- PR29: sample plans, All/Active/Expired filters and non-destructive seeding.
+- PR31: small PDF coming-soon bubble, dismissed after one second.
+
+Review each final branch and its integration before merging. Tests prove their
+asserted paths, not completeness of these requirements. None of these previews
+changes browser-local saved plans into cross-device account storage.
+
 ## Requirements
 
 - Static build deployable to Render as a static site.

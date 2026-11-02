@@ -23,6 +23,11 @@ npm run build
 
 Outputs static files to `dist/`, deployable to any static host.
 
+## Runtime
+
+Use the Node version requested by CI (currently Node 22). The sample-plan branch
+requires Node 22.13 or newer for its storage regression helper.
+
 ## Test
 
 ```
@@ -32,6 +37,12 @@ npm test
 Builds the app first (`pretest`), then runs the Vitest unit tests for the
 plan-generation logic (`test:unit`) and the browser regression tests against
 the built app (`test:browser`).
+
+The unit suite covers the plan calculations. The browser suite covers selected
+planner and saved-plan flows. A green suite is not a full UX or scope audit:
+review phone/desktop, both themes, normal/loading/failure states and the original
+request before calling a change complete. See `docs/project-brief.md` for the
+separate outstanding previews and their limits.
 
 ## Deploy
 
