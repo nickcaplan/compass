@@ -77,20 +77,26 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       const pdf = await page.$('.cs-wrap button');
       assert.ok(pdf);
       await pdf.focus();
-      const bounds = async () => {
-        const rect = await pdf.boundingBox();
-        return Object.fromEntries(Object.entries(rect).map(([key, value]) => [key, Math.round(value)]));
+      const bounds = () => pdf.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return { x: rect.x + scrollX, y: rect.y + scrollY, width: rect.width, height: rect.height };
+      });
+      const assertStationary = async () => {
+        const after = await bounds();
+        for (const key of Object.keys(before)) {
+          assert.ok(Math.abs(after[key] - before[key]) < 0.01, `${key} moved from ${before[key]} to ${after[key]}`);
+        }
       };
       const before = await bounds();
       await page.keyboard.press('Enter');
       await page.waitForSelector('.cs-bubble');
       assert.equal(await page.$('.toast'), null);
-      assert.deepEqual(await bounds(), before);
+      await assertStationary();
       assert.match(await page.$eval('.cs-status', (el) => el.textContent), /Soon.*building/);
       assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), 'Download PDF');
       await page.keyboard.press('Escape');
       await page.waitForSelector('.cs-bubble', { hidden: true });
-      assert.deepEqual(await bounds(), before);
+      await assertStationary();
       await page.keyboard.press('Space');
       await page.waitForSelector('.cs-bubble');
       await page.keyboard.press('Tab');
