@@ -338,6 +338,17 @@ export default function App() {
     }
   }, [theme]);
 
+  // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
+  // regains focus, so a page left open across midnight shows today's state.
+  const [, setDayTick] = useState(0);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') setDayTick((t) => t + 1);
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, []);
+
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
   const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
