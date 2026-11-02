@@ -111,6 +111,8 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     // With a signed-in session, generation goes straight to the plan.
     await signInTestUser(page);
     await page.reload();
+    // The header reflects the signed-in account instead of a Sign in prompt.
+    await page.waitForFunction(() => document.querySelector('.signin')?.textContent?.trim() === 'test@example.com');
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');

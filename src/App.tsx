@@ -794,7 +794,7 @@ export default function App() {
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
           <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button type="button" className="signin" onClick={() => go('signin')}>
-            Sign in
+            {authEmail ?? 'Sign in'}
           </button>
           <button
             type="button"
