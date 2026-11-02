@@ -40,7 +40,7 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
         await page.waitForFunction(()=>['.cs-label','.cs-bubble'].every(s=>{const e=document.querySelector(s);if(!e)return false;const c=getComputedStyle(e),r=e.getBoundingClientRect();return c.visibility==='visible'&&Number(c.opacity)>.9&&r.width>0&&r.height>0}));
         assert.deepEqual(await page.$eval('.cs-wrap button',e=>({width:e.offsetWidth,height:e.offsetHeight,left:e.offsetLeft,top:e.offsetTop})),button);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-        const overlap=await page.evaluate(()=>{const a=document.querySelector('.cs-label').getBoundingClientRect();const b=document.querySelector('.cs-bubble').getBoundingClientRect();return a.right>b.left});assert.equal(overlap,false);
+        const clearance=await page.evaluate(()=>{const btn=document.querySelector('.cs-wrap button').getBoundingClientRect();const b=document.querySelector('.cs-bubble').getBoundingClientRect();const a=document.querySelector('.cs-label').getBoundingClientRect();return btn.top-b.bottom>=4&&!(a.bottom>b.top&&a.top<b.bottom)});assert.equal(clearance,true);
         await page.keyboard.press('Escape');await page.waitForSelector('.cs-bubble',{hidden:true});
         await page.locator('.cs-wrap button').click();
         await new Promise(resolve=>setTimeout(resolve,450));
