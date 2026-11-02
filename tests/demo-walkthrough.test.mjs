@@ -24,20 +24,8 @@ async function clickButton(page, label) {
   }
 }
 
-async function openSavedPlan(page) {
-  await clickButton(page, 'My plans');
-  await page.waitForSelector('.pc-actions');
-  await clickButton(page, 'Open plan');
-}
-
-async function generateExample(page) {
-  await clickButton(page, 'Fill it in for me');
-
-  await page.waitForSelector('.planin');
-}
-
 test('example walkthrough generates automatically and respects interruptions', { timeout: 60000 }, async () => {
-  const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
   let browser;
   try {
     // Use only the URL announced by this child, never an unrelated process.
@@ -47,7 +35,7 @@ test('example walkthrough generates automatically and respects interruptions', {
       server.once('error', error => { clearTimeout(timeout); reject(error); });
       server.once('exit', code => { clearTimeout(timeout); reject(new Error(`Preview exited early: ${code}`)); });
       server.stdout.on('data', chunk => {
-        output += chunk.toString();
+        output += chunk.toString().replace(/\x1b\[[0-9;]*m/g, '');
         const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
         if (match) { clearTimeout(timeout); resolve(match[0]); }
       });
