@@ -10,7 +10,7 @@ test('email signup, failed signin, successful signin, and recovery stay in the a
   const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
   browser=await puppeteer.launch({executablePath:process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
   for(const width of [390,1440]){
-   const context=await browser.createBrowserContext();const p=await context.newPage();p.setDefaultTimeout(8000);await p.setViewport({width,height:900});let loginFail=true;let recover=0;let signup=0;let updates=0;let samePassword=true;
+   const context=await browser.createBrowserContext();const p=await context.newPage();p.setDefaultTimeout(8000);await p.setViewport({width,height:900});let loginFail=true;let recover=0;let signup=0;let updates=0;let samePassword=true;let logoutOk=false;
    await p.setRequestInterception(true);p.on('request',req=>{
     if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();
     const headers={'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS','access-control-allow-headers':'*'};
@@ -19,7 +19,7 @@ test('email signup, failed signin, successful signin, and recovery stay in the a
     if(req.url().includes('/signup')){signup++;body={user:u,session:null};}
     else if(req.url().includes('/token')){status=loginFail?400:200;body=loginFail?{msg:'Invalid login credentials'}:session;}
     else if(req.url().includes('/recover')){recover++;}
-    else if(req.url().includes('/logout')){status=500;body={msg:'Mock logout failure'};}
+    else if(req.url().includes('/logout')){if(!logoutOk){status=500;body={msg:'Mock logout failure'};}}
     else if(req.url().includes('/user')){if(req.method()==='PUT'){updates++;if(samePassword){status=422;body={error_code:'same_password',code:'same_password',msg:'New password should be different from the old password.'};}else body=u;}else body=u;}
     return req.respond({status,headers,contentType:'application/json',body:JSON.stringify(body)});
    });
@@ -33,6 +33,8 @@ test('email signup, failed signin, successful signin, and recovery stay in the a
    await p.evaluate(d=>{localStorage.removeItem('sb-ctailpmcoyvaplwbwskf-auth-token');localStorage.setItem('compass-auth-draft',d)},resetDraft);
    await p.goto(url+'?demo=1#access_token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjQwMDAwMDAwMDB9.fake-signature&refresh_token=test-refresh&expires_in=3600&token_type=bearer&type=recovery');await p.reload();
    await p.waitForFunction(()=>document.querySelector('.email-heading')?.textContent==='Choose a new password');assert.equal(await p.$('.metrics'),null);assert.equal(await p.$('.ssolist'),null);
+   // Cancelling recovery exits to the normal form without a reload.
+   logoutOk=true;await p.locator('button.cancel-recovery').click();await p.waitForFunction(()=>document.querySelector('.email-heading')?.textContent==='Log in with email');assert.equal(await p.$('button.cancel-recovery'),null);assert.match(await p.$eval('.pagecard',e=>e.textContent),/reset cancelled/);logoutOk=false;
    await p.evaluate(()=>{const c=new BroadcastChannel('sb-ctailpmcoyvaplwbwskf-auth-token');c.postMessage({event:'SIGNED_OUT',session:null});setTimeout(()=>c.close(),100)});await p.waitForSelector('#f-signin-email');assert.equal(await p.$eval('.email-heading',e=>e.textContent),'Log in with email');await p.evaluate(d=>localStorage.setItem('compass-auth-draft',d),resetDraft);
    await p.goto(url+'?demo=1#access_token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjQwMDAwMDAwMDB9.fake-signature&refresh_token=test-refresh&expires_in=3600&token_type=bearer&type=recovery');await p.reload();await p.waitForFunction(()=>document.querySelector('.email-heading')?.textContent==='Choose a new password');
    await p.locator('#f-signin-password').fill('old-test-password');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('form [role=alert]');assert.match(await p.$eval('form [role=alert]',e=>e.textContent),/different password/);samePassword=false;await p.locator('#f-signin-password').fill('new-test-password');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('#f-name');assert.equal(updates,2);assert.equal(await p.$eval('#f-name',e=>e.value),'Draft before email sign in');
