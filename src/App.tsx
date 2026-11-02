@@ -1502,14 +1502,14 @@ export default function App() {
                   .filter((l) => l !== '')
                   .join(' + ');
                 return (
-                  <div className="plancard" key={sp.id}>
+                  <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
+                    {campaignEnded(sp.brief.end) && <span className="chip expired">Expired</span>}
                     <div className="pc-main">
                       <b>
                         {sp.brief.name || 'Untitled campaign'}
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
-                        {campaignEnded(sp.brief.end) && <span className="chip expired">Expired</span>}
                         {objLabels && <span className="chip">{objLabels}</span>}
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>

@@ -388,3 +388,10 @@ input.ctl{color:var(--text)}
 .notice{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--accent-line);border-radius:12px;padding:12px 16px;margin-bottom:18px}
 .notice p{margin:0;color:var(--muted);font-size:13px}
 @media (max-width:640px){.notice{flex-direction:column;align-items:flex-start}}
+
+/* Expired status is readable and separate from campaign attributes. */
+.plancard.is-expired{position:relative;padding-top:52px}
+.plancard>.expired{position:absolute;right:16px;top:14px;margin:0;font-size:11px;letter-spacing:.025em;display:inline-flex;align-items:center;gap:5px;border:1px solid #854b50;color:#f0b5ba;background:#382125;border-radius:999px;padding:4px 9px}
+.plancard>.expired::before{content:'◷';font-size:14px}
+.plancard.is-expired .pc-main>b{color:var(--text2)}
+:root[data-theme=light] .plancard>.expired{border-color:#d4a9ac;color:#8f353d;background:#f8e9eb}

@@ -132,7 +132,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.reload();
       await clickButton(page, 'My plans');
       await page.waitForSelector('.plancard');
-      const firstChip = await page.$eval('.plancard .chips .chip', (chip) => chip.textContent);
+      const firstChip = await page.$eval('.plancard .chip', (chip) => chip.textContent);
       assert.equal(firstChip, 'Expired');
       await page.evaluate(({ start, end }) => {
         const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
@@ -143,7 +143,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.reload();
       await clickButton(page, 'My plans');
       await page.waitForSelector('.plancard');
-      const restoredChip = await page.$eval('.plancard .chips .chip', (chip) => chip.textContent);
+      const restoredChip = await page.$eval('.plancard .chip', (chip) => chip.textContent);
       assert.notEqual(restoredChip, 'Expired');
       await page.evaluate(() => {
         const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
