@@ -430,6 +430,7 @@ export default function App() {
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
+  const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
     ensureSeedPlans();
     return loadPlans();
@@ -1315,8 +1316,17 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div className="planlist">
-              {savedPlans.map((sp) => {
+            <>
+              <div className="planfilters" role="group" aria-label="Filter plans">
+                {(['all', 'active', 'expired'] as const).map((filter) => {
+                  const count = savedPlans.filter((plan) => filter === 'all' || campaignEnded(plan.brief.end) === (filter === 'expired')).length;
+                  return <button type="button" key={filter} aria-pressed={planFilter === filter} onClick={() => setPlanFilter(filter)}>
+                    {filter === 'all' ? 'All' : filter === 'active' ? 'Active' : 'Expired'} <span>{count}</span>
+                  </button>;
+                })}
+              </div>
+              <div className="planlist">
+              {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).map((sp) => {
                 const wks = campaignWeeks(sp.brief.start, sp.brief.end);
                 const objLabels = sp.brief.objectives
                   .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
@@ -1330,7 +1340,7 @@ export default function App() {
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
-                        {campaignEnded(sp.brief.end) && <span className="chip soft">Expired</span>}
+                        {campaignEnded(sp.brief.end) && <span className="chip expired">Expired</span>}
                         {objLabels && <span className="chip">{objLabels}</span>}
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
@@ -1360,7 +1370,11 @@ export default function App() {
                   </div>
                 );
               })}
-            </div>
+              {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).length === 0 && (
+                <p className="filterempty" role="status">No {planFilter === 'expired' ? 'expired' : 'active'} plans. Your other plans are still available under All.</p>
+              )}
+              </div>
+            </>
           )}
         </section>
       )}

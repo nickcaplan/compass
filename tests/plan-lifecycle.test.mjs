@@ -329,6 +329,16 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     await page.waitForSelector('.plancard');
     assert.equal((await cardNames()).length, 4);
     assert.equal(await expiredCount(), 2);
+    await page.locator('.planfilters button:nth-child(2)').click();
+    assert.equal((await cardNames()).length, 2);
+    assert.equal(await expiredCount(), 0);
+    assert.equal(await page.$eval('.planfilters button:nth-child(2)', (el) => el.getAttribute('aria-pressed')), 'true');
+    await page.locator('.planfilters button:nth-child(3)').click();
+    assert.equal((await cardNames()).length, 2);
+    assert.equal(await expiredCount(), 2);
+    await page.locator('.planfilters button:first-child').click();
+    assert.equal((await cardNames()).length, 4);
+
     const seeded = await page.evaluate(() => ({
       plans: JSON.parse(localStorage.getItem('compass-saved-plans')),
       meta: JSON.parse(localStorage.getItem('compass-seeded-plans')),
