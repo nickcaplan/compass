@@ -74,11 +74,11 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
-    await page.waitForFunction(() => document.querySelector('.toast')?.textContent === 'Saved to My plans');
+    await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
 
     await t.test('saved new plan still warns after its form is edited', async () => {
       await page.locator('#f-name').fill('Unsaved campaign name');
-      await page.waitForFunction(() => document.querySelector('.secondary .lead').disabled);
+      await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled; });
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
       assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Discard unsaved changes/);
