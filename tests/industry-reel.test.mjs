@@ -45,7 +45,7 @@ test('industry reel settles in 2.6 seconds and never blocks interaction', { time
       await page.evaluate(() => document.fonts.ready);
       const before = await page.$eval('.hero', e => e.getBoundingClientRect().toJSON());
       const animation = await page.$eval('.industry-reel-track', e => {
-        const a = e.getAnimations()[0]; a.pause(); a.currentTime = 650;
+        const a = e.getAnimations()[0]; a.currentTime = 650; a.play();
         return a.effect.getTiming().duration;
       });
       assert.equal(animation, 2600);
