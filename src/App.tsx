@@ -422,10 +422,12 @@ export default function App() {
   }
 
   function patch(p: Partial<Brief>) {
+    clearCue();
     setBrief((b) => ({ ...b, ...p }));
   }
 
   function toggleObjective(id: ObjectiveId) {
+    clearCue();
     setBrief((b) => {
       const objectives = b.objectives.includes(id)
         ? b.objectives.filter((o) => o !== id)
@@ -436,6 +438,7 @@ export default function App() {
   }
 
   function toggleKpi(k: string) {
+    clearCue();
     setBrief((b) => ({
       ...b,
       kpis: b.kpis.includes(k) ? b.kpis.filter((x) => x !== k) : [...b.kpis, k],
@@ -443,6 +446,7 @@ export default function App() {
   }
 
   function toggleAudience(a: string) {
+    clearCue();
     setBrief((b) => ({
       ...b,
       audiences: b.audiences.includes(a)
@@ -459,6 +463,7 @@ export default function App() {
   }
 
   function toggleSeniority(level: string) {
+    clearCue();
     setBrief((b) => ({
       ...b,
       seniority: b.seniority.includes(level)
@@ -467,9 +472,7 @@ export default function App() {
     }));
   }
 
-  // Guided demo aid: one tap loads the complete example brief, then guides
-  // the eye to the generate button (scroll + subtle pulse + focus). Demo
-  // only - it never generates the plan by itself.
+  // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
     const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
@@ -488,12 +491,12 @@ export default function App() {
     if (answeredCount(d) >= 6) {
       setCueSeq((n) => n + 1);
       setCueGen(true);
-      cueTimer.current = window.setTimeout(() => setCueGen(false), 6000);
     }
   }
 
   useEffect(() => {
     if (!cueGen) return;
+    if (page !== 'planner') { clearCue(); return; }
     const el = genRef.current;
     if (!el) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -501,17 +504,25 @@ export default function App() {
       el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
       el.focus({ preventScroll: true });
     }, 60);
-    return () => window.clearTimeout(id);
-  }, [cueGen, cueSeq]);
+    cueTimer.current = window.setTimeout(() => generate(), 1000);
+    return () => { window.clearTimeout(id); window.clearTimeout(cueTimer.current); };
+    // brief is the populated example; edits cancel the walkthrough below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cueGen, cueSeq, page]);
 
   function clearCue() {
     window.clearTimeout(cueTimer.current);
     setCueGen(false);
   }
 
-  function generate() {
+  useEffect(() => {
+    if (stage !== 'generating') return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    const frame = requestAnimationFrame(() => planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }));
+    return () => cancelAnimationFrame(frame);
+  }, [stage]);
+
+  function generate() {
     if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
@@ -765,7 +776,7 @@ export default function App() {
             </svg>
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
-          <div className="demohint">Loads a complete example brief</div>
+          <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
