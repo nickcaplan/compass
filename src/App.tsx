@@ -263,14 +263,14 @@ function isBrief(value: unknown): value is Brief {
   );
 }
 
-// Demo seed plans: exactly two active and two past campaigns, hardcoded so a
+// Demo seed plans: exactly two active and five past campaigns, hardcoded so a
 // first-time visitor can see a populated My plans. Dates are relative to
 // today so the seeds stay evergreen. Seeds merge once per device, keep stable
 // seed- ids, never overwrite or resurrect over the visitor's own plans, and
 // a deleted seed stays deleted. Bump SEED_VERSION and add entries to append
 // future seeds on top.
 const SEED_KEY = 'compass-seeded-plans';
-const SEED_VERSION = 1;
+const SEED_VERSION = 2;
 
 function isoDaysFromNow(days: number): string {
   // Local-time formatting: toISOString() is UTC and can land on the previous
@@ -338,6 +338,9 @@ function seedPlans(): SavedPlan[] {
         end: isoDaysFromNow(-60),
       },
     },
+    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], seniority: ['Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
+    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], seniority: ['Technician / Practitioner'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: ['R&D'], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
   ];
 }
 
@@ -385,6 +388,64 @@ function ensureSeedPlans(): void {
     }
   } catch {
     // Storage unavailable - metadata-first writes keep deleted seeds from returning.
+  }
+}
+
+const PLANS_CORRUPT_KEY = 'compass-saved-plans-corrupt';
+
+// True once per session when unreadable saved plans were moved aside.
+let plansRecovered = false;
+
+// True when saved plans exist but could not be read AND could not be backed
+// up: writes that could overwrite the unreadable original must stay blocked.
+let plansLoadFailed = false;
+
+// A saved-plans payload that cannot be read at all (invalid JSON or not an
+// array) used to silently show an empty My plans. Append the unreadable copy
+// to a backup list and start a fresh list, so nothing is lost silently and
+// the visitor can keep saving normally. The main payload is only reset after
+// the backup write succeeds; if storage fails, everything is left untouched
+// and no recovery is presented.
+function recoverCorruptPlans(): void {
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(PLANS_KEY);
+  } catch {
+    // Storage itself cannot be read - block writes and tell the visitor.
+    plansLoadFailed = true;
+    return;
+  }
+  if (raw === null) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = undefined;
+  }
+  if (Array.isArray(parsed)) return;
+  try {
+    // Every unreadable payload is kept: append to the backup list so a newer
+    // unreadable payload is never silently discarded behind an older backup.
+    const existing = window.localStorage.getItem(PLANS_CORRUPT_KEY);
+    let backups: unknown[] = [];
+    if (existing !== null) {
+      try {
+        const b: unknown = JSON.parse(existing);
+        backups = Array.isArray(b) ? b : [existing];
+      } catch {
+        backups = [existing];
+      }
+    }
+    backups.push({ foundAt: new Date().toISOString(), payload: raw });
+    window.localStorage.setItem(PLANS_CORRUPT_KEY, JSON.stringify(backups));
+    // The original is only reset once the unreadable copy is safely stored.
+    window.localStorage.removeItem(PLANS_KEY);
+    plansRecovered = true;
+  } catch {
+    // The backup could not be written - leave the original payload untouched,
+    // block writes that could overwrite it, and show an honest failure state.
+    plansLoadFailed = true;
+
   }
 }
 
@@ -507,9 +568,12 @@ export default function App() {
   const [page, setPage] = useState<Page>('planner');
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
-    ensureSeedPlans();
+    recoverCorruptPlans();
+    if (!plansLoadFailed) ensureSeedPlans();
     return loadPlans();
   });
+  const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
+  const [storageFailed] = useState(() => plansLoadFailed);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -748,6 +812,7 @@ export default function App() {
   }
 
   function persist(plans: SavedPlan[]): boolean {
+    if (plansLoadFailed) return false;
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
     } catch {
@@ -1388,6 +1453,24 @@ export default function App() {
           <p className="pagesub">
             Plans you save land here so you can pick up where you left off.
           </p>
+          {storageFailed ? (
+            <div className="notice" role="alert">
+              <p>
+                Your saved plans could not be loaded safely on this device, so they have been left
+                untouched. Saving and deleting are unavailable until this browser's storage works
+                again.
+              </p>
+            </div>
+          ) : (
+            <>
+          {storageRecovered && (
+            <div className="notice" role="status">
+              <p>Your previously saved plans could not be read on this device, so a fresh list was started.</p>
+              <button type="button" className="ghost" onClick={() => setStorageRecovered(false)}>
+                Dismiss
+              </button>
+            </div>
+          )}
           {savedPlans.length === 0 ? (
             <div className="empty">
               <div className="glyph">
@@ -1460,6 +1543,8 @@ export default function App() {
                 <p className="filterempty" role="status">No {planFilter === 'expired' ? 'expired' : 'active'} plans. Your other plans are still available under All.</p>
               )}
               </div>
+            </>
+          )}
             </>
           )}
         </section>
