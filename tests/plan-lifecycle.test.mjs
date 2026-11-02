@@ -93,6 +93,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       const before = await bounds();
       await page.keyboard.press('Enter');
       await page.waitForSelector('.cs-bubble');
+      assert.notEqual(await page.$eval('.cs-wrap .ghost', el => getComputedStyle(el).color), 'rgba(0, 0, 0, 0)');
       assert.equal(await page.$('.toast'), null);
       await assertStationary();
       assert.match(await page.$eval('.cs-status', (el) => el.textContent), /Coming soon/);
