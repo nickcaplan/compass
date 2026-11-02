@@ -303,7 +303,14 @@ function ensureSeedPlans(): void {
         applied = [];
       }
     }
-    const plans = loadPlans();
+    // Never interpret unreadable or partially valid storage as an empty list.
+    // Recovery belongs to the storage-repair flow; samples must not replace it.
+    const rawPlans = window.localStorage.getItem(PLANS_KEY);
+    const candidate: unknown = rawPlans === null ? [] : JSON.parse(rawPlans);
+    if (!Array.isArray(candidate) || candidate.some((p) =>
+      p === null || typeof p !== 'object' || typeof p.id !== 'string' ||
+      typeof p.savedAt !== 'string' || !isBrief(p.brief))) return;
+    const plans: SavedPlan[] = candidate;
     const existing = new Set(plans.map((p) => p.id));
     const fresh = seedPlans().filter((seed) => !applied.includes(seed.id) && !existing.has(seed.id));
     const room = 20 - plans.length;

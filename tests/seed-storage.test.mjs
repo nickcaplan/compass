@@ -7,7 +7,11 @@ import { stripTypeScriptTypes } from 'node:module';
 const source = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const initializer = source.slice(source.indexOf('function ensureSeedPlans()'), source.indexOf('function loadPlans()'));
 const body = stripTypeScriptTypes(initializer).split('function ensureSeedPlans()')[1].trim().slice(1);
-const factory = new Function('window', 'loadPlans', 'seedPlans', 'SEED_KEY', 'SEED_VERSION', 'PLANS_KEY', `return function () {${body}`);
+const validator = stripTypeScriptTypes(source.slice(source.indexOf('function isBrief('), source.indexOf('// Demo seed plans:')));
+const validateBrief = new Function('OBJECTIVES', validator+'; return isBrief')(['performance','awareness','consideration'].map(id=>({id})));
+const make = new Function('window', 'loadPlans', 'seedPlans', 'SEED_KEY', 'SEED_VERSION', 'PLANS_KEY', 'isBrief', `return function () {${body}`);
+
+const factory=(...args)=>make(...args, validateBrief);
 
 for (const failingKey of ['meta', 'plans']) {
   test(`seed storage failure at ${failingKey} cannot resurrect a deleted seed`, () => {
@@ -38,7 +42,7 @@ for (const failingKey of ['meta', 'plans']) {
 }
 
 test('initialization preserves a pre-existing plan and its order across reload', () => {
-  const existing = { id: 'user-plan', savedAt: '2026-01-01T00:00:00.000Z', brief: { name: 'My campaign', budget: 12345 } };
+  const existing = { id: 'user-plan', savedAt: '2026-01-01T00:00:00.000Z', brief: { name: 'My campaign', budget: 12345, objectives:['awareness'], kpis:['Reach'], audiences:['Procurement'], seniority:['Manager'], start:'2026-12-01', end:'2027-02-01' } };
   const data = new Map([['plans', JSON.stringify([existing])]]);
   const window = { localStorage: {
     getItem: (key) => data.get(key) ?? null,
@@ -52,3 +56,15 @@ test('initialization preserves a pre-existing plan and its order across reload',
   run();
   assert.deepEqual(JSON.parse(data.get('plans')), first);
 });
+
+for (const raw of ['broken JSON', '{"unexpected":true}', '[{"id":"unreadable"}]', '[null]']) {
+  test(`seeding preserves unreadable original data: ${raw}`, () => {
+    const data = new Map([['plans', raw]]);
+    const writes = [];
+    const window = {localStorage: {getItem: k => data.get(k) ?? null, setItem: (k,v) => {writes.push(k); data.set(k,v)}}};
+    factory(window, () => [], () => [{id:'seed', brief:{}}], 'meta', 1, 'plans')();
+    assert.equal(data.get('plans'), raw);
+    assert.deepEqual(writes, []);
+    assert.equal(data.has('meta'), false);
+  });
+}
