@@ -444,7 +444,7 @@ export default function App() {
 
   useEffect(() => {
     const callbackError = new URLSearchParams(window.location.hash.slice(1)).get('error_description');
-    if (callbackError) { setAuthNotice('This sign-in or reset link is invalid or has expired. Sign in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
+    if (callbackError) { setRecoveringPassword(false); setAuthNotice('This sign-in or reset link is invalid or has expired. Sign in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
     supabase.auth.getSession().then(({ data }) => {
       applyAuthUser(data.session?.user ?? null);
       if (data.session) restoreAuthDraft();
@@ -456,6 +456,7 @@ export default function App() {
       // Draft restore stays on the getSession path so only the freshly loaded
       // tab consumes it; this tab keeps its in-memory brief.
       if (!session) {
+        setRecoveringPassword(false);
         setStage((s) => (s === 'plan' ? 'gate' : s));
         setSavedEntry(null);
       }

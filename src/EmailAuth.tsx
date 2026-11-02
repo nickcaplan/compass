@@ -51,11 +51,11 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
       <h3 className="email-heading">{activeMode === 'signup' ? 'Create your account' : activeMode === 'reset' ? 'Reset your password' : activeMode === 'update' ? 'Choose a new password' : 'Sign in with email'}</h3>
       {activeMode !== 'update' && <div className="field">
         <label htmlFor={`${idPrefix}-email`}>Email</label>
-        <input id={`${idPrefix}-email`} className="ctl" type="email" autoComplete="email" placeholder="you@company.com" required disabled={busy} value={email} onChange={e => setEmail(e.target.value)} />
+        <input id={`${idPrefix}-email`} className="ctl" type="email" autoComplete="email" placeholder="you@company.com" required disabled={busy} value={email} onChange={e => { setEmail(e.target.value); setError(null); }} />
       </div>}
       {activeMode !== 'reset' && <div className="field">
         <label htmlFor={`${idPrefix}-password`}>{recovery ? 'New password' : 'Password'}</label>
-        <input id={`${idPrefix}-password`} className="ctl" type="password" autoComplete={activeMode === 'signin' ? 'current-password' : 'new-password'} required minLength={activeMode === 'signin' ? 1 : 8} disabled={busy} value={password} onChange={e => setPassword(e.target.value)} />
+        <input id={`${idPrefix}-password`} className="ctl" type="password" autoComplete={activeMode === 'signin' ? 'current-password' : 'new-password'} required minLength={activeMode === 'signin' ? 1 : 8} disabled={busy} value={password} onChange={e => { setPassword(e.target.value); setError(null); }} />
         {activeMode !== 'signin' && <p className="hint">Use at least 8 characters.</p>}
       </div>}
       {error && <p className="fieldnote" role="alert">{error}</p>}
