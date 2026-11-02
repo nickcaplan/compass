@@ -315,7 +315,15 @@ function ensureSeedPlans(): void {
       SEED_KEY,
       JSON.stringify({ version: SEED_VERSION, applied: [...applied, ...toAdd.map((seed) => seed.id)] }),
     );
-    window.localStorage.setItem(PLANS_KEY, JSON.stringify([...plans, ...stamped]));
+    try {
+      window.localStorage.setItem(PLANS_KEY, JSON.stringify([...plans, ...stamped]));
+    } catch (error) {
+      // A failed atomic setItem added no plans. Restore metadata so a later
+      // visit can retry, without ever re-adding a successfully deleted seed.
+      if (rawMeta === null) window.localStorage.removeItem(SEED_KEY);
+      else window.localStorage.setItem(SEED_KEY, rawMeta);
+      throw error;
+    }
   } catch {
     // Storage unavailable - metadata-first writes keep deleted seeds from returning.
   }

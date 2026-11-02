@@ -15,6 +15,7 @@ for (const failingKey of ['meta', 'plans']) {
     const writes = [];
     const window = { localStorage: {
       getItem: (key) => data.get(key) ?? null,
+      removeItem: (key) => data.delete(key),
       setItem: (key, value) => {
         writes.push(key);
         if (key === failingKey) throw new Error('Quota exceeded');
@@ -26,17 +27,13 @@ for (const failingKey of ['meta', 'plans']) {
     run();
     assert.equal(data.has('plans'), false);
     assert.deepEqual(writes, failingKey === 'meta' ? ['meta'] : ['meta', 'plans']);
-    // Once storage works again, a failed plan write stays skipped, while a
-    // failed metadata write may safely retry because no plan was ever added.
+    // Both failure points leave no plans and can safely retry after recovery.
     window.localStorage.setItem = (key, value) => data.set(key, value);
     run();
-    if (failingKey === 'plans') assert.equal(data.has('plans'), false);
-    else {
-      assert.equal(JSON.parse(data.get('plans')).length, 1);
-      data.set('plans', '[]');
-      run();
-      assert.deepEqual(JSON.parse(data.get('plans')), []);
-    }
+    assert.equal(JSON.parse(data.get('plans')).length, 1);
+    data.set('plans', '[]');
+    run();
+    assert.deepEqual(JSON.parse(data.get('plans')), []);
   });
 }
 
