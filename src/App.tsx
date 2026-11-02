@@ -391,7 +391,13 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setAuthEmail(session?.user.email ?? null);
-      if (event === 'SIGNED_IN') restoreAuthDraft();
+      // Auth events also arrive from other tabs: re-gate a visible plan when
+      // the session is gone, and stop re-stashing the draft once signed in.
+      if (!session) setStage((s) => (s === 'plan' ? 'gate' : s));
+      if (event === 'SIGNED_IN') {
+        setMagicLinkTo(null);
+        restoreAuthDraft();
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
