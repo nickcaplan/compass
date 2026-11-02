@@ -1332,15 +1332,6 @@ export default function App() {
               </svg>
               Continue with Google
             </button>
-            <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-              <svg width="16" height="16" viewBox="0 0 23 23" aria-hidden="true">
-                <rect x="1" y="1" width="10" height="10" fill="#F25022" />
-                <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
-                <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
-                <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
-              </svg>
-              Continue with Microsoft
-            </button>
           </div>
           <div className="divider"><span>or</span></div>
           <div className="field">
@@ -1351,8 +1342,8 @@ export default function App() {
             Continue with email <span>&rarr;</span>
           </button>
           <p className="finenote">
-            Design proposal - sign-in is not connected yet. Google and Microsoft shown; more
-            providers can be added when sign-in is built.
+            Design proposal - sign-in is not connected yet. Google shown; more providers
+            can be added when sign-in is built.
           </p>
         </section>
       )}
