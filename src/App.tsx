@@ -415,7 +415,7 @@ export default function App() {
     }
   }, [theme]);
 
-  // A sign-in round trip (Google redirect or emailed link) reloads the app,
+  // A sign-in round trip (Google redirect, verification or recovery link) reloads the app,
   // so the in-progress brief and generated plan are stashed on this device
   // first and restored when the user lands back. Expires after an hour.
   const AUTH_DRAFT_KEY = 'compass-auth-draft';

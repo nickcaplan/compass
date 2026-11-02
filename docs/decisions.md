@@ -119,3 +119,14 @@ preview exists. No wildcard preview entry. The Google OAuth consent screen
 stays in Testing (only Nick's account can sign in) until Nick chooses to
 publish; publishing needs no Google verification because the app uses only
 the pre-filled non-sensitive Sign-In scopes.
+
+
+## 2026-11-02 - Current email and password implementation
+
+This branch supersedes the earlier magic-link implementation above: the
+email controls now use password sign-in, account creation, verification
+email and password-reset email, alongside Google sign-in. Verification and
+recovery callbacks can reload the page, so the browser-local draft snapshot
+remains necessary. The gate offers these same account flows plus profile
+completion. These are implementation notes for this unmerged branch, not a
+claim that the earlier product decision or production site has changed.
