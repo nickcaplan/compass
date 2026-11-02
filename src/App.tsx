@@ -294,6 +294,205 @@ function isBrief(value: unknown): value is Brief {
   );
 }
 
+// Demo seed plans: exactly two active and five past campaigns, hardcoded so a
+// first-time visitor can see a populated My plans. Dates are relative to
+// today so the seeds stay evergreen. Seeds merge once per device, keep stable
+// seed- ids, never overwrite or resurrect over the visitor's own plans, and
+// a deleted seed stays deleted. Bump SEED_VERSION and add entries to append
+// future seeds on top.
+const SEED_KEY = 'compass-seeded-plans';
+const SEED_VERSION = 2;
+
+function isoDaysFromNow(days: number): string {
+  // Local-time formatting: toISOString() is UTC and can land on the previous
+  // calendar date when local time is ahead of UTC.
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function seedPlans(): SavedPlan[] {
+  return [
+    {
+      id: 'seed-active-1',
+      savedAt: '',
+      brief: {
+        name: 'UK Laboratory Procurement Campaign',
+        objectives: ['performance'],
+        kpis: ['Lead generation', 'Cost per lead'],
+        audiences: ['Procurement', 'Laboratory Manager'],
+        seniority: ['Manager', 'Senior Manager / Head'],
+        budget: 100000,
+        start: isoDaysFromNow(-14),
+        end: isoDaysFromNow(56),
+      },
+    },
+    {
+      id: 'seed-active-2',
+      savedAt: '',
+      brief: {
+        name: 'European Lab Automation Awareness Push',
+        objectives: ['awareness'],
+        kpis: ['Reach', 'Impressions'],
+        audiences: ['Scientist / Researcher', 'Laboratory Technician'],
+        seniority: ['Technician / Practitioner'],
+        budget: 45000,
+        start: isoDaysFromNow(7),
+        end: isoDaysFromNow(70),
+      },
+    },
+    {
+      id: 'seed-past-1',
+      savedAt: '',
+      brief: {
+        name: 'Quality and Compliance Enquiry Push',
+        objectives: ['performance'],
+        kpis: ['Enquiries'],
+        audiences: ['Quality / Compliance'],
+        seniority: ['Manager'],
+        budget: 75000,
+        start: isoDaysFromNow(-90),
+        end: isoDaysFromNow(-20),
+      },
+    },
+    {
+      id: 'seed-past-2',
+      savedAt: '',
+      brief: {
+        name: 'Global Reagent Launch Consideration',
+        objectives: ['consideration'],
+        kpis: ['Content downloads', 'Article engagement'],
+        audiences: ['R&D', 'Department Head'],
+        seniority: ['Director / Executive'],
+        budget: 60000,
+        start: isoDaysFromNow(-120),
+        end: isoDaysFromNow(-60),
+      },
+    },
+    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], seniority: ['Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
+    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], seniority: ['Technician / Practitioner'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: ['R&D'], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+  ];
+}
+
+function ensureSeedPlans(): void {
+  try {
+    let applied: string[] = [];
+    const rawMeta = window.localStorage.getItem(SEED_KEY);
+    if (rawMeta !== null) {
+      try {
+        const meta: unknown = JSON.parse(rawMeta);
+        if (meta !== null && typeof meta === 'object' && Array.isArray((meta as { applied?: unknown }).applied)) {
+          applied = ((meta as { applied: unknown[] }).applied).filter((x): x is string => typeof x === 'string');
+        }
+      } catch {
+        applied = [];
+      }
+    }
+    // Never interpret unreadable or partially valid storage as an empty list.
+    // Recovery belongs to the storage-repair flow; samples must not replace it.
+    const rawPlans = window.localStorage.getItem(PLANS_KEY);
+    const candidate: unknown = rawPlans === null ? [] : JSON.parse(rawPlans);
+    if (!Array.isArray(candidate) || candidate.some((p) =>
+      p === null || typeof p !== 'object' || typeof p.id !== 'string' ||
+      typeof p.savedAt !== 'string' || !isBrief(p.brief))) return;
+    const plans: SavedPlan[] = candidate;
+    const existing = new Set(plans.map((p) => p.id));
+    const fresh = seedPlans().filter((seed) => !applied.includes(seed.id) && !existing.has(seed.id));
+    const room = 20 - plans.length;
+    const toAdd = fresh.slice(0, Math.max(0, room));
+    if (toAdd.length === 0) return;
+    const now = new Date().toISOString();
+    const stamped = toAdd.map((seed) => ({ ...seed, savedAt: now }));
+    window.localStorage.setItem(
+      SEED_KEY,
+      JSON.stringify({ version: SEED_VERSION, applied: [...applied, ...toAdd.map((seed) => seed.id)] }),
+    );
+    try {
+      window.localStorage.setItem(PLANS_KEY, JSON.stringify([...plans, ...stamped]));
+    } catch (error) {
+      // A failed atomic setItem added no plans. Restore metadata so a later
+      // visit can retry, without ever re-adding a successfully deleted seed.
+      if (rawMeta === null) window.localStorage.removeItem(SEED_KEY);
+      else window.localStorage.setItem(SEED_KEY, rawMeta);
+      throw error;
+    }
+  } catch {
+    // Storage unavailable - metadata-first writes keep deleted seeds from returning.
+  }
+}
+
+const PLANS_CORRUPT_KEY = 'compass-saved-plans-corrupt';
+
+// True once per session when unreadable saved plans were moved aside.
+let plansRecovered = false;
+
+// True when saved plans exist but could not be read AND could not be backed
+// up: writes that could overwrite the unreadable original must stay blocked.
+let plansLoadFailed = false;
+
+// A saved-plans payload that cannot be read at all (invalid JSON or not an
+// array) used to silently show an empty My plans. Append the unreadable copy
+// to a backup list and keep any still-valid entries, so nothing is lost silently and
+// the visitor can keep saving normally. The main payload is only reset after
+// the backup write succeeds; if storage fails, everything is left untouched
+// and no recovery is presented.
+function recoverCorruptPlans(): void {
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(PLANS_KEY);
+  } catch {
+    // Storage itself cannot be read - block writes and tell the visitor.
+    plansLoadFailed = true;
+    return;
+  }
+  if (raw === null) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = undefined;
+  }
+  if (Array.isArray(parsed) && parsed.every((p) => p !== null && typeof p === 'object' && typeof p.id === 'string' && typeof p.savedAt === 'string' && isBrief(p.brief))) return;
+  try {
+    // Every unreadable payload is kept: append to the backup list so a newer
+    // unreadable payload is never silently discarded behind an older backup.
+    const existing = window.localStorage.getItem(PLANS_CORRUPT_KEY);
+    let backups: unknown[] = [];
+    if (existing !== null) {
+      try {
+        const b: unknown = JSON.parse(existing);
+        backups = Array.isArray(b) ? b : [existing];
+      } catch {
+        backups = [existing];
+      }
+    }
+    backups.push({ foundAt: new Date().toISOString(), payload: raw });
+    window.localStorage.setItem(PLANS_CORRUPT_KEY, JSON.stringify(backups));
+    // The original is only reset once the unreadable copy is safely stored.
+    // Entries that are still valid are kept: one unreadable entry must not
+    // hide good plans from My plans (the full original stays in the backup).
+    const valid = Array.isArray(parsed)
+      ? parsed.filter(
+          (p): p is SavedPlan =>
+            p !== null &&
+            typeof p === 'object' &&
+            typeof p.id === 'string' &&
+            typeof p.savedAt === 'string' &&
+            isBrief(p.brief),
+        )
+      : [];
+    if (valid.length > 0) window.localStorage.setItem(PLANS_KEY, JSON.stringify(valid));
+    else window.localStorage.removeItem(PLANS_KEY);
+    plansRecovered = true;
+  } catch {
+    // The backup could not be written - leave the original payload untouched,
+    // block writes that could overwrite it, and show an honest failure state.
+    plansLoadFailed = true;
+
+  }
+}
+
 function loadPlans(): SavedPlan[] {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
@@ -444,7 +643,14 @@ export default function App() {
     setProfileCompany(typeof user?.user_metadata.company === 'string' ? user.user_metadata.company : '');
     setProfileError(null);
   }
-  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
+  const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
+    recoverCorruptPlans();
+    if (!plansLoadFailed) ensureSeedPlans();
+    return loadPlans();
+  });
+  const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
+  const [storageFailed] = useState(() => plansLoadFailed);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -792,6 +998,7 @@ export default function App() {
   }
 
   function persist(plans: SavedPlan[]): boolean {
+    if (plansLoadFailed) return false;
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
     } catch {
@@ -1548,6 +1755,24 @@ export default function App() {
           <p className="pagesub">
             Plans you save land here so you can pick up where you left off.
           </p>
+          {storageFailed ? (
+            <div className="notice" role="alert">
+              <p>
+                Your saved plans could not be loaded safely on this device, so they have been left
+                untouched. Saving and deleting are unavailable until this browser's storage works
+                again.
+              </p>
+            </div>
+          ) : (
+            <>
+          {storageRecovered && (
+            <div className="notice" role="status">
+              <p>Your previously saved plans could not be fully read on this device. Any readable plans were kept, and the unreadable data was backed up.</p>
+              <button type="button" className="ghost" onClick={() => setStorageRecovered(false)}>
+                Dismiss
+              </button>
+            </div>
+          )}
           {savedPlans.length === 0 ? (
             <div className="empty">
               <div className="glyph">
@@ -1562,22 +1787,31 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div className="planlist">
-              {savedPlans.map((sp) => {
+            <>
+              <div className="planfilters" role="group" aria-label="Filter plans">
+                {(['all', 'active', 'expired'] as const).map((filter) => {
+                  const count = savedPlans.filter((plan) => filter === 'all' || campaignEnded(plan.brief.end) === (filter === 'expired')).length;
+                  return <button type="button" key={filter} aria-pressed={planFilter === filter} onClick={() => setPlanFilter(filter)}>
+                    {filter === 'all' ? 'All' : filter === 'active' ? 'Active' : 'Expired'} <span>{count}</span>
+                  </button>;
+                })}
+              </div>
+              <div className="planlist">
+              {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).map((sp) => {
                 const wks = campaignWeeks(sp.brief.start, sp.brief.end);
                 const objLabels = sp.brief.objectives
                   .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
                   .filter((l) => l !== '')
                   .join(' + ');
                 return (
-                  <div className="plancard" key={sp.id}>
+                  <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
+                    {campaignEnded(sp.brief.end) && <span className="chip expired">Expired</span>}
                     <div className="pc-main">
                       <b>
                         {sp.brief.name || 'Untitled campaign'}
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
-                        {campaignEnded(sp.brief.end) && <span className="chip soft">Expired</span>}
                         {objLabels && <span className="chip">{objLabels}</span>}
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
@@ -1607,7 +1841,13 @@ export default function App() {
                   </div>
                 );
               })}
-            </div>
+              {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).length === 0 && (
+                <p className="filterempty" role="status">No {planFilter === 'expired' ? 'expired' : 'active'} plans. Your other plans are still available under All.</p>
+              )}
+              </div>
+            </>
+          )}
+            </>
           )}
         </section>
       )}
