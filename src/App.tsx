@@ -443,9 +443,11 @@ export default function App() {
       /* private mode */
     }
   }
+  const mayRestoreAuthDraft = useRef(false);
   function restoreAuthDraft(allowSignIn = false) {
-    // An explicit bookmarked page wins over an older pending auth draft.
-    if (!allowSignIn && pageFromUrl() !== 'planner' && !recoveringPassword) return;
+    // Only the session-owning callback tab may consume a shared snapshot.
+    // Explicit email sign-in restores on the successful submit path.
+    if (!allowSignIn && (!mayRestoreAuthDraft.current || (pageFromUrl() !== 'planner' && !recoveringPassword))) return;
     if (hasPlannerWork()) return;
     try {
       const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
@@ -477,6 +479,9 @@ export default function App() {
     if (callbackError) { setRecoveringPassword(false); setAuthNotice('This sign-in or reset link is invalid or has expired. Sign in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
     supabase.auth.getSession().then(({ data }) => {
       applyAuthUser(data.session?.user ?? null);
+      // Only a tab loaded with a session may consume the shared snapshot.
+      // A later cross-tab SIGNED_IN must leave it for the callback tab.
+      mayRestoreAuthDraft.current = Boolean(data.session);
       if (data.session) restoreAuthDraft();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -494,6 +499,13 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // An explicit saved-plans landing defers the pending draft until Planner.
+  useEffect(() => {
+    if (page === 'planner' && authUser) restoreAuthDraft();
+    // Only a route/session transition may consume the pending snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, authUser?.id]);
 
   // Reveal a plan only after authentication and first-time profile completion.
   useEffect(() => {
