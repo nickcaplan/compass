@@ -196,6 +196,17 @@ export function endBeforeStart(start: string, end: string): boolean {
   return e < s;
 }
 
+// A campaign is expired once its end date has passed; a campaign ending
+// today is still in flight. Date-only comparison, matching endBeforeStart.
+export function campaignEnded(end: string): boolean {
+  if (!end) return false;
+  const e = new Date(end + 'T00:00:00').getTime();
+  if (Number.isNaN(e)) return false;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return e < today;
+}
+
 export function campaignWeeks(start: string, end: string): number {
   const s = new Date(start).getTime();
   const e = new Date(end).getTime();
@@ -225,6 +236,15 @@ export function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCFullYear()}`;
+}
+
+export function monthsRangeLabel(start: string, end: string): string {
+  const s = new Date(start);
+  const e = new Date(end);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return '';
+  const sm = `${MONTHS[s.getUTCMonth()].slice(0, 3)} ${s.getUTCFullYear()}`;
+  const em = `${MONTHS[e.getUTCMonth()].slice(0, 3)} ${e.getUTCFullYear()}`;
+  return sm === em ? sm : `${sm} - ${em}`;
 }
 
 export function gbp(n: number): string {

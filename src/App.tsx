@@ -1,5 +1,160 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import logoUrl from './assets/thh-logo.svg';
+
+const iconProps = {
+  width: 15,
+  height: 15,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.8,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': true,
+} as const;
+
+function IconSave() {
+  return (
+    <svg {...iconProps}>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg {...iconProps}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function IconDownload() {
+  return (
+    <svg {...iconProps}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M12 15V3" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v8" />
+      <path d="M8 12h8" />
+    </svg>
+  );
+}
+
+function IconCancel() {
+  return (
+    <svg {...iconProps}>
+      <path d="M18 6 6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
+function IconBack() {
+  return (
+    <svg {...iconProps}>
+      <path d="M19 12H5" />
+      <path d="M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    </svg>
+  );
+}
+
+function IconOpen() {
+  return (
+    <svg {...iconProps}>
+      <path d="M5 12h14" />
+      <path d="M12 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+type ConfirmDialogProps = {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
+// Styled replacement for native browser confirms: overlay dialog with the
+// safe option focused by default, Escape or backdrop click to cancel, and
+// Tab trapped between the two actions.
+function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const cancelCb = useRef(onCancel);
+  cancelCb.current = onCancel;
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    cancelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        cancelCb.current();
+        return;
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const buttons = dialogRef.current.querySelectorAll('button');
+        if (buttons.length === 0) return;
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          last.focus();
+          e.preventDefault();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (opener && document.contains(opener)) opener.focus();
+    };
+  }, []);
+  return (
+    <div className="confirmwrap" onClick={() => cancelCb.current()}>
+      <div
+        className="confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <b>{title}</b>
+        <p>{body}</p>
+        <div className="row">
+          <button type="button" className="btn" onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+          <button type="button" className="ghost" ref={cancelRef} onClick={() => cancelCb.current()}>
+            {cancelLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 import {
   AUDIENCES,
   EMPTY_BRIEF,
@@ -13,8 +168,10 @@ import {
   demoBrief,
   endBeforeStart,
   formatDate,
+  monthsRangeLabel,
   gbp,
   startNotFuture,
+  campaignEnded,
   weeksLabel,
   type Brief,
   type ObjectiveId,
@@ -22,7 +179,7 @@ import {
 
 type Stage = 'empty' | 'filling' | 'generating' | 'plan';
 
-const FULL_PRODUCT_NOTE = 'Part of the full product - not active in this concept demo';
+const FULL_PRODUCT_NOTE = 'Not available yet';
 
 type Page = 'planner' | 'plans' | 'signin' | 'pricing';
 
@@ -37,6 +194,23 @@ interface SavedPlan {
 // plans across devices need sign-in + database - not built yet.
 const PLANS_KEY = 'compass-saved-plans';
 
+function isBrief(value: unknown): value is Brief {
+  if (value === null || typeof value !== 'object') return false;
+  const b = value as Record<string, unknown>;
+  const strArr = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+  return (
+    typeof b.name === 'string' &&
+    strArr(b.objectives) &&
+    (b.objectives as string[]).every((id) => OBJECTIVES.some((o) => o.id === id)) &&
+    strArr(b.kpis) &&
+    strArr(b.audiences) &&
+    strArr(b.seniority) &&
+    (b.budget === null || typeof b.budget === 'number') &&
+    typeof b.start === 'string' &&
+    typeof b.end === 'string'
+  );
+}
+
 function loadPlans(): SavedPlan[] {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
@@ -48,8 +222,7 @@ function loadPlans(): SavedPlan[] {
         typeof p === 'object' &&
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
-        p.brief !== null &&
-        typeof p.brief === 'object',
+        isBrief(p.brief),
     );
   } catch {
     return [];
@@ -140,8 +313,13 @@ export default function App() {
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
+  const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
+  const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
+  const [confirmFill, setConfirmFill] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SavedPlan | null>(null);
+  const [openTarget, setOpenTarget] = useState<{ entry: SavedPlan; reason: 'draft' | 'unsaved' | 'edit' } | null>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -158,6 +336,17 @@ export default function App() {
       /* private mode */
     }
   }, [theme]);
+
+  // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
+  // regains focus, so a page left open across midnight shows today's state.
+  const [, setDayTick] = useState(0);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') setDayTick((t) => t + 1);
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, []);
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
@@ -186,6 +375,9 @@ export default function App() {
     () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
     [stage, submittedBrief],
   );
+  const viewingSaved = savedEntry !== null && savedEntry.mode === 'view' && stage === 'plan';
+  const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
+  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -278,11 +470,13 @@ export default function App() {
   // Guided demo aid: one tap loads the complete example brief, then guides
   // the eye to the generate button (scroll + subtle pulse + focus). Demo
   // only - it never generates the plan by itself.
-  function fillDemo() {
+  function fillDemo(force = false) {
     const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
-    if (hasInput && !window.confirm('Replace the answers you have already given with the example brief?')) {
+    if (hasInput && !force) {
+      setConfirmFill(true);
       return;
     }
+    setConfirmFill(false);
     setHasFilled(true);
     const d = demoBrief(brief.name || undefined);
     setBrief(d);
@@ -325,7 +519,7 @@ export default function App() {
     setStage('generating');
   }
 
-  function reset() {
+  function clearPlannerState() {
     clearCue();
     setBrief(EMPTY_BRIEF);
     setSubmittedBrief(null);
@@ -334,21 +528,45 @@ export default function App() {
     setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
+    setSavedEntry(null);
+    setJustSavedId(null);
+  }
+
+  function reset() {
+    clearPlannerState();
     window.scrollTo(0, 0);
   }
 
   function persist(plans: SavedPlan[]): boolean {
-    setSavedPlans(plans);
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
-      return true;
     } catch {
       return false;
     }
+    setSavedPlans(plans);
+    return true;
   }
 
   function savePlan() {
     if (!submittedBrief) return;
+    if (editingSaved && savedEntry) {
+      const latest = loadPlans();
+      if (!latest.some((p) => p.id === savedEntry.id)) {
+        setSavedEntry(null);
+        showToast('That plan is no longer in My plans - save it again as a new plan');
+        return;
+      }
+      const updated = latest.map((p) =>
+        p.id === savedEntry.id ? { ...p, brief: submittedBrief, savedAt: new Date().toISOString() } : p,
+      );
+      if (persist(updated)) {
+        setSavedEntry({ id: savedEntry.id, mode: 'view' });
+        setJustSavedId(savedEntry.id);
+      } else {
+        showToast('Could not save - browser storage is unavailable');
+      }
+      return;
+    }
     const entry: SavedPlan = {
       id: `${Date.now()}`,
       savedAt: new Date().toISOString(),
@@ -361,29 +579,64 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
-      showToast('Saved to My plans - stored in this browser only (demo)');
+      setSavedEntry({ id: entry.id, mode: 'view' });
+      setJustSavedId(entry.id);
     } else {
       showToast('Could not save - browser storage is unavailable');
     }
   }
 
   function deletePlan(id: string) {
-    if (!window.confirm('Delete this saved plan? This cannot be undone.')) return;
     if (!persist(loadPlans().filter((p) => p.id !== id))) {
-      setSavedPlans(loadPlans());
       showToast('Could not delete - browser storage is unavailable');
+      return;
+    }
+    if (savedEntry?.id === id) {
+      clearPlannerState();
     }
   }
 
-  function openPlan(entry: SavedPlan) {
-    const hasDraft = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
-    if (hasDraft && stage !== 'plan' && !window.confirm('Replace your current draft with this saved plan?')) {
+  function editSavedPlan() {
+    setJustSavedId(null);
+    setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
+  }
+
+  function cancelEditSaved() {
+    if (!savedEntry) return;
+    const latest = loadPlans();
+    const original = latest.find((p) => p.id === savedEntry.id);
+    if (!original) {
+      setSavedPlans(latest);
+      clearPlannerState();
+      showToast('That plan is no longer in My plans');
       return;
     }
+    setBrief(original.brief);
+    setSubmittedBrief(original.brief);
+    setBudgetText(original.brief.budget !== null ? original.brief.budget.toLocaleString('en-GB') : '');
+    setStage('plan');
+    setSavedEntry({ id: savedEntry.id, mode: 'view' });
+  }
+
+  function openPlan(entry: SavedPlan, force = false) {
+    const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
+    if (!force && !alreadyOpen) {
+      const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+      const unsavedPlan = stage === 'plan' && savedEntry === null;
+      const unsavedEdit = savedEntry?.mode === 'edit';
+      const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
+      if (reason !== null) {
+        setOpenTarget({ entry, reason });
+        return;
+      }
+    }
+    setOpenTarget(null);
     setBrief(entry.brief);
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
     setStage('plan');
+    setSavedEntry({ id: entry.id, mode: 'view' });
+    setJustSavedId(null);
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
@@ -473,11 +726,38 @@ export default function App() {
       </header>
 
       <div className="layout">
-        <section className="card form" aria-label="Plan a campaign">
+        <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
+          {viewingSaved ? (
+            <>
+              <div className="planhead">
+                <h2>Your brief</h2>
+                <div className="cap">SAVED PLAN - READ ONLY</div>
+              </div>
+              <div className="bsum">
+                <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
+                <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
+                <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
+                <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
+                <div><div className="k">Seniority</div><div className="v">{brief.seniority.join(' + ') || '-'}</div></div>
+                <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
+                <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
+              </div>
+              <button type="button" className="gen" onClick={editSavedPlan}>
+                Edit plan <span>&rarr;</span>
+              </button>
+              <div className="viewactions">
+                <button type="button" className="ghost" onClick={() => go('plans')}>
+                  <IconBack />
+                  View all plans
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
-          <button type="button" className="demofill" onClick={fillDemo}>
+          <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
               <path d="M6 11l.9 2.4 2.4.9-2.4.9L6 17.6l-.9-2.4-2.4-.9 2.4-.9L6 11z" />
@@ -485,7 +765,7 @@ export default function App() {
             </svg>
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
-          <div className="demohint">Loads a complete example brief - demo only</div>
+          <div className="demohint">Loads a complete example brief</div>
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
@@ -656,8 +936,10 @@ export default function App() {
           </div>
 
           <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
-            {hasGenerated ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
+            {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
+            </>
+          )}
         </section>
 
         <section ref={planRef} className="card plan" aria-live="polite">
@@ -765,8 +1047,10 @@ export default function App() {
           {stage === 'plan' && plan && (
             <div className="planin">
               <div className="planhead">
-                <h2>Recommended plan</h2>
-                <DemoCap />
+                <h2>{viewingSaved
+                  ? `${viewBrief.name || 'Untitled campaign'}${monthsRangeLabel(viewBrief.start, viewBrief.end) ? ` · ${monthsRangeLabel(viewBrief.start, viewBrief.end)}` : ''}`
+                  : 'Recommended plan'}</h2>
+                {viewingSaved ? <div className="cap">SAVED PLAN - READ ONLY</div> : <DemoCap />}
               </div>
               <div className="metrics">
                 {plan.metrics.map((m) => (
@@ -825,15 +1109,60 @@ export default function App() {
                 </a>
               </div>
               <div className="secondary">
-                <button type="button" className="ghost" onClick={savePlan}>
-                  Save plan
-                </button>
-                <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-                  Download PDF
-                </button>
-                <button type="button" className="ghost" onClick={reset}>
-                  Create another scenario
-                </button>
+                {viewingSaved ? (
+                  <>
+                    {justSavedId === savedEntry?.id && (
+                      <button type="button" className="ghost saved" disabled>
+                        <IconCheck />
+                        Saved
+                      </button>
+                    )}
+                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                      <IconDownload />
+                      Download PDF
+                    </button>
+                    <button type="button" className="ghost" onClick={reset}>
+                      <IconPlus />
+                      Create another scenario
+                    </button>
+                    <button type="button" className="ghost" onClick={() => go('plans')}>
+                      <IconBack />
+                      View all plans
+                    </button>
+                  </>
+                ) : editingSaved ? (
+                  <>
+                    {editsNotGenerated && (
+                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
+                    )}
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                      <IconSave />
+                      Save changes
+                    </button>
+                    <button type="button" className="ghost" onClick={cancelEditSaved}>
+                      <IconCancel />
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {editsNotGenerated && (
+                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
+                    )}
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                      <IconSave />
+                      Save plan
+                    </button>
+                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                      <IconDownload />
+                      Download PDF
+                    </button>
+                    <button type="button" className="ghost" onClick={reset}>
+                      <IconPlus />
+                      Create another scenario
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -875,8 +1204,12 @@ export default function App() {
                 return (
                   <div className="plancard" key={sp.id}>
                     <div className="pc-main">
-                      <b>{sp.brief.name || 'Untitled campaign'}</b>
+                      <b>
+                        {sp.brief.name || 'Untitled campaign'}
+                        {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
+                      </b>
                       <div className="chips">
+                        {campaignEnded(sp.brief.end) && <span className="chip soft">Expired</span>}
                         {objLabels && <span className="chip">{objLabels}</span>}
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
@@ -896,8 +1229,10 @@ export default function App() {
                     <div className="pc-actions">
                       <button type="button" className="btn" onClick={() => openPlan(sp)}>
                         Open plan
+                        <IconOpen />
                       </button>
-                      <button type="button" className="ghost" onClick={() => deletePlan(sp.id)}>
+                      <button type="button" className="ghost" onClick={() => setDeleteTarget(sp)}>
+                        <IconTrash />
                         Delete
                       </button>
                     </div>
@@ -915,7 +1250,7 @@ export default function App() {
             <h2>Sign in to Compass</h2>
             <DemoCap />
           </div>
-          <p className="pagesub">Save your plans and pick them up on any device.</p>
+          <p className="pagesub">Save your plans and pick up where you left off.</p>
           <div className="ssolist">
             <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
               <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
@@ -1004,6 +1339,48 @@ export default function App() {
         &middot; Design concept - scenario, figures and rationale are
         illustrative, adapted from the Compass brief
       </footer>
+
+      {confirmFill && (
+        <ConfirmDialog
+          title="Replace your answers?"
+          body="Replace the answers you have already given with the example brief?"
+          confirmLabel="Replace with example"
+          cancelLabel="Keep my answers"
+          onConfirm={() => fillDemo(true)}
+          onCancel={() => setConfirmFill(false)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete this saved plan?"
+          body={`"${deleteTarget.brief.name || 'Untitled campaign'}" will be permanently deleted. This cannot be undone.`}
+          confirmLabel="Delete plan"
+          cancelLabel="Keep plan"
+          onConfirm={() => {
+            deletePlan(deleteTarget.id);
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {openTarget && (
+        <ConfirmDialog
+          title={openTarget.reason === 'edit' ? 'Discard unsaved changes?' : openTarget.reason === 'unsaved' ? 'Replace your current plan?' : 'Replace your draft?'}
+          body={
+            openTarget.reason === 'edit'
+              ? 'Opening this saved plan will discard the changes you have not saved.'
+              : openTarget.reason === 'unsaved'
+                ? 'Your current plan has not been saved. Replace it with this saved plan?'
+                : 'Replace your current draft with this saved plan? Any answers you have not saved will be lost.'
+          }
+          confirmLabel="Open plan"
+          cancelLabel={openTarget.reason === 'edit' ? 'Keep editing' : openTarget.reason === 'unsaved' ? 'Keep my plan' : 'Keep my draft'}
+          onConfirm={() => openPlan(openTarget.entry, true)}
+          onCancel={() => setOpenTarget(null)}
+        />
+      )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>
