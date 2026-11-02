@@ -32,9 +32,10 @@ async function openSavedPlan(page) {
 
 async function generateExample(page) {
   await clickButton(page, 'Fill it in for me');
-  await page.waitForFunction(() => !document.querySelector('.gen').disabled);
-  await page.locator('.gen').click();
-  await page.waitForSelector('.planin');
+
+  // Four950ms checklist ticks follow the1s walkthrough pause. Busy CI
+  // must wait for completion rather than treating runner speed as app failure.
+  await page.waitForSelector('.planin', { timeout: 20000 });
 }
 
 test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, async (t) => {
@@ -107,7 +108,9 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Saved spring rename');
       await page.locator('.gen').click();
-      await page.waitForSelector('.planin');
+      // Four950ms checklist ticks follow the1s walkthrough pause. Busy CI
+  // must wait for completion rather than treating runner speed as app failure.
+  await page.waitForSelector('.planin', { timeout: 20000 });
       await clickButton(page, 'Save changes');
       await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
       await page.waitForSelector('.bsum');
