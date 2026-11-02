@@ -186,6 +186,23 @@ interface SavedPlan {
 // plans across devices need sign-in + database - not built yet.
 const PLANS_KEY = 'compass-saved-plans';
 
+const AUTH_DRAFT_STAGES: Stage[] = ['empty', 'filling', 'gate', 'plan'];
+
+function isAuthDraft(
+  value: unknown,
+): value is { brief: Brief; submittedBrief: Brief | null; budgetText: string; stage: Stage; ts: number } {
+  if (value === null || typeof value !== 'object') return false;
+  const s = value as Record<string, unknown>;
+  return (
+    isBrief(s.brief) &&
+    (s.submittedBrief === null || isBrief(s.submittedBrief)) &&
+    typeof s.budgetText === 'string' &&
+    AUTH_DRAFT_STAGES.includes(s.stage as Stage) &&
+    typeof s.ts === 'number' &&
+    Number.isFinite(s.ts)
+  );
+}
+
 function isBrief(value: unknown): value is Brief {
   if (value === null || typeof value !== 'object') return false;
   const b = value as Record<string, unknown>;
@@ -355,8 +372,8 @@ export default function App() {
       const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
       if (!raw) return;
       window.localStorage.removeItem(AUTH_DRAFT_KEY);
-      const snap = JSON.parse(raw) as { brief: Brief; submittedBrief: Brief | null; budgetText: string; stage: Stage; ts: number };
-      if (Date.now() - snap.ts > 60 * 60 * 1000) return;
+      const snap: unknown = JSON.parse(raw);
+      if (!isAuthDraft(snap) || Date.now() - snap.ts > 60 * 60 * 1000) return;
       setBrief(snap.brief);
       setSubmittedBrief(snap.submittedBrief);
       setBudgetText(snap.budgetText);
@@ -384,6 +401,13 @@ export default function App() {
   useEffect(() => {
     if (stage === 'gate' && authEmail) setStage('plan');
   }, [stage, authEmail]);
+
+  // The email link does not leave the page, so keep the stashed draft current
+  // while a sign-in link is pending; otherwise the restore would lose edits.
+  useEffect(() => {
+    if (magicLinkTo) stashAuthDraft();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [magicLinkTo, brief, submittedBrief, budgetText, stage]);
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
@@ -745,6 +769,9 @@ export default function App() {
 
   async function signOut() {
     await supabase.auth.signOut();
+    setAuthEmail(null);
+    // A signed-out visitor should not keep seeing a gated plan.
+    if (stage === 'plan') setStage('gate');
     setMagicLinkTo(null);
     showToast('Signed out');
   }
