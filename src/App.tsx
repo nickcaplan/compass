@@ -184,6 +184,16 @@ type Stage = 'empty' | 'filling' | 'generating' | 'gate' | 'plan';
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
 type Page = 'planner' | 'plans' | 'signin' | 'pricing';
+const PAGE_ROUTES: Record<Page, string> = { planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing' };
+function pageFromUrl(): Page {
+  return (Object.keys(PAGE_ROUTES) as Page[]).find(page => PAGE_ROUTES[page] === window.location.hash) ?? 'planner';
+}
+function writePageUrl(page: Page, replace = false) {
+  const url = new URL(window.location.href);
+  url.hash = PAGE_ROUTES[page];
+  window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
+}
+
 
 interface SavedPlan {
   id: string;
@@ -330,7 +340,15 @@ export default function App() {
   const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
-  const [page, setPage] = useState<Page>('planner');
+  const [page, setPage] = useState<Page>(pageFromUrl);
+  useEffect(() => {
+    const syncPage = () => { setPage(pageFromUrl()); window.scrollTo(0, 0); };
+    window.addEventListener('popstate', syncPage);
+    window.addEventListener('hashchange', syncPage);
+    // Leave OAuth fragments intact for the auth client to consume.
+    if (!window.location.hash) writePageUrl(pageFromUrl(), true);
+    return () => { window.removeEventListener('popstate', syncPage); window.removeEventListener('hashchange', syncPage); };
+  }, []);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [profileName, setProfileName] = useState('');
@@ -396,6 +414,8 @@ export default function App() {
     }
   }
   function restoreAuthDraft() {
+    // An explicit bookmarked page wins over an older pending auth draft.
+    if (pageFromUrl() !== 'planner') return;
     try {
       const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
       if (!raw) return;
@@ -416,6 +436,7 @@ export default function App() {
       // generated plan available after the sign-in round trip.
       setStage(snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage);
       setPage('planner');
+      writePageUrl('planner', true);
     } catch {
       /* corrupted or unavailable storage */
     }
@@ -760,6 +781,7 @@ export default function App() {
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
+    writePageUrl('planner');
     window.scrollTo(0, 0);
   }
 
@@ -872,6 +894,7 @@ export default function App() {
   function go(p: Page) {
     window.clearTimeout(toastTimer.current);
     setToast(null);
+    if (pageFromUrl() !== p || window.location.hash !== PAGE_ROUTES[p]) writePageUrl(p);
     setPage(p);
     window.scrollTo(0, 0);
   }
