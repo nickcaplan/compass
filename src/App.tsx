@@ -1116,7 +1116,7 @@ export default function App() {
                     {editsNotGenerated && (
                       <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
                     )}
-                    <button type="button" className="btn" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save changes
                     </button>
@@ -1130,7 +1130,7 @@ export default function App() {
                     {editsNotGenerated && (
                       <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
                     )}
-                    <button type="button" className="btn" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save plan
                     </button>
