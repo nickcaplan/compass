@@ -245,7 +245,7 @@ input.ctl{color:var(--text)}
   .form{position:static}
 }
 .only-m{display:none}
-@media (max-width:980px){
+@media (max-width:1199px){
   .only-d{display:none}
   .only-m{display:inline}
   .plan{padding:20px 16px;min-height:0}
