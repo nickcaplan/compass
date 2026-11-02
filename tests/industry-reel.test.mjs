@@ -20,7 +20,7 @@ async function visibleIndustry(page) {
   });
 }
 
-test('industry reel settles in two seconds and never blocks interaction', { timeout: 60000 }, async () => {
+test('industry reel settles in 2.6 seconds and never blocks interaction', { timeout: 60000 }, async () => {
   const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
   let browser;
   try {
@@ -47,10 +47,10 @@ test('industry reel settles in two seconds and never blocks interaction', { time
         const a = e.getAnimations()[0]; a.pause(); a.currentTime = 650;
         return a.effect.getTiming().duration;
       });
-      assert.equal(animation, 2000);
+      assert.equal(animation, 2600);
       await page.locator('#f-name').fill('Typing during the spin');
       assert.equal(await page.$eval('#f-name', e => e.value), 'Typing during the spin');
-      await page.$eval('.industry-reel-track', e => e.getAnimations()[0].currentTime = 2000);
+      await page.$eval('.industry-reel-track', e => e.getAnimations()[0].currentTime = 2600);
       assert.deepEqual(await page.$eval('.hero', e => e.getBoundingClientRect().toJSON()), before);
       assert.equal(await visibleIndustry(page), 'Life sciences');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
