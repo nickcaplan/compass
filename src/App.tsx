@@ -403,8 +403,17 @@ export default function App() {
   // so the in-progress brief and generated plan are stashed on this device
   // first and restored when the user lands back. Expires after an hour.
   const AUTH_DRAFT_KEY = 'compass-auth-draft';
+  const latestPlanner = useRef({ brief, submittedBrief, savedEntry, budgetText, stage });
+  latestPlanner.current = { brief, submittedBrief, savedEntry, budgetText, stage };
+  function hasPlannerWork() {
+    const current = latestPlanner.current;
+    return current.stage !== 'empty' || current.submittedBrief !== null || current.savedEntry !== null ||
+      answeredCount(current.brief) > 0 || current.brief.name.trim() !== '' || current.budgetText.trim() !== '' ||
+      current.brief.start !== '' || current.brief.end !== '';
+  }
   function stashAuthDraft() {
     try {
+      if (!hasPlannerWork() && window.localStorage.getItem(AUTH_DRAFT_KEY)) return;
       const snap = {
         brief,
         submittedBrief,
@@ -418,9 +427,10 @@ export default function App() {
       /* private mode */
     }
   }
-  function restoreAuthDraft() {
+  function restoreAuthDraft(allowSignIn = false) {
     // An explicit bookmarked page wins over an older pending auth draft.
-    if (pageFromUrl() !== 'planner' && !recoveringPassword) return;
+    if (!allowSignIn && pageFromUrl() !== 'planner' && !recoveringPassword) return;
+    if (hasPlannerWork()) return;
     try {
       const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
       if (!raw) return;
@@ -856,7 +866,7 @@ export default function App() {
           </button>
         </div>
         <div className="divider"><span>or</span></div></>}
-        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={stashAuthDraft} onAuthenticated={user => { applyAuthUser(user); setRecoveringPassword(false); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
+        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={stashAuthDraft} onAuthenticated={user => { restoreAuthDraft(true); applyAuthUser(user); setRecoveringPassword(false); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
       </>
     );
   }
