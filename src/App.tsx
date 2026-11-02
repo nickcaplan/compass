@@ -406,7 +406,6 @@ export default function App() {
       if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') &&
           loadPlans().some((p) => p.id === entry.id)) {
         setSavedEntry({ id: entry.id, mode: entry.mode });
-        if (entry.mode === 'view') setPlanSavedId(entry.id);
       }
       setBrief(snap.brief);
       setSubmittedBrief(snap.submittedBrief);
