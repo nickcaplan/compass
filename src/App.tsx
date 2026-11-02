@@ -908,17 +908,24 @@ export default function App() {
           </button>
         </div>
         <div className="divider"><span>or</span></div></>}
-        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={stashAuthDraft} onAuthenticated={user => { restoreAuthDraft(true); applyAuthUser(user); setRecoveringPassword(false); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
+        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={stashAuthDraft} onAuthenticated={user => { restoreAuthDraft(true); applyAuthUser(user); setRecoveringPassword(false); setAuthNotice(null); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
       </>
     );
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    let failed = false;
+    try {
+      const { error } = await supabase.auth.signOut();
+      failed = Boolean(error);
+    } catch {
+      failed = true;
+    }
     applyAuthUser(null);
+    setAuthNotice(null);
     // A signed-out visitor should not keep seeing a gated plan.
     if (stage === 'plan') setStage('gate');
-    showToast('Signed out');
+    showToast(failed ? 'Sign-out encountered an error. Other sessions may still be active.' : 'Signed out');
   }
 
   function go(p: Page) {
