@@ -314,8 +314,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('planner');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
-  const [planSavedId, setPlanSavedId] = useState<string | null>(null);
-  const [editSavedId, setEditSavedId] = useState<string | null>(null);
+  const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
@@ -515,7 +514,6 @@ export default function App() {
     planRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     if (count < 6) return;
     clearCue();
-    setPlanSavedId(null);
     setSubmittedBrief(brief);
     setHasGenerated(true);
     setStage('generating');
@@ -531,8 +529,7 @@ export default function App() {
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
-    setPlanSavedId(null);
-    setEditSavedId(null);
+    setJustSavedId(null);
   }
 
   function reset() {
@@ -564,13 +561,12 @@ export default function App() {
       );
       if (persist(updated)) {
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
-        setEditSavedId(savedEntry.id);
+        setJustSavedId(savedEntry.id);
       } else {
         showToast('Could not save - browser storage is unavailable');
       }
       return;
     }
-    if (planSavedId !== null) return;
     const entry: SavedPlan = {
       id: `${Date.now()}`,
       savedAt: new Date().toISOString(),
@@ -583,7 +579,8 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
-      setPlanSavedId(entry.id);
+      setSavedEntry({ id: entry.id, mode: 'view' });
+      setJustSavedId(entry.id);
     } else {
       showToast('Could not save - browser storage is unavailable');
     }
@@ -596,13 +593,11 @@ export default function App() {
     }
     if (savedEntry?.id === id) {
       clearPlannerState();
-    } else if (planSavedId === id) {
-      setPlanSavedId(null);
     }
   }
 
   function editSavedPlan() {
-    setEditSavedId(null);
+    setJustSavedId(null);
     setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
   }
 
@@ -627,11 +622,9 @@ export default function App() {
     const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
     if (!force && !alreadyOpen) {
       const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-      const unsavedPlan = stage === 'plan' && savedEntry === null && planSavedId === null;
-      const staleEdits =
-        stage === 'plan' && savedEntry === null && planSavedId !== null && submittedBrief !== null && brief !== submittedBrief;
+      const unsavedPlan = stage === 'plan' && savedEntry === null;
       const unsavedEdit = savedEntry?.mode === 'edit';
-      const reason = unsavedEdit || staleEdits ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
+      const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
       if (reason !== null) {
         setOpenTarget({ entry, reason });
         return;
@@ -643,7 +636,7 @@ export default function App() {
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
     setStage('plan');
     setSavedEntry({ id: entry.id, mode: 'view' });
-    setEditSavedId(null);
+    setJustSavedId(null);
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
@@ -755,7 +748,7 @@ export default function App() {
               <div className="viewactions">
                 <button type="button" className="ghost" onClick={() => go('plans')}>
                   <IconBack />
-                  Back to My plans
+                  View all plans
                 </button>
               </div>
             </>
@@ -1118,7 +1111,7 @@ export default function App() {
               <div className="secondary">
                 {viewingSaved ? (
                   <>
-                    {editSavedId === savedEntry?.id && (
+                    {justSavedId === savedEntry?.id && (
                       <button type="button" className="ghost saved" disabled>
                         <IconCheck />
                         Saved
@@ -1134,7 +1127,7 @@ export default function App() {
                     </button>
                     <button type="button" className="ghost" onClick={() => go('plans')}>
                       <IconBack />
-                      Back to My plans
+                      View all plans
                     </button>
                   </>
                 ) : editingSaved ? (
@@ -1156,23 +1149,9 @@ export default function App() {
                     {editsNotGenerated && (
                       <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
                     )}
-                    <button
-                      type="button"
-                      className={planSavedId !== null ? 'ghost saved' : 'ghost lead'}
-                      onClick={savePlan}
-                      disabled={planSavedId !== null || editsNotGenerated}
-                    >
-                      {planSavedId !== null ? (
-                        <>
-                          <IconCheck />
-                          Saved
-                        </>
-                      ) : (
-                        <>
-                          <IconSave />
-                          Save plan
-                        </>
-                      )}
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                      <IconSave />
+                      Save plan
                     </button>
                     <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
                       <IconDownload />
