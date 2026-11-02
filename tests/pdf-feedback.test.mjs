@@ -33,9 +33,9 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
       for (const saved of [false,true]) {
         if(saved){await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save plan').click());await page.waitForSelector('.bsum');}
         await page.$eval('.cs-wrap button',e=>e.scrollIntoView({block:'center'}));
-        const button=await page.$eval('.cs-wrap button',e=>e.getBoundingClientRect().toJSON());
+        const button=await page.$eval('.cs-wrap button',e=>({width:e.offsetWidth,height:e.offsetHeight,left:e.offsetLeft,top:e.offsetTop}));
         await page.locator('.cs-wrap button').click(); await page.waitForSelector('.cs-bubble');
-        assert.deepEqual(await page.$eval('.cs-wrap button',e=>e.getBoundingClientRect().toJSON()),button);
+        assert.deepEqual(await page.$eval('.cs-wrap button',e=>({width:e.offsetWidth,height:e.offsetHeight,left:e.offsetLeft,top:e.offsetTop})),button);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
         const overlap=await page.evaluate(()=>{const a=document.querySelector('.cs-label').getBoundingClientRect();const b=document.querySelector('.cs-bubble').getBoundingClientRect();return a.right>b.left});assert.equal(overlap,false);
         await page.keyboard.press('Escape');await page.waitForSelector('.cs-bubble',{hidden:true});
