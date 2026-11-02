@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import logoUrl from './assets/thh-logo.svg';
@@ -104,7 +104,7 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const cancelCb = useRef(onCancel);
-  cancelCb.current = onCancel;
+  useLayoutEffect(() => { cancelCb.current = onCancel; }, [onCancel]);
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cancelRef.current?.focus();
@@ -375,9 +375,13 @@ export default function App() {
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
   const canViewPlan = Boolean(authEmail && profileComplete);
 
-  function applyAuthUser(user: User | null) {
+  const profileSource = useRef<string | null>(null);
+  function applyAuthUser(user: User | null, reseed = false) {
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
+    const source = user?.id ?? null;
+    if (user && profileSource.current === source && !reseed) return;
+    profileSource.current = source;
     setProfileName(typeof user?.user_metadata.full_name === 'string' ? user.user_metadata.full_name :
       typeof user?.user_metadata.name === 'string' ? user.user_metadata.name : '');
     setProfileCompany(typeof user?.user_metadata.company === 'string' ? user.user_metadata.company : '');
@@ -430,7 +434,9 @@ export default function App() {
     }
   }
   const currentDraftState = useRef({ brief, budgetText, stage });
-  currentDraftState.current = { brief, budgetText, stage };
+  useLayoutEffect(() => {
+    currentDraftState.current = { brief, budgetText, stage };
+  }, [brief, budgetText, stage]);
   const mayRestoreAuthDraft = useRef(false);
   function restoreAuthDraft() {
     // An explicit bookmarked page wins over an older pending auth draft.
@@ -871,7 +877,7 @@ export default function App() {
         setProfileError('Could not save your details. Please try again.');
         return;
       }
-      applyAuthUser(data.user);
+      applyAuthUser(data.user, true);
     } catch {
       setProfileError('Could not save your details. Please try again.');
     } finally {
