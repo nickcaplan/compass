@@ -415,13 +415,14 @@ export default function App() {
   }
   const currentDraftState = useRef({ brief, budgetText, stage });
   currentDraftState.current = { brief, budgetText, stage };
+  const mayRestoreAuthDraft = useRef(false);
   function restoreAuthDraft() {
     // An explicit bookmarked page wins over an older pending auth draft.
-    if (pageFromUrl() !== 'planner') return;
+    if (!mayRestoreAuthDraft.current || pageFromUrl() !== 'planner') return;
     try {
       // Never replace work entered after an explicit non-planner landing.
       const current = currentDraftState.current;
-      if (answeredCount(current.brief) > 0 || current.brief.name.trim() || current.budgetText.trim() || current.stage !== 'empty') {
+      if (answeredCount(current.brief) > 0 || current.brief.name.trim() || current.brief.start || current.brief.end || current.budgetText.trim() || current.stage !== 'empty') {
         window.localStorage.removeItem(AUTH_DRAFT_KEY);
         return;
       }
@@ -453,6 +454,9 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       applyAuthUser(data.session?.user ?? null);
+      // Only a tab loaded with a session may consume the shared snapshot.
+      // A later cross-tab SIGNED_IN must leave it for the callback tab.
+      mayRestoreAuthDraft.current = Boolean(data.session);
       if (data.session) restoreAuthDraft();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
