@@ -562,6 +562,8 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     assert.equal(kept.backups, null);
 
     // Saving is blocked while the unreadable original cannot be backed up.
+    await signInTestUser(blocked);
+    await blocked.goto('http://127.0.0.1:4174/?demo=1');
     await clickButton(blocked, 'Planner');
     await generateExample(blocked);
     await clickButton(blocked, 'Save plan');
@@ -571,6 +573,53 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     assert.equal(afterBlockedSave, '{still here');
     await blocked.close();
     await blockedContext.close();
+  } finally {
+    if (browser) await browser.close();
+    server.kill();
+  }
+});
+
+test('signed-out visitor is asked to log in before the plan reveals, brief kept', { timeout: 90000 }, async () => {
+  const server = spawn(process.execPath, [
+    'node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1',
+    '--port', '4177', '--strictPort',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let browser;
+  try {
+    const deadline = Date.now() + 10000;
+    let ready = false;
+    while (Date.now() < deadline && server.exitCode === null) {
+      try {
+        const response = await fetch('http://127.0.0.1:4177', { signal: AbortSignal.timeout(1000) });
+        await response.body?.cancel();
+        if (response.ok) { ready = true; break; }
+      } catch {
+        // Retry only while the preview is starting, within the deadline.
+      }
+      await delay(100);
+    }
+    assert.ok(ready, 'Preview did not become ready');
+    browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    page.setDefaultTimeout(15000);
+    await page.setViewport({ width: 1440, height: 900 });
+    await page.goto('http://127.0.0.1:4177/?demo=1');
+
+    // Generate without a session: the gate asks for log-in and hides the plan.
+    await clickButton(page, 'Fill it in for me');
+    await page.waitForFunction(() => {
+      const h = [...document.querySelectorAll('.planin h2')].find((el) => el.textContent.trim() === 'Your plan is ready');
+      return Boolean(h);
+    });
+    assert.match(await page.$eval('.planin', (el) => el.textContent), /Log in to see it/);
+    assert.equal(await page.$('.planin .metrics'), null);
+
+    // The brief survives behind the gate: Back to my brief returns the answers.
+    await clickButton(page, 'Back to my brief');
+    await page.waitForSelector('#f-name');
+    assert.notEqual(await page.$eval('#f-name', (input) => input.value), '');
+    await context.close();
   } finally {
     if (browser) await browser.close();
     server.kill();
