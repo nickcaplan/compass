@@ -422,7 +422,7 @@ function recoverCorruptPlans(): void {
   } catch {
     parsed = undefined;
   }
-  if (Array.isArray(parsed)) return;
+  if (Array.isArray(parsed) && parsed.every((p) => p !== null && typeof p === 'object' && typeof p.id === 'string' && typeof p.savedAt === 'string' && isBrief(p.brief))) return;
   try {
     // Every unreadable payload is kept: append to the backup list so a newer
     // unreadable payload is never silently discarded behind an older backup.

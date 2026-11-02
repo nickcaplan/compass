@@ -68,3 +68,16 @@ for (const raw of ['broken JSON', '{"unexpected":true}', '[{"id":"unreadable"}]'
     assert.equal(data.has('meta'), false);
   });
 }
+
+const recovery = stripTypeScriptTypes(source.slice(source.indexOf('function recoverCorruptPlans()'), source.indexOf('function loadPlans()')));
+for (const raw of ['[null]', '[{"id":"incomplete"}]', '[{"id":"partial","savedAt":"now","brief":{}}]']) {
+  test(`structurally invalid arrays are backed up before any seed or mutation: ${raw}`, () => {
+    const data = new Map([['plans',raw]]);
+    const window={localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)}};
+    const run=new Function('window','PLANS_KEY','PLANS_CORRUPT_KEY','isBrief',`let plansRecovered=false,plansLoadFailed=false;${recovery};recoverCorruptPlans();return {plansRecovered,plansLoadFailed}`);
+    assert.deepEqual(run(window,'plans','backup',validateBrief),{plansRecovered:true,plansLoadFailed:false});
+    assert.equal(data.has('plans'),false);assert.equal(JSON.parse(data.get('backup'))[0].payload,raw);
+    data.set('plans',raw);window.localStorage.setItem=()=>{throw Error('quota')};
+    assert.deepEqual(run(window,'plans','backup',validateBrief),{plansRecovered:false,plansLoadFailed:true});assert.equal(data.get('plans'),raw);
+  });
+}
