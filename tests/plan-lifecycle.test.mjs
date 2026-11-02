@@ -73,6 +73,33 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await page.goto('http://127.0.0.1:4173');
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
+    await t.test('coming-soon PDF feedback is local and dismissible', async () => {
+      const pdf = await page.$('.cs-wrap button');
+      assert.ok(pdf);
+      await pdf.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForSelector('.cs-bubble');
+      assert.equal(await page.$('.toast'), null);
+      assert.match(await page.$eval('.cs-status', (el) => el.textContent), /Soon.*building/);
+      assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), 'Download PDF');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.cs-bubble', { hidden: true });
+      await page.keyboard.press('Space');
+      await page.waitForSelector('.cs-bubble');
+      await page.keyboard.press('Tab');
+      await page.waitForSelector('.cs-bubble', { hidden: true });
+      await pdf.click();
+      await page.waitForSelector('.cs-bubble');
+      await page.locator('h1').click();
+      await page.waitForSelector('.cs-bubble', { hidden: true });
+      await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+      await pdf.click();
+      await page.waitForSelector('.cs-bubble');
+      assert.equal(await page.$eval('.cs-bubble', (el) => getComputedStyle(el).animationName), 'none');
+      await page.waitForSelector('.cs-bubble', { hidden: true, timeout: 4500 });
+      await page.emulateMediaFeatures([]);
+    });
+
     await clickButton(page, 'Save plan');
     await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
     await page.waitForSelector('.bsum');
