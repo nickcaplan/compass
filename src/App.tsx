@@ -211,6 +211,114 @@ function isBrief(value: unknown): value is Brief {
   );
 }
 
+// Demo seed plans: exactly two active and two past campaigns, hardcoded so a
+// first-time visitor can see a populated My plans. Dates are relative to
+// today so the seeds stay evergreen. Seeds merge once per device, keep stable
+// seed- ids, never overwrite or resurrect over the visitor's own plans, and
+// a deleted seed stays deleted. Bump SEED_VERSION and add entries to append
+// future seeds on top.
+const SEED_KEY = 'compass-seeded-plans';
+const SEED_VERSION = 1;
+
+function isoDaysFromNow(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function seedPlans(): SavedPlan[] {
+  return [
+    {
+      id: 'seed-active-1',
+      savedAt: '',
+      brief: {
+        name: 'UK Laboratory Procurement Campaign',
+        objectives: ['performance'],
+        kpis: ['Lead generation', 'Cost per lead'],
+        audiences: ['Procurement', 'Laboratory Manager'],
+        seniority: ['Manager', 'Senior Manager / Head'],
+        budget: 100000,
+        start: isoDaysFromNow(-14),
+        end: isoDaysFromNow(56),
+      },
+    },
+    {
+      id: 'seed-active-2',
+      savedAt: '',
+      brief: {
+        name: 'European Lab Automation Awareness Push',
+        objectives: ['awareness'],
+        kpis: ['Reach', 'Impressions'],
+        audiences: ['Scientist / Researcher', 'Laboratory Technician'],
+        seniority: ['Technician / Practitioner'],
+        budget: 45000,
+        start: isoDaysFromNow(7),
+        end: isoDaysFromNow(70),
+      },
+    },
+    {
+      id: 'seed-past-1',
+      savedAt: '',
+      brief: {
+        name: 'Quality and Compliance Enquiry Push',
+        objectives: ['performance'],
+        kpis: ['Enquiries'],
+        audiences: ['Quality / Compliance'],
+        seniority: ['Manager'],
+        budget: 75000,
+        start: isoDaysFromNow(-90),
+        end: isoDaysFromNow(-20),
+      },
+    },
+    {
+      id: 'seed-past-2',
+      savedAt: '',
+      brief: {
+        name: 'Global Reagent Launch Consideration',
+        objectives: ['consideration'],
+        kpis: ['Content downloads', 'Article engagement'],
+        audiences: ['R&D', 'Department Head'],
+        seniority: ['Director / Executive'],
+        budget: 60000,
+        start: isoDaysFromNow(-120),
+        end: isoDaysFromNow(-60),
+      },
+    },
+  ];
+}
+
+function ensureSeedPlans(): void {
+  try {
+    let applied: string[] = [];
+    const rawMeta = window.localStorage.getItem(SEED_KEY);
+    if (rawMeta !== null) {
+      try {
+        const meta: unknown = JSON.parse(rawMeta);
+        if (meta !== null && typeof meta === 'object' && Array.isArray((meta as { applied?: unknown }).applied)) {
+          applied = ((meta as { applied: unknown[] }).applied).filter((x): x is string => typeof x === 'string');
+        }
+      } catch {
+        applied = [];
+      }
+    }
+    const plans = loadPlans();
+    const existing = new Set(plans.map((p) => p.id));
+    const fresh = seedPlans().filter((seed) => !applied.includes(seed.id) && !existing.has(seed.id));
+    const room = 20 - plans.length;
+    const toAdd = fresh.slice(0, Math.max(0, room));
+    if (toAdd.length === 0) return;
+    const now = new Date().toISOString();
+    const stamped = toAdd.map((seed) => ({ ...seed, savedAt: now }));
+    window.localStorage.setItem(PLANS_KEY, JSON.stringify([...plans, ...stamped]));
+    window.localStorage.setItem(
+      SEED_KEY,
+      JSON.stringify({ version: SEED_VERSION, applied: [...applied, ...toAdd.map((seed) => seed.id)] }),
+    );
+  } catch {
+    // Storage unavailable - leave everything as it is.
+  }
+}
+
 function loadPlans(): SavedPlan[] {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
@@ -312,7 +420,10 @@ export default function App() {
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
-  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
+    ensureSeedPlans();
+    return loadPlans();
+  });
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);

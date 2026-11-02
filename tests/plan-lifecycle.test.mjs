@@ -264,3 +264,101 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     server.kill();
   }
 });
+
+test('seeded demo plans appear for a fresh visitor, stay deleted, and never override user plans', { timeout: 90000 }, async () => {
+  const server = spawn(process.execPath, [
+    'node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1',
+    '--port', '4175', '--strictPort',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let browser;
+  let serverOutput = '';
+  let serverErrors = '';
+  server.stdout.on('data', (chunk) => { serverOutput += chunk.toString(); });
+  server.stderr.on('data', (chunk) => { serverErrors += chunk.toString(); });
+  server.on('error', (error) => { serverErrors += error.message; });
+  try {
+    const deadline = Date.now() + 10000;
+    let ready = false;
+    while (Date.now() < deadline && server.exitCode === null) {
+      try {
+        const response = await fetch('http://127.0.0.1:4175', { signal: AbortSignal.timeout(1000) });
+        await response.body?.cancel();
+        if (response.ok) {
+          ready = true;
+          break;
+        }
+      } catch {
+        // Retry only while the preview is starting, within the deadline.
+      }
+      await delay(100);
+    }
+    assert.ok(ready, `Preview did not become ready: ${serverOutput}\n${serverErrors}`);
+    browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    page.setDefaultTimeout(10000);
+    await page.setViewport({ width: 1440, height: 900 });
+
+    const cardNames = () => page.$$eval('.plancard b', (els) => els.map((e) => e.textContent));
+    const expiredCount = () => page.$$eval('.chip', (els) => els.filter((e) => e.textContent.trim() === 'Expired').length);
+
+    // Fresh visitor: exactly the four seeds, two of them Expired.
+    await page.goto('http://127.0.0.1:4175');
+    await clickButton(page, 'My plans');
+    await page.waitForSelector('.plancard');
+    assert.equal((await cardNames()).length, 4);
+    assert.equal(await expiredCount(), 2);
+    const seeded = await page.evaluate(() => ({
+      plans: JSON.parse(localStorage.getItem('compass-saved-plans')),
+      meta: JSON.parse(localStorage.getItem('compass-seeded-plans')),
+    }));
+    assert.deepEqual(seeded.plans.map((p) => p.id), ['seed-active-1', 'seed-active-2', 'seed-past-1', 'seed-past-2']);
+    assert.deepEqual([...seeded.meta.applied].sort(), ['seed-active-1', 'seed-active-2', 'seed-past-1', 'seed-past-2']);
+    for (const plan of seeded.plans) {
+      assert.ok(plan.savedAt, 'seed has a savedAt');
+    }
+
+    // A reload neither duplicates nor reshuffles the seeds.
+    await page.reload();
+    await clickButton(page, 'My plans');
+    await page.waitForSelector('.plancard');
+    assert.equal((await cardNames()).length, 4);
+
+    // The visitor's own plan lands first and is never overwritten by seeds.
+    await clickButton(page, 'Plan a campaign');
+    await generateExample(page);
+    const userName = await page.$eval('#f-name', (input) => input.value);
+    await clickButton(page, 'Save plan');
+    await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
+    await page.reload();
+    await clickButton(page, 'My plans');
+    await page.waitForSelector('.plancard');
+    const names = await cardNames();
+    assert.equal(names.length, 5);
+    assert.ok(names[0].includes(userName), `user plan first: ${names[0]}`);
+
+    // Deleting a seed sticks: it is not re-added on reload.
+    const deleteHandle = await page.evaluateHandle(() =>
+      [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes('Global Reagent Launch'))?.querySelector('button.ghost'));
+    const deleteButton = deleteHandle.asElement();
+    assert.ok(deleteButton, 'seed card delete button not found');
+    await deleteButton.click();
+    await deleteHandle.dispose();
+    await page.waitForSelector('[role="alertdialog"]');
+    await page.locator('.confirm .btn').click();
+    await page.waitForSelector('[role="alertdialog"]', { hidden: true });
+    await page.reload();
+    await clickButton(page, 'My plans');
+    await page.waitForSelector('.plancard');
+    assert.equal((await cardNames()).length, 4);
+    const afterDelete = await page.evaluate(() => ({
+      plans: JSON.parse(localStorage.getItem('compass-saved-plans')),
+      meta: JSON.parse(localStorage.getItem('compass-seeded-plans')),
+    }));
+    assert.ok(!afterDelete.plans.some((p) => p.id === 'seed-past-2'));
+    assert.ok(afterDelete.meta.applied.includes('seed-past-2'), 'deleted seed stays in applied');
+  } finally {
+    if (browser) await browser.close();
+    server.kill();
+  }
+});
