@@ -439,7 +439,20 @@ function recoverCorruptPlans(): void {
     backups.push({ foundAt: new Date().toISOString(), payload: raw });
     window.localStorage.setItem(PLANS_CORRUPT_KEY, JSON.stringify(backups));
     // The original is only reset once the unreadable copy is safely stored.
-    window.localStorage.removeItem(PLANS_KEY);
+    // Entries that are still valid are kept: one unreadable entry must not
+    // hide good plans from My plans (the full original stays in the backup).
+    const valid = Array.isArray(parsed)
+      ? parsed.filter(
+          (p): p is SavedPlan =>
+            p !== null &&
+            typeof p === 'object' &&
+            typeof p.id === 'string' &&
+            typeof p.savedAt === 'string' &&
+            isBrief(p.brief),
+        )
+      : [];
+    if (valid.length > 0) window.localStorage.setItem(PLANS_KEY, JSON.stringify(valid));
+    else window.localStorage.removeItem(PLANS_KEY);
     plansRecovered = true;
   } catch {
     // The backup could not be written - leave the original payload untouched,
