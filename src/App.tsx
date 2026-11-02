@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import EmailAuth from './EmailAuth';
+
 import logoUrl from './assets/thh-logo.svg';
 
 const iconProps = {
@@ -182,6 +183,58 @@ import {
 
 type Stage = 'empty' | 'filling' | 'generating' | 'gate' | 'plan';
 
+function ComingSoonButton() {
+  const [notice, setNotice] = useState(0);
+  const wrap = useRef<HTMLSpanElement>(null);
+  const description = `pdf-coming-soon-${useId()}`;
+
+  useEffect(() => {
+    if (!notice) return;
+    // Repeated clicks renew the badge, wash and timer together without replacing the focused button.
+    wrap.current?.querySelector('button')?.getAnimations().forEach(animation => {
+      animation.currentTime = 0;
+      animation.play();
+    });
+    const dismiss = () => setNotice(0);
+    const timer = window.setTimeout(dismiss, 1000);
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !wrap.current?.contains(event.target)) dismiss();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dismiss();
+    };
+    const onFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !wrap.current?.contains(event.target)) dismiss();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('focusin', onFocus);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('focusin', onFocus);
+    };
+  }, [notice]);
+
+  return (
+    <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
+      <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
+        {notice > 0 && (
+          <span className="cs-bubble" id={description} key={notice}>
+            Coming soon
+          </span>
+        )}
+      </span>
+      <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
+        <span className="cs-label"><IconDownload />Download PDF</span>
+      </button>
+    </span>
+  );
+}
+
+
+
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
 type Page = 'planner' | 'plans' | 'signin' | 'pricing';
@@ -342,6 +395,7 @@ function IndustryReel() {
 }
 
 export default function App() {
+  const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
   const [budgetText, setBudgetText] = useState('');
@@ -493,6 +547,7 @@ export default function App() {
       // Draft restore stays on the getSession path so only the freshly loaded
       // tab consumes it; this tab keeps its in-memory brief.
       if (!session) {
+        mayRestoreAuthDraft.current = false;
         setRecoveringPassword(false);
         setStage((s) => (s === 'plan' ? 'gate' : s));
         setSavedEntry(null);
@@ -847,7 +902,7 @@ export default function App() {
     stashAuthDraft();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
     });
     if (error) showToast('Google sign-in failed - please try again');
   }
@@ -923,6 +978,7 @@ export default function App() {
     } catch {
       failed = true;
     }
+    mayRestoreAuthDraft.current = false;
     applyAuthUser(null);
     setAuthNotice(null);
     // A signed-out visitor should not keep seeing a gated plan.
@@ -1045,6 +1101,7 @@ export default function App() {
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
+          {demoMode && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
@@ -1054,6 +1111,7 @@ export default function App() {
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
+          </>}
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
@@ -1424,10 +1482,7 @@ export default function App() {
                         Saved
                       </button>
                     )}
-                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-                      <IconDownload />
-                      Download PDF
-                    </button>
+                    <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
                       Create another scenario
@@ -1460,10 +1515,7 @@ export default function App() {
                       <IconSave />
                       Save plan
                     </button>
-                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-                      <IconDownload />
-                      Download PDF
-                    </button>
+                    <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
                       Create another scenario
@@ -1631,7 +1683,7 @@ export default function App() {
         illustrative, adapted from the Compass brief
       </footer>
 
-      {confirmFill && (
+      {demoMode && confirmFill && (
         <ConfirmDialog
           title="Replace your answers?"
           body="Replace the answers you have already given with the example brief?"

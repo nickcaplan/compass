@@ -14,7 +14,7 @@ test('profile completion, failure, persistence, and existing-plan gate', {timeou
    const ctx=await browser.createBrowserContext();const p=await ctx.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});
    const click=label=>p.evaluate(l=>[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===l)?.click(),label);
    await p.evaluateOnNewDocument((theme)=>localStorage.setItem('compass-theme',theme),theme);
-   await p.goto(url);await p.waitForSelector('.themebtn');await click('Fill it in for me');await p.waitForFunction(()=>!document.querySelector('.gen').disabled);await p.locator('.gen').click();await p.waitForSelector('#f-gate-email');assert.equal(await p.$('.metrics'),null);
+   await p.goto(url+'?demo=1');await p.waitForSelector('.themebtn');await click('Fill it in for me');await p.waitForFunction(()=>!document.querySelector('.gen').disabled);await p.locator('.gen').click();await p.waitForSelector('#f-gate-email');assert.equal(await p.$('.metrics'),null);
    const brief=await p.evaluate(()=>({name:document.querySelector('#f-name').value,objectives:['awareness'],kpis:['Reach'],audiences:['Procurement'],seniority:['Manager'],budget:10000,start:'2026-12-01',end:'2027-02-01'}));
    await p.evaluate(brief=>localStorage.setItem('compass-saved-plans',JSON.stringify([{id:'existing',savedAt:'2026-11-01T12:00:00Z',brief}])),brief);
    await p.reload();await p.waitForSelector('.themebtn');await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('#f-gate-email');assert.equal(await p.$('.metrics'),null,'Anonymous saved plan must be gated');assert.equal(await p.$('#f-name'),null,'Saved brief remains read-only while gated');

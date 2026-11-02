@@ -41,7 +41,8 @@ test('industry reel settles in 2.6 seconds and never blocks interaction', { time
       const page = await browser.newPage();
       await page.setViewport({ width, height: 900 });
       await page.evaluateOnNewDocument(()=>localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify({access_token:'test',refresh_token:'test',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'walk-test',email:'walk@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Walk Test',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'}})));
-    await page.goto(previewUrl);
+    await page.goto(previewUrl+'?demo=1');
+
       await page.waitForSelector('.industry-reel-track');
       await page.evaluate(() => document.fonts.ready);
       const before = await page.$eval('.hero', e => e.getBoundingClientRect().toJSON());

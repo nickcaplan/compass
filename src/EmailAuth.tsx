@@ -21,11 +21,11 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
     setError(null); setNotice(null); setBusy(true); beforeEmail();
     try {
       if (activeMode === 'reset') {
-        const result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+        const result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
         if (result.error) { setError('Could not request a reset email. Please try again.'); return; }
         setNotice('If an account exists for that email, we have sent a reset link. Check your inbox and spam folder.');
       } else if (activeMode === 'signup') {
-        const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin } });
+        const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') } });
         if (result.error) { setError('Could not create your account. Try signing in if you already have one.'); return; }
         setPassword('');
         if (result.data.session) onAuthenticated(result.data.session.user);
