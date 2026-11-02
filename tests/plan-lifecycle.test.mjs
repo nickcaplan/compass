@@ -356,7 +356,8 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     assert.deepEqual(twice.backups.map((b) => b.payload), ['{not json', '["broken too"']);
 
     // When the backup write itself fails (quota/security), the original
-    // payload is left untouched and no recovery notice is shown.
+    // payload is left untouched, no misleading empty list is shown, an
+    // honest failure panel tells the visitor, and writes stay blocked.
     const blockedContext = await browser.createBrowserContext();
     const blocked = await blockedContext.newPage();
     blocked.setDefaultTimeout(10000);
@@ -371,15 +372,27 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     await blocked.evaluate(() => localStorage.setItem('compass-saved-plans', '{still here'));
     await blocked.reload();
     await clickButton(blocked, 'My plans');
-    await blocked.waitForSelector('.empty');
-    assert.equal(await blocked.$('.notice'), null);
+    await blocked.waitForSelector('[role="alert"]');
+    assert.match(await blocked.$eval('[role="alert"]', (n) => n.textContent), /could not be loaded safely/);
+    assert.equal(await blocked.$('.empty'), null);
+    assert.equal(await blocked.$('.plancard'), null);
     const kept = await blocked.evaluate(() => ({
       main: localStorage.getItem('compass-saved-plans'),
       backups: localStorage.getItem('compass-saved-plans-corrupt'),
     }));
     assert.equal(kept.main, '{still here');
     assert.equal(kept.backups, null);
+
+    // Saving is blocked while the unreadable original cannot be backed up.
+    await clickButton(blocked, 'Planner');
+    await generateExample(blocked);
+    await clickButton(blocked, 'Save plan');
+    await blocked.waitForSelector('.toast');
+    assert.match(await blocked.$eval('.toast', (n) => n.textContent), /Could not save/);
+    const afterBlockedSave = await blocked.evaluate(() => localStorage.getItem('compass-saved-plans'));
+    assert.equal(afterBlockedSave, '{still here');
     await blocked.close();
+    await blockedContext.close();
   } finally {
     if (browser) await browser.close();
     server.kill();

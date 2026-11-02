@@ -216,6 +216,10 @@ const PLANS_CORRUPT_KEY = 'compass-saved-plans-corrupt';
 // True once per session when unreadable saved plans were moved aside.
 let plansRecovered = false;
 
+// True when saved plans exist but could not be read AND could not be backed
+// up: writes that could overwrite the unreadable original must stay blocked.
+let plansLoadFailed = false;
+
 // A saved-plans payload that cannot be read at all (invalid JSON or not an
 // array) used to silently show an empty My plans. Append the unreadable copy
 // to a backup list and start a fresh list, so nothing is lost silently and
@@ -223,16 +227,23 @@ let plansRecovered = false;
 // the backup write succeeds; if storage fails, everything is left untouched
 // and no recovery is presented.
 function recoverCorruptPlans(): void {
+  let raw: string | null;
   try {
-    const raw = window.localStorage.getItem(PLANS_KEY);
-    if (raw === null) return;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      parsed = undefined;
-    }
-    if (Array.isArray(parsed)) return;
+    raw = window.localStorage.getItem(PLANS_KEY);
+  } catch {
+    // Storage itself cannot be read - block writes and tell the visitor.
+    plansLoadFailed = true;
+    return;
+  }
+  if (raw === null) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = undefined;
+  }
+  if (Array.isArray(parsed)) return;
+  try {
     // Every unreadable payload is kept: append to the backup list so a newer
     // unreadable payload is never silently discarded behind an older backup.
     const existing = window.localStorage.getItem(PLANS_CORRUPT_KEY);
@@ -247,11 +258,13 @@ function recoverCorruptPlans(): void {
     }
     backups.push({ foundAt: new Date().toISOString(), payload: raw });
     window.localStorage.setItem(PLANS_CORRUPT_KEY, JSON.stringify(backups));
+    // The original is only reset once the unreadable copy is safely stored.
     window.localStorage.removeItem(PLANS_KEY);
     plansRecovered = true;
   } catch {
-    // Storage unavailable or the backup write failed - leave the original
-    // payload untouched and do not present recovery as successful.
+    // The backup could not be written - leave the original payload untouched,
+    // block writes that could overwrite it, and show an honest failure state.
+    plansLoadFailed = true;
   }
 }
 
@@ -361,6 +374,7 @@ export default function App() {
     return loadPlans();
   });
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
+  const [storageFailed] = useState(() => plansLoadFailed);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -586,6 +600,7 @@ export default function App() {
   }
 
   function persist(plans: SavedPlan[]): boolean {
+    if (plansLoadFailed) return false;
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
     } catch {
@@ -1228,6 +1243,16 @@ export default function App() {
           <p className="pagesub">
             Plans you save land here so you can pick up where you left off.
           </p>
+          {storageFailed ? (
+            <div className="notice" role="alert">
+              <p>
+                Your saved plans could not be loaded safely on this device, so they have been left
+                untouched. Saving and deleting are unavailable until this browser's storage works
+                again.
+              </p>
+            </div>
+          ) : (
+            <>
           {storageRecovered && (
             <div className="notice" role="status">
               <p>Your previously saved plans could not be read on this device, so a fresh list was started.</p>
@@ -1296,6 +1321,8 @@ export default function App() {
                 );
               })}
             </div>
+          )}
+            </>
           )}
         </section>
       )}
