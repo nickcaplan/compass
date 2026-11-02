@@ -110,8 +110,9 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     // With a signed-in session, generation goes straight to the plan.
     await signInTestUser(page);
     await page.reload();
-    // The header reflects the signed-in account instead of a Sign in prompt.
-    await page.waitForFunction(() => document.querySelector('.signin')?.textContent?.trim() === 'test@example.com');
+    // The header reflects the signed-in account avatar instead of a Log in prompt.
+    await page.waitForFunction(() => document.querySelector('.signin')?.getAttribute('aria-label')?.includes('test@example.com'));
+    assert.equal(await page.$eval('.signin .avatar', (e) => e.textContent?.trim()), 'T');
 
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);

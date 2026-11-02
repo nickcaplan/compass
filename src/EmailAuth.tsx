@@ -26,10 +26,10 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         setNotice('If an account exists for that email, we have sent a reset link. Check your inbox and spam folder.');
       } else if (activeMode === 'signup') {
         const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') } });
-        if (result.error) { setError('Could not create your account. Try signing in if you already have one.'); return; }
+        if (result.error) { setError('Could not create your account. Try logging in if you already have one.'); return; }
         setPassword('');
         if (result.data.session) onAuthenticated(result.data.session.user);
-        else setNotice('Check your inbox to confirm your email, then return to sign in. If you already have an account, sign in instead.');
+        else setNotice('Check your inbox to confirm your email, then return to log in. If you already have an account, log in instead.');
       } else if (activeMode === 'update') {
         const result = await supabase.auth.updateUser({ password });
         if (result.error || !result.data.user) {
@@ -41,7 +41,7 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         setPassword(''); onAuthenticated(result.data.user);
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        if (result.error || !result.data.user) { setError('Could not sign in. Check your email and password, and confirm your email if you just signed up.'); return; }
+        if (result.error || !result.data.user) { setError('Could not log in. Check your email and password, and confirm your email if you just signed up.'); return; }
         setPassword(''); onAuthenticated(result.data.user);
       }
     } catch { setError('Could not connect. Please try again.'); }
@@ -49,11 +49,11 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
   }
   return <>
     {!recovery && <div className="email-modes" aria-label="Email account options">
-      <button type="button" className={mode === 'signin' ? 'selected' : ''} disabled={busy} onClick={() => changeMode('signin')}>Sign in</button>
+      <button type="button" className={mode === 'signin' ? 'selected' : ''} disabled={busy} onClick={() => changeMode('signin')}>Log in</button>
       <button type="button" className={mode === 'signup' ? 'selected' : ''} disabled={busy} onClick={() => changeMode('signup')}>Create account</button>
     </div>}
     <form onSubmit={submit} aria-label="Email account">
-      <h3 className="email-heading">{activeMode === 'signup' ? 'Create your account' : activeMode === 'reset' ? 'Reset your password' : activeMode === 'update' ? 'Choose a new password' : 'Sign in with email'}</h3>
+      <h3 className="email-heading">{activeMode === 'signup' ? 'Create your account' : activeMode === 'reset' ? 'Reset your password' : activeMode === 'update' ? 'Choose a new password' : 'Log in with email'}</h3>
       {activeMode !== 'update' && <div className="field">
         <label htmlFor={`${idPrefix}-email`}>Email</label>
         <input id={`${idPrefix}-email`} className="ctl" type="email" autoComplete="email" placeholder="you@company.com" required disabled={busy} value={email} onChange={e => { setEmail(e.target.value); setError(null); }} />
@@ -65,7 +65,7 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
       </div>}
       {error && <p className="fieldnote" role="alert">{error}</p>}
       {notice && <p className="email-notice" role="status">{notice}</p>}
-      <button type="submit" className="gen" disabled={busy}>{busy ? 'Please wait...' : activeMode === 'signup' ? 'Create account' : activeMode === 'reset' ? 'Send reset link' : activeMode === 'update' ? 'Save new password' : 'Sign in with email'} <span>&rarr;</span></button>
+      <button type="submit" className="gen" disabled={busy}>{busy ? 'Please wait...' : activeMode === 'signup' ? 'Create account' : activeMode === 'reset' ? 'Send reset link' : activeMode === 'update' ? 'Save new password' : 'Log in with email'} <span>&rarr;</span></button>
       {activeMode === 'signin' && <button type="button" className="email-forgot" disabled={busy} onClick={() => changeMode('reset')}>Forgot password?</button>}
     </form>
   </>;

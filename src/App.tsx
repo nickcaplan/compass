@@ -532,7 +532,7 @@ export default function App() {
 
   useEffect(() => {
     const callbackError = new URLSearchParams(window.location.hash.slice(1)).get('error_description');
-    if (callbackError) { setRecoveringPassword(false); setAuthNotice('This sign-in or reset link is invalid or has expired. Sign in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
+    if (callbackError) { setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
     supabase.auth.getSession().then(({ data }) => {
       applyAuthUser(data.session?.user ?? null);
       // Only a tab loaded with a session may consume the shared snapshot.
@@ -904,7 +904,7 @@ export default function App() {
       provider: 'google',
       options: { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
     });
-    if (error) showToast('Google sign-in failed - please try again');
+    if (error) showToast('Google log-in failed - please try again');
   }
 
   async function completeProfile(event: React.FormEvent<HTMLFormElement>) {
@@ -931,7 +931,7 @@ export default function App() {
   function renderProfileFields(idPrefix: string) {
     return (
       <form onSubmit={(event) => { void completeProfile(event); }} aria-label="Complete your profile">
-        <p className="pagesub">Signed in as {authEmail}. Add your details to continue.</p>
+        <p className="pagesub">Logged in as {authEmail}. Add your details to continue.</p>
         <div className="field">
           <label htmlFor={`${idPrefix}-name`}>Name</label>
           <input id={`${idPrefix}-name`} className="ctl" autoComplete="name" required maxLength={160}
@@ -983,7 +983,7 @@ export default function App() {
     setAuthNotice(null);
     // A signed-out visitor should not keep seeing a gated plan.
     if (stage === 'plan') setStage('gate');
-    showToast(failed ? 'Sign-out encountered an error. Other sessions may still be active.' : 'Signed out');
+    showToast(failed ? 'Log-out encountered an error. Other sessions may still be active.' : 'Logged out');
   }
 
   function go(p: Page) {
@@ -1031,8 +1031,17 @@ export default function App() {
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
           <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
-          <button type="button" className="signin" onClick={() => go('signin')}>
-            {authEmail ?? 'Sign in'}
+          <button
+            type="button"
+            className="signin"
+            onClick={() => go('signin')}
+            aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Log in'}
+          >
+            {authEmail ? (
+              <span className="avatar" aria-hidden="true">{authEmail.charAt(0).toUpperCase()}</span>
+            ) : (
+              'Log in'
+            )}
           </button>
           <button
             type="button"
@@ -1401,7 +1410,7 @@ export default function App() {
                 <DemoCap />
               </div>
               <p className="pagesub">
-                Sign in to see it. Your brief is kept while you sign in.
+                Log in to see it. Your brief is kept while you log in.
               </p>
               {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
               {savedBriefReadOnly ? <button type="button" className="ghost" onClick={() => go('plans')}>View all plans</button> :
@@ -1604,18 +1613,18 @@ export default function App() {
       )}
 
       {page === 'signin' && (
-        <section className="card pagecard signincard" aria-label="Sign in">
+        <section className="card pagecard signincard" aria-label={authEmail ? 'Account' : 'Log in'}>
           <div className="planhead">
-            <h2>{recoveringPassword ? 'Reset your password' : authEmail && !profileComplete ? 'Complete your profile' : 'Sign in to Compass'}</h2>
+            <h2>{recoveringPassword ? 'Reset your password' : authEmail && !profileComplete ? 'Complete your profile' : authEmail ? 'Your account' : 'Log in to Compass'}</h2>
             <DemoCap />
           </div>
-          <p className="pagesub">Save your plans and pick up where you left off.</p>
+          {!authEmail && !recoveringPassword && <p className="pagesub">Save your plans and pick up where you left off.</p>}
           {authNotice && <p className="fieldnote" role="alert">{authNotice}</p>}
-          {recoveringPassword ? renderSignInFields('f-signin') : authEmail && !profileComplete ? <>{renderProfileFields('f-signin-profile')}<button type="button" className="email-forgot" disabled={profileSaving} onClick={() => { void signOut(); }}>Sign out</button></> : authEmail ? (
+          {recoveringPassword ? renderSignInFields('f-signin') : authEmail && !profileComplete ? <>{renderProfileFields('f-signin-profile')}<button type="button" className="email-forgot" disabled={profileSaving} onClick={() => { void signOut(); }}>Log out</button></> : authEmail ? (
             <>
-              <p className="pagesub">You are signed in as {authEmail}.</p>
+              <p className="pagesub">You are logged in as {authEmail}.</p>
               <button type="button" className="gen" onClick={() => { void signOut(); }}>
-                Sign out
+                Log out
               </button>
             </>
           ) : (
