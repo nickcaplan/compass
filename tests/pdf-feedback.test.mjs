@@ -28,7 +28,7 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) {
       const page = await browser.newPage(); await page.setViewport({width,height:900});
-      await page.goto(previewUrl); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
+      await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
       await page.waitForFunction(()=>!document.querySelector('.gen').disabled); await page.evaluate(()=>document.querySelector('.gen').click()); await page.waitForSelector('.cs-wrap button');
       for (const saved of [false,true]) {
         if(saved){await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save plan').click());await page.waitForSelector('.bsum');}
