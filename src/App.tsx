@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import logoUrl from './assets/thh-logo.svg';
 
 const iconProps = {
@@ -178,6 +178,53 @@ import {
 } from './data';
 
 type Stage = 'empty' | 'filling' | 'generating' | 'plan';
+
+function ComingSoonButton() {
+  const [notice, setNotice] = useState(0);
+  const wrap = useRef<HTMLSpanElement>(null);
+  const description = `pdf-coming-soon-${useId()}`;
+
+  useEffect(() => {
+    if (!notice) return;
+    const dismiss = () => setNotice(0);
+    const timer = window.setTimeout(dismiss, 1000);
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !wrap.current?.contains(event.target)) dismiss();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dismiss();
+    };
+    const onFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !wrap.current?.contains(event.target)) dismiss();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('focusin', onFocus);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('focusin', onFocus);
+    };
+  }, [notice]);
+
+  return (
+    <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
+      <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
+        {notice > 0 && (
+          <span className="cs-bubble" id={description} key={notice}>
+            Coming soon
+          </span>
+        )}
+      </span>
+      <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
+        <span className="cs-label"><IconDownload />Download PDF</span>
+      </button>
+    </span>
+  );
+}
+
+
 
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
@@ -1117,10 +1164,7 @@ export default function App() {
                         Saved
                       </button>
                     )}
-                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-                      <IconDownload />
-                      Download PDF
-                    </button>
+                    <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
                       Create another scenario
@@ -1153,10 +1197,7 @@ export default function App() {
                       <IconSave />
                       Save plan
                     </button>
-                    <button type="button" className="ghost" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-                      <IconDownload />
-                      Download PDF
-                    </button>
+                    <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
                       Create another scenario
