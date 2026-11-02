@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import EmailAuth from './EmailAuth';
@@ -105,7 +105,7 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const cancelCb = useRef(onCancel);
-  cancelCb.current = onCancel;
+  useLayoutEffect(() => { cancelCb.current = onCancel; }, [onCancel]);
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cancelRef.current?.focus();
@@ -379,11 +379,11 @@ export default function App() {
   const canViewPlan = Boolean(authEmail && profileComplete && !recoveringPassword);
 
   const profileSource = useRef<string | null>(null);
-  function applyAuthUser(user: User | null) {
+  function applyAuthUser(user: User | null, reseed = false) {
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
-    const source = user ? JSON.stringify([user.id, user.user_metadata]) : null;
-    if (user && profileSource.current === source) return;
+    const source = user?.id ?? null;
+    if (user && profileSource.current === source && !reseed) return;
     profileSource.current = source;
     setProfileName(typeof user?.user_metadata.full_name === 'string' ? user.user_metadata.full_name :
       typeof user?.user_metadata.name === 'string' ? user.user_metadata.name : '');
@@ -420,7 +420,9 @@ export default function App() {
   // first and restored when the user lands back. Expires after an hour.
   const AUTH_DRAFT_KEY = 'compass-auth-draft';
   const latestPlanner = useRef({ brief, submittedBrief, savedEntry, budgetText, stage });
-  latestPlanner.current = { brief, submittedBrief, savedEntry, budgetText, stage };
+  useLayoutEffect(() => {
+    latestPlanner.current = { brief, submittedBrief, savedEntry, budgetText, stage };
+  }, [brief, submittedBrief, savedEntry, budgetText, stage]);
   function hasPlannerWork() {
     const current = latestPlanner.current;
     return current.stage !== 'empty' || current.submittedBrief !== null || current.savedEntry !== null ||
@@ -863,7 +865,7 @@ export default function App() {
         setProfileError('Could not save your details. Please try again.');
         return;
       }
-      applyAuthUser(data.user);
+      applyAuthUser(data.user, true);
     } catch {
       setProfileError('Could not save your details. Please try again.');
     } finally {
