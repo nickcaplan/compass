@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { supabase } from './supabase';
 import logoUrl from './assets/thh-logo.svg';
 
 const iconProps = {
@@ -310,6 +311,9 @@ export default function App() {
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [signinEmail, setSigninEmail] = useState('');
+  const [magicLinkTo, setMagicLinkTo] = useState<string | null>(null);
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [planSavedId, setPlanSavedId] = useState<string | null>(null);
@@ -334,6 +338,14 @@ export default function App() {
       /* private mode */
     }
   }, [theme]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setAuthEmail(data.session?.user.email ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthEmail(session?.user.email ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
@@ -637,6 +649,37 @@ export default function App() {
     setToast(null);
     setPage('planner');
     window.scrollTo(0, 0);
+  }
+
+  async function continueWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) showToast('Google sign-in failed - please try again');
+  }
+
+  async function continueWithEmail() {
+    const email = signinEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast('Enter a full email address, like name@company.com');
+      return;
+    }
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) {
+      showToast('Could not send the sign-in link - please try again');
+    } else {
+      setMagicLinkTo(email);
+    }
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    setMagicLinkTo(null);
+    showToast('Signed out');
   }
 
   function go(p: Page) {
@@ -1322,8 +1365,26 @@ export default function App() {
             <DemoCap />
           </div>
           <p className="pagesub">Save your plans and pick up where you left off.</p>
+          {authEmail ? (
+            <>
+              <p className="pagesub">You are signed in as {authEmail}.</p>
+              <button type="button" className="gen" onClick={() => { void signOut(); }}>
+                Sign out
+              </button>
+            </>
+          ) : magicLinkTo ? (
+            <>
+              <p className="pagesub">
+                Check your inbox - we sent a sign-in link to {magicLinkTo}.
+              </p>
+              <button type="button" className="gen" onClick={() => { setMagicLinkTo(null); setSigninEmail(''); }}>
+                Use a different email
+              </button>
+            </>
+          ) : (
+          <>
           <div className="ssolist">
-            <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+            <button type="button" className="sso" onClick={() => { void continueWithGoogle(); }}>
               <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
                 <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z" />
@@ -1336,15 +1397,17 @@ export default function App() {
           <div className="divider"><span>or</span></div>
           <div className="field">
             <label htmlFor="f-email">Work email</label>
-            <input id="f-email" className="ctl" type="email" placeholder="you@company.com" />
+            <input id="f-email" className="ctl" type="email" placeholder="you@company.com"
+              value={signinEmail} onChange={(e) => setSigninEmail(e.target.value)} />
           </div>
-          <button type="button" className="gen" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+          <button type="button" className="gen" onClick={() => { void continueWithEmail(); }}>
             Continue with email <span>&rarr;</span>
           </button>
           <p className="finenote">
-            Design proposal - sign-in is not connected yet. Google shown; more providers
-            can be added when sign-in is built.
+            Sign in with Google, or get a sign-in link emailed to you - no password needed.
           </p>
+          </>
+          )}
         </section>
       )}
 
