@@ -211,6 +211,36 @@ function isBrief(value: unknown): value is Brief {
   );
 }
 
+const PLANS_CORRUPT_KEY = 'compass-saved-plans-corrupt';
+
+// True once per session when unreadable saved plans were moved aside.
+let plansRecovered = false;
+
+// A saved-plans payload that cannot be read at all (invalid JSON or not an
+// array) used to silently show an empty My plans. Move the unreadable copy
+// aside once and start a fresh list, so nothing is lost silently and the
+// visitor can keep saving normally.
+function recoverCorruptPlans(): void {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    if (raw === null) return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = undefined;
+    }
+    if (Array.isArray(parsed)) return;
+    if (window.localStorage.getItem(PLANS_CORRUPT_KEY) === null) {
+      window.localStorage.setItem(PLANS_CORRUPT_KEY, raw);
+    }
+    window.localStorage.removeItem(PLANS_KEY);
+    plansRecovered = true;
+  } catch {
+    // Storage unavailable - leave everything as it is.
+  }
+}
+
 function loadPlans(): SavedPlan[] {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
@@ -312,7 +342,11 @@ export default function App() {
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
-  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
+    recoverCorruptPlans();
+    return loadPlans();
+  });
+  const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -1180,6 +1214,14 @@ export default function App() {
           <p className="pagesub">
             Plans you save land here so you can pick up where you left off.
           </p>
+          {storageRecovered && (
+            <div className="notice" role="status">
+              <p>Your previously saved plans could not be read on this device, so a fresh list was started.</p>
+              <button type="button" className="ghost" onClick={() => setStorageRecovered(false)}>
+                Dismiss
+              </button>
+            </div>
+          )}
           {savedPlans.length === 0 ? (
             <div className="empty">
               <div className="glyph">

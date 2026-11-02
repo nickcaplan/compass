@@ -264,3 +264,82 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     server.kill();
   }
 });
+
+test('corrupt saved plans are moved aside with a notice and saving still works', { timeout: 60000 }, async () => {
+  const server = spawn(process.execPath, [
+    'node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1',
+    '--port', '4174', '--strictPort',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let browser;
+  let serverOutput = '';
+  let serverErrors = '';
+  server.stdout.on('data', (chunk) => { serverOutput += chunk.toString(); });
+  server.stderr.on('data', (chunk) => { serverErrors += chunk.toString(); });
+  server.on('error', (error) => { serverErrors += error.message; });
+  try {
+    const deadline = Date.now() + 10000;
+    let ready = false;
+    while (Date.now() < deadline && server.exitCode === null) {
+      try {
+        const response = await fetch('http://127.0.0.1:4174', { signal: AbortSignal.timeout(1000) });
+        await response.body?.cancel();
+        if (response.ok) {
+          ready = true;
+          break;
+        }
+      } catch {
+        // Retry only while the preview is starting, within the deadline.
+      }
+      await delay(100);
+    }
+    assert.ok(ready, `Preview did not become ready: ${serverOutput}\n${serverErrors}`);
+    browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    page.setDefaultTimeout(10000);
+    await page.setViewport({ width: 1440, height: 900 });
+    await page.goto('http://127.0.0.1:4174');
+
+    // A clean visitor sees no recovery notice.
+    await clickButton(page, 'My plans');
+    await page.waitForSelector('.empty');
+    assert.equal(await page.$('.notice'), null);
+
+    // Corrupt the saved plans payload, then reload: the unreadable copy is
+    // moved aside and the visitor is told instead of silently seeing empty.
+    await page.evaluate(() => localStorage.setItem('compass-saved-plans', '{not json'));
+    await page.reload();
+    await clickButton(page, 'My plans');
+    await page.waitForSelector('.notice');
+    assert.match(await page.$eval('.notice', (n) => n.textContent), /could not be read on this device/);
+    const stored = await page.evaluate(() => ({
+      main: localStorage.getItem('compass-saved-plans'),
+      backup: localStorage.getItem('compass-saved-plans-corrupt'),
+    }));
+    assert.equal(stored.main, null);
+    assert.equal(stored.backup, '{not json');
+
+    // Dismissing the notice hides it, and a reload does not bring it back.
+    await page.locator('.notice .ghost').click();
+    await page.waitForSelector('.notice', { hidden: true });
+    await page.reload();
+    await clickButton(page, 'My plans');
+    await page.waitForSelector('.empty');
+    assert.equal(await page.$('.notice'), null);
+
+    // Saving works normally afterwards, and the unreadable copy is kept.
+    await clickButton(page, 'Plan a campaign');
+    await generateExample(page);
+    await clickButton(page, 'Save plan');
+    await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
+    const after = await page.evaluate(() => ({
+      plans: JSON.parse(localStorage.getItem('compass-saved-plans')),
+      backup: localStorage.getItem('compass-saved-plans-corrupt'),
+    }));
+    assert.equal(after.plans.length, 1);
+    assert.equal(after.backup, '{not json');
+  } finally {
+    if (browser) await browser.close();
+    server.kill();
+  }
+});
