@@ -295,6 +295,21 @@ function DemoCap() {
   return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
 }
 
+const REEL_INDUSTRIES = ['Life sciences', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Finance', 'Energy', 'Healthcare', 'Technology', 'Retail', 'Life sciences'];
+
+function IndustryReel() {
+  return (
+    <div className="eyebrow industry-eyebrow" aria-label="Life sciences media planning">
+      <span className="industry-reel" aria-hidden="true">
+        <span className="industry-reel-track">
+          {REEL_INDUSTRIES.map((industry, index) => <span key={index}>{industry}</span>)}
+        </span>
+      </span>
+      <span aria-hidden="true">media planning</span>
+    </div>
+  );
+}
+
 export default function App() {
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
@@ -715,7 +730,7 @@ export default function App() {
       {page === 'planner' && (
         <>
       <header className="hero">
-        <div className="eyebrow">Life sciences media planning</div>
+        <IndustryReel />
         <h1>
           Your media plan, <em>in minutes.</em>
         </h1>
