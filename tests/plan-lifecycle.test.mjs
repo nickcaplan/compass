@@ -248,6 +248,13 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         await otherPage.goto('http://127.0.0.1:4173');
         await clickButton(otherPage, 'My plans');
         await otherPage.waitForSelector('.pc-actions');
+        // A seed plan can share the saved plan's name (demoBrief picks at
+        // random and two variants reuse seed names), so identity is a count:
+        // user plans render before seeds, the first match is the saved plan,
+        // and deleting it drops the matching-card count by exactly one.
+        const cardsWithName = (scope) => scope.$$eval('.plancard', (cards, n) =>
+          cards.filter((c) => c.textContent.includes(n)).length, savedName);
+        const beforeCount = await cardsWithName(otherPage);
         const deleteHandle = await otherPage.evaluateHandle((n) =>
           [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes(n))?.querySelector('button.ghost'), savedName);
         const deleteButton = deleteHandle.asElement();
@@ -256,8 +263,11 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         await deleteHandle.dispose();
         await otherPage.waitForSelector('[role="alertdialog"]');
         await otherPage.locator('.confirm .btn').click();
-        await otherPage.waitForFunction((n) =>
-          ![...document.querySelectorAll('.plancard')].some((c) => c.textContent.includes(n)), savedName);
+        // Puppeteer treats waitForFunction's second parameter as options, so
+        // the predicate arguments must follow an explicit options object.
+        await otherPage.waitForFunction((n, before) =>
+          [...document.querySelectorAll('.plancard')].filter((c) => c.textContent.includes(n)).length === before - 1,
+          {}, savedName, beforeCount);
       } finally {
         await otherPage.close();
       }
@@ -266,9 +276,8 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       assert.equal(await page.$eval('#f-name', (input) => input.value), '');
       assert.match(await page.$eval('.toast', (toast) => toast.textContent), /no longer in My plans/);
       await clickButton(page, 'My plans');
-      const stillThere = await page.$$eval('.plancard', (cards, n) =>
-        cards.some((c) => c.textContent.includes(n)), savedName);
-      assert.equal(stillThere, false);
+      const remaining = await cardsWithName(page);
+      assert.equal(remaining, beforeCount - 1);
     });
   } finally {
     await browser?.close();
