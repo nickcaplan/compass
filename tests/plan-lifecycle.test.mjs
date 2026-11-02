@@ -95,7 +95,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.waitForSelector('.cs-bubble');
       assert.equal(await page.$('.toast'), null);
       await assertStationary();
-      assert.match(await page.$eval('.cs-status', (el) => el.textContent), /Soon.*building/);
+      assert.match(await page.$eval('.cs-status', (el) => el.textContent), /Coming soon/);
       assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), 'Download PDF');
       await page.keyboard.press('Escape');
       await page.waitForSelector('.cs-bubble', { hidden: true });
@@ -112,7 +112,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await pdf.click();
       await page.waitForSelector('.cs-bubble');
       assert.equal(await page.$eval('.cs-bubble', (el) => getComputedStyle(el).animationName), 'none');
-      await page.waitForSelector('.cs-bubble', { hidden: true, timeout: 4500 });
+      await page.waitForSelector('.cs-bubble', { hidden: true, timeout: 1500 });
       await page.emulateMediaFeatures([]);
     });
 

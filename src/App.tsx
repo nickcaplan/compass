@@ -187,7 +187,7 @@ function ComingSoonButton() {
   useEffect(() => {
     if (!notice) return;
     const dismiss = () => setNotice(0);
-    const timer = window.setTimeout(dismiss, 3000);
+    const timer = window.setTimeout(dismiss, 1000);
     const onPointerDown = (event: PointerEvent) => {
       if (event.target instanceof Node && !wrap.current?.contains(event.target)) dismiss();
     };
@@ -209,15 +209,15 @@ function ComingSoonButton() {
   }, [notice]);
 
   return (
-    <span className="cs-wrap" ref={wrap}>
+    <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
       <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
         {notice > 0 && (
           <span className="cs-bubble" id={description} key={notice}>
-            <span className="cs-tag">Soon</span>We're still building this bit
+            Coming soon
           </span>
         )}
       </span>
-      <button type="button" className="ghost" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
+      <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
         <IconDownload />
         Download PDF
       </button>
