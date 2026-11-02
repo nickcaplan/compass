@@ -1033,18 +1033,6 @@ export default function App() {
           <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button
             type="button"
-            className="signin"
-            onClick={() => go('signin')}
-            aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Log in'}
-          >
-            {authEmail ? (
-              <span className="avatar" aria-hidden="true">{authEmail.charAt(0).toUpperCase()}</span>
-            ) : (
-              'Log in'
-            )}
-          </button>
-          <button
-            type="button"
             className="themebtn"
             onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -1059,6 +1047,18 @@ export default function App() {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M20 13.5A8.5 8.5 0 1 1 10.5 4a7 7 0 0 0 9.5 9.5z" />
               </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            className="signin"
+            onClick={() => go('signin')}
+            aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Log in'}
+          >
+            {authEmail ? (
+              <span className="avatar" aria-hidden="true">{authEmail.charAt(0).toUpperCase()}</span>
+            ) : (
+              'Log in'
             )}
           </button>
           </div>
