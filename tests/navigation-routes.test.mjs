@@ -8,12 +8,16 @@ test('My plans and sign in retain URLs on refresh and history preserves drafts',
   const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');let match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
   browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
   for(const width of [390,1440]){
-   const p=await browser.newPage();await p.setViewport({width,height:900});await p.goto(url);await p.waitForSelector('#f-name');
-   const click=async label=>p.evaluate(l=>[...document.querySelectorAll('nav button')].find(e=>e.textContent===l).click(),label);
+   const ctx=await browser.createBrowserContext();const p=await ctx.newPage();await p.setViewport({width,height:900});await p.goto(url);await p.waitForSelector('#f-name');
+   const click=async label=>{if(label==='Sign in'){await p.evaluate(()=>document.querySelector('.signin').click());return;}await p.waitForFunction(l=>[...document.querySelectorAll('nav button')].some(e=>e.textContent.trim()===l),{},label);await p.evaluate(l=>[...document.querySelectorAll('nav button')].find(e=>e.textContent.trim()===l).click(),label)};
    await p.locator('#f-name').fill('Keep my draft');await click('My plans');assert.equal(new URL(p.url()).hash,'#/my-plans');await click('Sign in');assert.equal(new URL(p.url()).hash,'#/sign-in');
    await p.goBack();assert.equal(new URL(p.url()).hash,'#/my-plans');await p.goBack();assert.equal(await p.$eval('#f-name',e=>e.value),'Keep my draft');
    await p.goForward();await p.reload();await p.waitForSelector('.pagecard');assert.equal(new URL(p.url()).hash,'#/my-plans');assert.match(await p.$eval('h2',e=>e.textContent),/My plans/);
-   await click('Sign in');await p.reload();await p.waitForSelector('#f-signin-email');assert.equal(new URL(p.url()).hash,'#/sign-in');assert.equal(await p.$('.metrics'),null);await p.close();
+   await click('Sign in');await p.reload();await p.waitForSelector('#f-signin-email');assert.equal(new URL(p.url()).hash,'#/sign-in');assert.equal(await p.$('.metrics'),null);
+   const brief={name:'Pending authenticated draft',objectives:['awareness'],kpis:['Reach'],audiences:['Procurement'],seniority:['Manager'],budget:10000,start:'2026-12-01',end:'2027-02-01'};
+   await p.evaluate(brief=>{localStorage.setItem('compass-auth-draft',JSON.stringify({brief,submittedBrief:null,budgetText:'10000',stage:'filling',ts:Date.now()}));localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify({access_token:'test',token_type:'bearer',refresh_token:'test',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'route-test',email:'route@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{},created_at:'2026-01-01T00:00:00Z'}}))},brief);
+   await click('My plans');await p.reload();await p.waitForSelector('.pagecard');await p.waitForFunction(()=>document.querySelector('.signin')?.textContent.includes('route@example.com'));assert.equal(new URL(p.url()).hash,'#/my-plans');
+   await click('Planner');await p.waitForFunction(()=>document.querySelector('#f-name')?.value==='Pending authenticated draft');await p.locator('#f-name').fill('My newer edit');await click('My plans');await click('Planner');assert.equal(await p.$eval('#f-name',e=>e.value),'My newer edit');await ctx.close();
   }
  }finally{await browser?.close();server.kill()}
 });

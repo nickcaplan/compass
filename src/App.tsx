@@ -413,10 +413,18 @@ export default function App() {
       /* private mode */
     }
   }
+  const currentDraftState = useRef({ brief, budgetText, stage });
+  currentDraftState.current = { brief, budgetText, stage };
   function restoreAuthDraft() {
     // An explicit bookmarked page wins over an older pending auth draft.
     if (pageFromUrl() !== 'planner') return;
     try {
+      // Never replace work entered after an explicit non-planner landing.
+      const current = currentDraftState.current;
+      if (answeredCount(current.brief) > 0 || current.brief.name.trim() || current.budgetText.trim() || current.stage !== 'empty') {
+        window.localStorage.removeItem(AUTH_DRAFT_KEY);
+        return;
+      }
       const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
       if (!raw) return;
       window.localStorage.removeItem(AUTH_DRAFT_KEY);
@@ -461,6 +469,13 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // An explicit saved-plans landing defers the pending draft until Planner.
+  useEffect(() => {
+    if (page === 'planner' && authUser) restoreAuthDraft();
+    // Only a route/session transition may consume the pending snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, authUser?.id]);
 
   // Reveal a plan only after authentication and first-time profile completion.
   useEffect(() => {
