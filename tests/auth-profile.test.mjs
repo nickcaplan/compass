@@ -30,7 +30,7 @@ test('profile completion, failure, persistence, and existing-plan gate', {timeou
    await p.reload();await p.waitForSelector('.themebtn');await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('.metrics');await p.waitForSelector('.bsum');assert.equal(await p.$eval('.cap',e=>e.textContent),'SAVED PLAN - READ ONLY');assert.equal(await p.evaluate(()=>[...document.querySelectorAll('button')].some(x=>x.textContent.trim()==='Save plan')),false);
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await p.evaluate(brief=>localStorage.setItem('compass-auth-draft',JSON.stringify({brief,submittedBrief:brief,budgetText:'10000',stage:'filling',ts:Date.now()})),brief);
-   await p.reload();await p.waitForSelector('.metrics');
+   await p.reload();await p.waitForSelector('.metrics');assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.secondary button')].find(e=>e.textContent.trim()==='Save plan')?.disabled),false,'Unchanged restored plan remains saveable');
    await p.evaluate(brief=>localStorage.setItem('compass-auth-draft',JSON.stringify({brief:{...brief,name:'Edited while link pending'},submittedBrief:brief,budgetText:'10000',stage:'filling',ts:Date.now()})),brief);
    await p.reload();await p.waitForFunction(()=>document.querySelector('#f-name')?.value==='Edited while link pending');assert.equal(await p.$('.metrics'),null,'Edited draft must not silently reveal stale output');
    await ctx.close();

@@ -407,13 +407,13 @@ export default function App() {
           loadPlans().some((p) => p.id === entry.id)) {
         setSavedEntry({ id: entry.id, mode: entry.mode });
       }
+      const unchangedPlan = snap.submittedBrief !== null &&
+        JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
       setBrief(snap.brief);
-      setSubmittedBrief(snap.submittedBrief);
+      setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
       setBudgetText(snap.budgetText);
       // Back to the brief is navigation, not an edit. Keep an unchanged
       // generated plan available after the sign-in round trip.
-      const unchangedPlan = snap.submittedBrief !== null &&
-        JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
       setStage(snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage);
       setPage('planner');
     } catch {
