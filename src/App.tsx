@@ -393,11 +393,13 @@ export default function App() {
       setAuthEmail(session?.user.email ?? null);
       // Auth events also arrive from other tabs: re-gate a visible plan when
       // the session is gone, and stop re-stashing the draft once signed in.
-      if (!session) setStage((s) => (s === 'plan' ? 'gate' : s));
-      if (event === 'SIGNED_IN') {
-        setMagicLinkTo(null);
-        restoreAuthDraft();
+      // Draft restore stays on the getSession path so only the freshly loaded
+      // tab consumes it; this tab keeps its in-memory brief.
+      if (!session) {
+        setStage((s) => (s === 'plan' ? 'gate' : s));
+        setSavedEntry(null);
       }
+      if (event === 'SIGNED_IN') setMagicLinkTo(null);
     });
     return () => subscription.unsubscribe();
   }, []);
