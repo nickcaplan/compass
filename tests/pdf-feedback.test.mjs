@@ -37,6 +37,7 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
         await page.locator('.cs-wrap button').click(); await page.waitForSelector('.cs-bubble');
         assert.equal(await page.$eval('.cs-label',e=>e.textContent.trim()),'Download PDF');
         assert.equal(await page.$eval('.cs-bubble',e=>e.textContent.trim()),'Coming soon');
+        await page.waitForFunction(()=>['.cs-label','.cs-bubble'].every(s=>{const e=document.querySelector(s);if(!e)return false;const c=getComputedStyle(e),r=e.getBoundingClientRect();return c.visibility==='visible'&&Number(c.opacity)>.9&&r.width>0&&r.height>0}));
         assert.deepEqual(await page.$eval('.cs-wrap button',e=>({width:e.offsetWidth,height:e.offsetHeight,left:e.offsetLeft,top:e.offsetTop})),button);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
         const overlap=await page.evaluate(()=>{const a=document.querySelector('.cs-label').getBoundingClientRect();const b=document.querySelector('.cs-bubble').getBoundingClientRect();return a.right>b.left});assert.equal(overlap,false);
