@@ -2,9 +2,11 @@
 
 ## 2026-10-31 - Repository is private
 
-The repo touches a client's commercial project, so it is private under
-nickcaplan. No real rates or customer data are held here regardless; the
-demo's content is illustrative.
+Historical decision, superseded on 1 November: Nick made the repository
+public and requested collaborator write access plus main-branch protection.
+No real rates or customer data are held in the repository; the demo's content
+is illustrative. A public repository must never contain private keys,
+provider secrets or customer records.
 
 ## 2026-10-31 - React + Vite + TypeScript, static build
 
