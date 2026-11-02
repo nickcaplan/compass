@@ -747,6 +747,7 @@ export default function App() {
           <div className="brand lockup">
             <span className="prod">
               <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
+                <img className="mark" src="/favicon.svg" alt="" width={20} height={20} />
                 COMPASS
               </button>
             </span>
