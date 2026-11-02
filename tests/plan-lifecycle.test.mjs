@@ -244,17 +244,18 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Unsaved edit to deleted plan');
       const otherPage = await context.newPage();
+      // A seed plan can share the saved plan's name (demoBrief picks at
+      // random and two variants reuse seed names), so identity is a count:
+      // user plans render before seeds, the first match is the saved plan,
+      // and deleting it drops the matching-card count by exactly one.
+      const cardsWithName = (scope) => scope.$$eval('.plancard', (cards, n) =>
+        cards.filter((c) => c.textContent.includes(n)).length, savedName);
+      let beforeCount = 0;
       try {
         await otherPage.goto('http://127.0.0.1:4173');
         await clickButton(otherPage, 'My plans');
         await otherPage.waitForSelector('.pc-actions');
-        // A seed plan can share the saved plan's name (demoBrief picks at
-        // random and two variants reuse seed names), so identity is a count:
-        // user plans render before seeds, the first match is the saved plan,
-        // and deleting it drops the matching-card count by exactly one.
-        const cardsWithName = (scope) => scope.$$eval('.plancard', (cards, n) =>
-          cards.filter((c) => c.textContent.includes(n)).length, savedName);
-        const beforeCount = await cardsWithName(otherPage);
+        beforeCount = await cardsWithName(otherPage);
         const deleteHandle = await otherPage.evaluateHandle((n) =>
           [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes(n))?.querySelector('button.ghost'), savedName);
         const deleteButton = deleteHandle.asElement();
