@@ -103,7 +103,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
 
     await t.test('saving an edited plan confirms with the Saved state', async () => {
       await clickButton(page, 'Edit plan');
-      await page.locator('#f-name').fill('Edited saved plan');
+      await page.locator('#f-name').fill('Saved spring rename');
       await page.locator('.gen').click();
       await page.waitForSelector('.planin');
       await clickButton(page, 'Save changes');
@@ -112,7 +112,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await delay(300);
       assert.equal(await page.$('.toast'), null);
       const savedName = await page.evaluate(() => JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.name);
-      assert.equal(savedName, 'Edited saved plan');
+      assert.equal(savedName, 'Saved spring rename');
     });
 
     await t.test('saved-plan edit mode still warns and cancellation keeps edits', async () => {
