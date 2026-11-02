@@ -221,9 +221,11 @@ const SEED_KEY = 'compass-seeded-plans';
 const SEED_VERSION = 1;
 
 function isoDaysFromNow(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  // Local-time formatting: toISOString() is UTC and can land on the previous
+  // calendar date when local time is ahead of UTC.
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function seedPlans(): SavedPlan[] {
