@@ -83,3 +83,39 @@ The native date-input picker indicator is invisible against the dark theme
 and varies by browser, so each date field gets its own always-visible
 calendar button that opens the native picker (showPicker, focus fallback).
 Dates stack vertically on small screens so the fields never clip.
+
+## 2026-11-02 - Sign-in: Google or emailed link, no password
+
+Nick chose an emailed sign-in link over a password mechanism ("happy with an
+email link", 2 Nov 2026). The sign-in page offers Continue with Google
+(Supabase OAuth, redirecting back to the current origin) and Continue with
+email (Supabase magic link). Supabase Auth holds the accounts; the app only
+ever sees the publishable key. Saved plans remain in browser localStorage,
+not a server-side saved_plans table. The sign-in gate is a product UI gate,
+not data access control; generated demo plans are computed in the browser.
+Server-side storage would need its own row-level security before use.
+
+## 2026-11-02 - Sign-in gate uses real auth; demo bypass removed
+
+The earlier gate collected a name, email and company and announced "Signed
+in for this demo - no account created". Once real sign-in shipped that copy
+became misleading, so the gate now offers the same two real sign-in options
+as the sign-in page, and a signed-in user skips the gate entirely. The demo
+gate was lead capture, not authentication; account auth replaces it rather
+than being equated with it.
+
+## 2026-11-02 - Brief and plan survive the sign-in round trip
+
+Signing in navigates away (Google) or reloads (email link), which would drop
+the in-progress brief and generated plan. Starting either flow stashes a
+snapshot in localStorage, restored when the user lands back signed in. The
+snapshot expires after an hour and never leaves the device.
+
+## 2026-11-02 - Redirect URLs kept exact, per environment
+
+Supabase redirect URLs list only the production origin and localhost for
+development; each PR preview adds its own exact origin when its wiring
+preview exists. No wildcard preview entry. The Google OAuth consent screen
+stays in Testing (only Nick's account can sign in) until Nick chooses to
+publish; publishing needs no Google verification because the app uses only
+the pre-filled non-sensitive Sign-In scopes.

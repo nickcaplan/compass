@@ -1,4 +1,7 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { supabase } from './supabase';
+
 import logoUrl from './assets/thh-logo.svg';
 
 const iconProps = {
@@ -102,7 +105,7 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const cancelCb = useRef(onCancel);
-  cancelCb.current = onCancel;
+  useLayoutEffect(() => { cancelCb.current = onCancel; }, [onCancel]);
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cancelRef.current?.focus();
@@ -177,7 +180,7 @@ import {
   type ObjectiveId,
 } from './data';
 
-type Stage = 'empty' | 'filling' | 'generating' | 'plan';
+type Stage = 'empty' | 'filling' | 'generating' | 'gate' | 'plan';
 
 function ComingSoonButton() {
   const [notice, setNotice] = useState(0);
@@ -234,6 +237,16 @@ function ComingSoonButton() {
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
 type Page = 'planner' | 'plans' | 'signin' | 'pricing';
+const PAGE_ROUTES: Record<Page, string> = { planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing' };
+function pageFromUrl(): Page {
+  return (Object.keys(PAGE_ROUTES) as Page[]).find(page => PAGE_ROUTES[page] === window.location.hash) ?? 'planner';
+}
+function writePageUrl(page: Page, replace = false) {
+  const url = new URL(window.location.href);
+  url.hash = PAGE_ROUTES[page];
+  window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
+}
+
 
 interface SavedPlan {
   id: string;
@@ -245,6 +258,23 @@ interface SavedPlan {
 // My Plans design is clickable end-to-end without a backend. Real saved
 // plans across devices need sign-in + database - not built yet.
 const PLANS_KEY = 'compass-saved-plans';
+
+const AUTH_DRAFT_STAGES: Stage[] = ['empty', 'filling', 'gate', 'plan'];
+
+function isAuthDraft(
+  value: unknown,
+): value is { brief: Brief; submittedBrief: Brief | null; budgetText: string; stage: Stage; ts: number } {
+  if (value === null || typeof value !== 'object') return false;
+  const s = value as Record<string, unknown>;
+  return (
+    isBrief(s.brief) &&
+    (s.submittedBrief === null || isBrief(s.submittedBrief)) &&
+    typeof s.budgetText === 'string' &&
+    AUTH_DRAFT_STAGES.includes(s.stage as Stage) &&
+    typeof s.ts === 'number' &&
+    Number.isFinite(s.ts)
+  );
+}
 
 function isBrief(value: unknown): value is Brief {
   if (value === null || typeof value !== 'object') return false;
@@ -364,6 +394,7 @@ function IndustryReel() {
 }
 
 export default function App() {
+  const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
   const [budgetText, setBudgetText] = useState('');
@@ -379,7 +410,39 @@ export default function App() {
   const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
-  const [page, setPage] = useState<Page>('planner');
+  const [page, setPage] = useState<Page>(pageFromUrl);
+  useEffect(() => {
+    const syncPage = () => { setPage(pageFromUrl()); window.scrollTo(0, 0); };
+    window.addEventListener('popstate', syncPage);
+    window.addEventListener('hashchange', syncPage);
+    // Leave OAuth fragments intact for the auth client to consume.
+    if (!window.location.hash) writePageUrl(pageFromUrl(), true);
+    return () => { window.removeEventListener('popstate', syncPage); window.removeEventListener('hashchange', syncPage); };
+  }, []);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [profileName, setProfileName] = useState('');
+  const [profileCompany, setProfileCompany] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
+    typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
+  const canViewPlan = Boolean(authEmail && profileComplete);
+
+  const profileSource = useRef<string | null>(null);
+  function applyAuthUser(user: User | null, reseed = false) {
+    setAuthUser(user);
+    setAuthEmail(user?.email ?? null);
+    const source = user?.id ?? null;
+    if (user && profileSource.current === source && !reseed) return;
+    profileSource.current = source;
+    setProfileName(typeof user?.user_metadata.full_name === 'string' ? user.user_metadata.full_name :
+      typeof user?.user_metadata.name === 'string' ? user.user_metadata.name : '');
+    setProfileCompany(typeof user?.user_metadata.company === 'string' ? user.user_metadata.company : '');
+    setProfileError(null);
+  }
+  const [signinEmail, setSigninEmail] = useState('');
+  const [magicLinkTo, setMagicLinkTo] = useState<string | null>(null);
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
@@ -405,6 +468,106 @@ export default function App() {
     }
   }, [theme]);
 
+  // A sign-in round trip (Google redirect or emailed link) reloads the app,
+  // so the in-progress brief and generated plan are stashed on this device
+  // first and restored when the user lands back. Expires after an hour.
+  const AUTH_DRAFT_KEY = 'compass-auth-draft';
+  function stashAuthDraft() {
+    try {
+      const snap = {
+        brief,
+        submittedBrief,
+        savedEntry,
+        budgetText,
+        stage: stage === 'generating' ? 'filling' : stage,
+        ts: Date.now(),
+      };
+      window.localStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify(snap));
+    } catch {
+      /* private mode */
+    }
+  }
+  const currentDraftState = useRef({ brief, budgetText, stage });
+  useLayoutEffect(() => {
+    currentDraftState.current = { brief, budgetText, stage };
+  }, [brief, budgetText, stage]);
+  const mayRestoreAuthDraft = useRef(false);
+  function restoreAuthDraft() {
+    // An explicit bookmarked page wins over an older pending auth draft.
+    if (!mayRestoreAuthDraft.current || pageFromUrl() !== 'planner') return;
+    try {
+      // Never replace work entered after an explicit non-planner landing.
+      const current = currentDraftState.current;
+      if (answeredCount(current.brief) > 0 || current.brief.name.trim() || current.brief.start || current.brief.end || current.budgetText.trim() || current.stage !== 'empty') return;
+      const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
+      if (!raw) return;
+      window.localStorage.removeItem(AUTH_DRAFT_KEY);
+      const snap: unknown = JSON.parse(raw);
+      if (!isAuthDraft(snap) || Date.now() - snap.ts > 60 * 60 * 1000) return;
+      const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
+      if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') &&
+          loadPlans().some((p) => p.id === entry.id)) {
+        setSavedEntry({ id: entry.id, mode: entry.mode });
+      }
+      const unchangedPlan = snap.submittedBrief !== null &&
+        JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
+      setBrief(snap.brief);
+      setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
+      setBudgetText(snap.budgetText);
+      // Back to the brief is navigation, not an edit. Keep an unchanged
+      // generated plan available after the sign-in round trip.
+      setStage(snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage);
+      setPage('planner');
+      writePageUrl('planner', true);
+    } catch {
+      /* corrupted or unavailable storage */
+    }
+  }
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      applyAuthUser(data.session?.user ?? null);
+      // Only a tab loaded with a session may consume the shared snapshot.
+      // A later cross-tab SIGNED_IN must leave it for the callback tab.
+      mayRestoreAuthDraft.current = Boolean(data.session);
+      if (data.session) restoreAuthDraft();
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      applyAuthUser(session?.user ?? null);
+      // Auth events also arrive from other tabs: re-gate a visible plan when
+      // the session is gone, and stop re-stashing the draft once signed in.
+      // Draft restore stays on the getSession path so only the freshly loaded
+      // tab consumes it; this tab keeps its in-memory brief.
+      if (!session) {
+        mayRestoreAuthDraft.current = false;
+        setStage((s) => (s === 'plan' ? 'gate' : s));
+        setSavedEntry(null);
+      }
+      if (event === 'SIGNED_IN') setMagicLinkTo(null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // An explicit saved-plans landing defers the pending draft until Planner.
+  useEffect(() => {
+    if (page === 'planner' && authUser) restoreAuthDraft();
+    // Only a route/session transition may consume the pending snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, authUser?.id]);
+
+  // Reveal a plan only after authentication and first-time profile completion.
+  useEffect(() => {
+    if (stage === 'gate' && canViewPlan) setStage('plan');
+    if (stage === 'plan' && !canViewPlan) setStage('gate');
+  }, [stage, canViewPlan]);
+
+  // The email link does not leave the page, so keep the stashed draft current
+  // while a sign-in link is pending; otherwise the restore would lose edits.
+  useEffect(() => {
+    if (magicLinkTo) stashAuthDraft();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [magicLinkTo, brief, submittedBrief, budgetText, stage]);
+
   // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
   // regains focus, so a page left open across midnight shows today's state.
   const [, setDayTick] = useState(0);
@@ -418,7 +581,7 @@ export default function App() {
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
-  const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
+  const viewBrief = (stage === 'generating' || stage === 'gate' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
@@ -443,7 +606,8 @@ export default function App() {
     () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
     [stage, submittedBrief],
   );
-  const viewingSaved = savedEntry !== null && savedEntry.mode === 'view' && stage === 'plan';
+  const savedBriefReadOnly = savedEntry !== null && savedEntry.mode === 'view';
+  const viewingSaved = savedBriefReadOnly && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
 
@@ -469,9 +633,11 @@ export default function App() {
   useEffect(() => {
     if (stage !== 'generating') return;
     if (ticks < genSteps) return;
-    const id = window.setTimeout(() => setStage('plan'), 500);
+    // Plans are gated behind sign-in: without a session, show the gate
+    // first; the brief and generated plan stay intact behind it.
+    const id = window.setTimeout(() => setStage(canViewPlan ? 'plan' : 'gate'), 500);
     return () => window.clearTimeout(id);
-  }, [stage, ticks, genSteps]);
+  }, [stage, ticks, genSteps, canViewPlan]);
 
   function showToast(message: string) {
     setToast(message);
@@ -614,6 +780,7 @@ export default function App() {
   }
 
   function reset() {
+    try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* private mode */ }
     clearPlannerState();
     window.scrollTo(0, 0);
   }
@@ -695,7 +862,7 @@ export default function App() {
     setBrief(original.brief);
     setSubmittedBrief(original.brief);
     setBudgetText(original.brief.budget !== null ? original.brief.budget.toLocaleString('en-GB') : '');
-    setStage('plan');
+    setStage(canViewPlan ? 'plan' : 'gate');
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
@@ -715,18 +882,127 @@ export default function App() {
     setBrief(entry.brief);
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
-    setStage('plan');
+    setStage(canViewPlan ? 'plan' : 'gate');
     setSavedEntry({ id: entry.id, mode: 'view' });
     setJustSavedId(null);
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
+    writePageUrl('planner');
     window.scrollTo(0, 0);
+  }
+
+  async function continueWithGoogle() {
+    stashAuthDraft();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
+    });
+    if (error) showToast('Google sign-in failed - please try again');
+  }
+
+  async function continueWithEmail() {
+    const email = signinEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast('Enter a full email address, like name@company.com');
+      return;
+    }
+    stashAuthDraft();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
+    });
+    if (error) {
+      showToast('Could not send the sign-in link - please try again');
+    } else {
+      setMagicLinkTo(email);
+    }
+  }
+
+  async function completeProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profileName.trim() || profileSaving) return;
+    setProfileSaving(true);
+    setProfileError(null);
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { full_name: profileName.trim(), company: profileCompany.trim(), compass_profile_complete: true },
+      });
+      if (error || !data.user) {
+        setProfileError('Could not save your details. Please try again.');
+        return;
+      }
+      applyAuthUser(data.user, true);
+    } catch {
+      setProfileError('Could not save your details. Please try again.');
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  function renderProfileFields(idPrefix: string) {
+    return (
+      <form onSubmit={(event) => { void completeProfile(event); }} aria-label="Complete your profile">
+        <p className="pagesub">Signed in as {authEmail}. Add your details to continue.</p>
+        <div className="field">
+          <label htmlFor={`${idPrefix}-name`}>Name</label>
+          <input id={`${idPrefix}-name`} className="ctl" autoComplete="name" required maxLength={160}
+            value={profileName} disabled={profileSaving} onChange={(event) => setProfileName(event.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor={`${idPrefix}-company`}>Company <span className="muted">(optional)</span></label>
+          <input id={`${idPrefix}-company`} className="ctl" autoComplete="organization" maxLength={160}
+            value={profileCompany} disabled={profileSaving} onChange={(event) => setProfileCompany(event.target.value)} />
+        </div>
+        {profileError && <p className="fieldnote" role="alert">{profileError}</p>}
+        <button type="submit" className="gen" disabled={profileSaving || !profileName.trim()}>
+          {profileSaving ? 'Saving details...' : 'Continue'}
+        </button>
+      </form>
+    );
+  }
+
+  function renderSignInFields(idPrefix: string) {
+    return (
+      <>
+        <div className="ssolist">
+          <button type="button" className="sso" onClick={() => { void continueWithGoogle(); }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
+              <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z" />
+              <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.3 6.8C.5 8.4 0 10.1 0 12s.5 3.6 1.3 5.2l3.9-2.9z" />
+              <path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.8 1.3 6.8l3.9 2.9c.9-2.9 3.6-5 6.8-5z" />
+            </svg>
+            Continue with Google
+          </button>
+        </div>
+        <div className="divider"><span>or</span></div>
+        <div className="field">
+          <label htmlFor={`${idPrefix}-email`}>Work email</label>
+          <input id={`${idPrefix}-email`} className="ctl" type="email" placeholder="you@company.com"
+            value={signinEmail} onChange={(e) => setSigninEmail(e.target.value)} />
+        </div>
+        <button type="button" className="gen" onClick={() => { void continueWithEmail(); }}>
+          Continue with email <span>&rarr;</span>
+        </button>
+      </>
+    );
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    mayRestoreAuthDraft.current = false;
+    applyAuthUser(null);
+    // A signed-out visitor should not keep seeing a gated plan.
+    if (stage === 'plan') setStage('gate');
+    setMagicLinkTo(null);
+    showToast('Signed out');
   }
 
   function go(p: Page) {
     window.clearTimeout(toastTimer.current);
     setToast(null);
+    if (pageFromUrl() !== p || window.location.hash !== PAGE_ROUTES[p]) writePageUrl(p);
     setPage(p);
     window.scrollTo(0, 0);
   }
@@ -769,7 +1045,7 @@ export default function App() {
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
           <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button type="button" className="signin" onClick={() => go('signin')}>
-            Sign in
+            {authEmail ?? 'Sign in'}
           </button>
           <button
             type="button"
@@ -807,8 +1083,8 @@ export default function App() {
       </header>
 
       <div className="layout">
-        <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
-          {viewingSaved ? (
+        <section className="card form" aria-label={savedBriefReadOnly ? 'Saved plan brief' : 'Plan a campaign'}>
+          {savedBriefReadOnly ? (
             <>
               <div className="planhead">
                 <h2>Your brief</h2>
@@ -823,9 +1099,9 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <button type="button" className="gen" onClick={editSavedPlan}>
+              {canViewPlan && <button type="button" className="gen" onClick={editSavedPlan}>
                 Edit plan <span>&rarr;</span>
-              </button>
+              </button>}
               <div className="viewactions">
                 <button type="button" className="ghost" onClick={() => go('plans')}>
                   <IconBack />
@@ -838,6 +1114,7 @@ export default function App() {
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
+          {demoMode && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
@@ -847,6 +1124,7 @@ export default function App() {
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
+          </>}
 
           <div className="field">
             <label htmlFor="f-name">Campaign name</label>
@@ -1129,7 +1407,28 @@ export default function App() {
             </>
           )}
 
-          {stage === 'plan' && plan && (
+          {stage === 'gate' && (
+            <div className="planin">
+              <div className="planhead">
+                <h2>Your plan is ready</h2>
+                <DemoCap />
+              </div>
+              <p className="pagesub">
+                Sign in to see it. Your brief is kept while you sign in.
+              </p>
+              {authEmail ? renderProfileFields('f-gate-profile') : magicLinkTo ? (
+                <p className="pagesub">
+                  Check your inbox - we sent a sign-in link to {magicLinkTo}. Open it to see your plan.
+                </p>
+              ) : (
+                renderSignInFields('f-gate')
+              )}
+              {savedBriefReadOnly ? <button type="button" className="ghost" onClick={() => go('plans')}>View all plans</button> :
+                <button type="button" className="ghost" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
+            </div>
+          )}
+
+          {stage === 'plan' && canViewPlan && plan && (
             <div className="planin">
               <div className="planhead">
                 <h2>{viewingSaved
@@ -1326,42 +1625,34 @@ export default function App() {
       {page === 'signin' && (
         <section className="card pagecard signincard" aria-label="Sign in">
           <div className="planhead">
-            <h2>Sign in to Compass</h2>
+            <h2>{authEmail && !profileComplete ? 'Complete your profile' : 'Sign in to Compass'}</h2>
             <DemoCap />
           </div>
           <p className="pagesub">Save your plans and pick up where you left off.</p>
-          <div className="ssolist">
-            <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-              <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
-                <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z" />
-                <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.3 6.8C.5 8.4 0 10.1 0 12s.5 3.6 1.3 5.2l3.9-2.9z" />
-                <path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.8 1.3 6.8l3.9 2.9c.9-2.9 3.6-5 6.8-5z" />
-              </svg>
-              Continue with Google
-            </button>
-            <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-              <svg width="16" height="16" viewBox="0 0 23 23" aria-hidden="true">
-                <rect x="1" y="1" width="10" height="10" fill="#F25022" />
-                <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
-                <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
-                <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
-              </svg>
-              Continue with Microsoft
-            </button>
-          </div>
-          <div className="divider"><span>or</span></div>
-          <div className="field">
-            <label htmlFor="f-email">Work email</label>
-            <input id="f-email" className="ctl" type="email" placeholder="you@company.com" />
-          </div>
-          <button type="button" className="gen" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-            Continue with email <span>&rarr;</span>
-          </button>
+          {authEmail && !profileComplete ? renderProfileFields('f-signin-profile') : authEmail ? (
+            <>
+              <p className="pagesub">You are signed in as {authEmail}.</p>
+              <button type="button" className="gen" onClick={() => { void signOut(); }}>
+                Sign out
+              </button>
+            </>
+          ) : magicLinkTo ? (
+            <>
+              <p className="pagesub">
+                Check your inbox - we sent a sign-in link to {magicLinkTo}.
+              </p>
+              <button type="button" className="gen" onClick={() => { setMagicLinkTo(null); setSigninEmail(''); }}>
+                Use a different email
+              </button>
+            </>
+          ) : (
+          <>
+          {renderSignInFields('f-signin')}
           <p className="finenote">
-            Design proposal - sign-in is not connected yet. Google and Microsoft shown; more
-            providers can be added when sign-in is built.
+            Sign in with Google, or get a sign-in link emailed to you - no password needed.
           </p>
+          </>
+          )}
         </section>
       )}
 
@@ -1419,7 +1710,7 @@ export default function App() {
         illustrative, adapted from the Compass brief
       </footer>
 
-      {confirmFill && (
+      {demoMode && confirmFill && (
         <ConfirmDialog
           title="Replace your answers?"
           body="Replace the answers you have already given with the example brief?"

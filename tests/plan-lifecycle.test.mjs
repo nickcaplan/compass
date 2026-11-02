@@ -32,10 +32,34 @@ async function openSavedPlan(page) {
 
 async function generateExample(page) {
   await clickButton(page, 'Fill it in for me');
+  await page.waitForSelector('.planin .metrics');
+}
 
-  // Four950ms checklist ticks follow the1s walkthrough pause. Busy CI
-  // must wait for completion rather than treating runner speed as app failure.
-  await page.waitForSelector('.planin', { timeout: 20000 });
+// Plants a stored Supabase session so the app loads as signed in, the way it
+// would after a real OAuth or magic-link round trip. supabase-js accepts an
+// unexpired stored session without a network call, so this needs no live
+// Supabase project or credentials.
+async function signInTestUser(page) {
+  await page.evaluateOnNewDocument(() => {
+    const session = {
+      access_token: 'test-access-token',
+      token_type: 'bearer',
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      refresh_token: 'test-refresh-token',
+      user: {
+        id: 'test-user-id',
+        aud: 'authenticated',
+        role: 'authenticated',
+        email: 'test@example.com',
+        app_metadata: {},
+        user_metadata: { full_name: 'Test User', compass_profile_complete: true },
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    };
+    window.localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token', JSON.stringify(session));
+  });
+
 }
 
 test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, async (t) => {
@@ -71,7 +95,24 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4173');
+    await page.goto('http://127.0.0.1:4173/?demo=1');
+
+    // Anonymous first generation is gated behind real sign-in: the gate shows
+    // the sign-in options and keeps the plan hidden.
+    await clickButton(page, 'Fill it in for me');
+    await page.waitForFunction(() => !document.querySelector('.gen').disabled);
+    await page.locator('.gen').click();
+    await page.waitForSelector('.planin');
+    assert.ok(await page.$('#f-gate-email'), 'First generation must show the sign-in gate');
+    assert.ok(await page.$('.sso'), 'Gate must offer Continue with Google');
+    assert.equal(await page.$('.planin .metrics'), null, 'Plan stays behind the gate');
+
+    // With a signed-in session, generation goes straight to the plan.
+    await signInTestUser(page);
+    await page.reload();
+    // The header reflects the signed-in account instead of a Sign in prompt.
+    await page.waitForFunction(() => document.querySelector('.signin')?.textContent?.trim() === 'test@example.com');
+
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
