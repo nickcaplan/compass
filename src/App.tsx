@@ -311,13 +311,13 @@ function ensureSeedPlans(): void {
     if (toAdd.length === 0) return;
     const now = new Date().toISOString();
     const stamped = toAdd.map((seed) => ({ ...seed, savedAt: now }));
-    window.localStorage.setItem(PLANS_KEY, JSON.stringify([...plans, ...stamped]));
     window.localStorage.setItem(
       SEED_KEY,
       JSON.stringify({ version: SEED_VERSION, applied: [...applied, ...toAdd.map((seed) => seed.id)] }),
     );
+    window.localStorage.setItem(PLANS_KEY, JSON.stringify([...plans, ...stamped]));
   } catch {
-    // Storage unavailable - leave everything as it is.
+    // Storage unavailable - metadata-first writes keep deleted seeds from returning.
   }
 }
 
