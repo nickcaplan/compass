@@ -240,6 +240,10 @@ input.ctl{color:var(--text)}
   .skelrow{grid-template-columns:repeat(2,1fr)}
   .toast{bottom:auto;top:12px;left:12px;right:12px;transform:none;text-align:center}
 }
+@media (max-width:1199px){
+  .layout{grid-template-columns:1fr}
+  .form{position:static}
+}
 .only-m{display:none}
 @media (max-width:980px){
   .only-d{display:none}
