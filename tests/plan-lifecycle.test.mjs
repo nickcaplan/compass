@@ -59,6 +59,7 @@ async function signInTestUser(page) {
     };
     window.localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token', JSON.stringify(session));
   });
+
 }
 
 test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, async (t) => {
@@ -94,7 +95,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4173');
+    await page.goto('http://127.0.0.1:4173/?demo=1');
 
     // Anonymous first generation is gated behind real sign-in: the gate shows
     // the sign-in options and keeps the plan hidden.
@@ -111,6 +112,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await page.reload();
     // The header reflects the signed-in account instead of a Sign in prompt.
     await page.waitForFunction(() => document.querySelector('.signin')?.textContent?.trim() === 'test@example.com');
+
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
@@ -147,7 +149,9 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Saved spring rename');
       await page.locator('.gen').click();
-      await page.waitForSelector('.planin');
+      // Four950ms checklist ticks follow the1s walkthrough pause. Busy CI
+  // must wait for completion rather than treating runner speed as app failure.
+  await page.waitForSelector('.planin', { timeout: 20000 });
       await clickButton(page, 'Save changes');
       await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
       await page.waitForSelector('.bsum');
