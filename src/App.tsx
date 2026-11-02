@@ -171,6 +171,7 @@ import {
   monthsRangeLabel,
   gbp,
   startNotFuture,
+  campaignEnded,
   weeksLabel,
   type Brief,
   type ObjectiveId,
@@ -1218,6 +1219,7 @@ export default function App() {
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
+                        {campaignEnded(sp.brief.end) && <span className="chip soft">Expired</span>}
                         {objLabels && <span className="chip">{objLabels}</span>}
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
