@@ -76,6 +76,9 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await t.test('coming-soon PDF feedback is local and dismissible', async () => {
       const pdf = await page.$('.cs-wrap button');
       assert.ok(pdf);
+      await page.$eval('.planin', async (element) => {
+        await Promise.all(element.getAnimations().map((animation) => animation.finished));
+      });
       await pdf.focus();
       const bounds = () => pdf.evaluate((element) => {
         const rect = element.getBoundingClientRect();
