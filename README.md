@@ -34,6 +34,12 @@ requires Node 22.13 or newer for its storage regression helper.
 npm test
 ```
 
+The browser suite uses `puppeteer-core` and requires Google Chrome installed at
+`/usr/bin/google-chrome` on Linux or
+`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` on macOS.
+CI uses the Chrome preinstalled on GitHub's Ubuntu runner. Other operating
+systems or Chrome locations need the test executable path adjusted first.
+
 Builds the app first (`pretest`), then runs the Vitest unit tests for the
 plan-generation logic (`test:unit`) and the browser regression tests against
 the built app (`test:browser`).

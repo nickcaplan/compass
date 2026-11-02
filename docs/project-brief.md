@@ -46,7 +46,7 @@ committed to.
   reopen, edit and delete plans, stored in their own browser's localStorage
   only. Nothing leaves the device; there is still no account or sync.
 - Download PDF, Speak to a specialist and Support are visual affordances
-  only; clicking them says they are part of the full product. Sign in is a
+  only; clicking them shows "Not available yet". Sign in is a
   preview page ahead of real accounts.
 
 ## Outstanding work (2 November 2026)
