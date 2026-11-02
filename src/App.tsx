@@ -209,7 +209,7 @@ function ComingSoonButton() {
   }, [notice]);
 
   return (
-    <span className={`cs-wrap${notice ? ' cs-active' : ''}`} ref={wrap}>
+    <span className="cs-wrap" ref={wrap}>
       <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
         {notice > 0 && (
           <span className="cs-bubble" id={description} key={notice}>

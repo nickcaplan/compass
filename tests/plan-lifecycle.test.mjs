@@ -77,13 +77,16 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       const pdf = await page.$('.cs-wrap button');
       assert.ok(pdf);
       await pdf.focus();
+      const before = await pdf.boundingBox();
       await page.keyboard.press('Enter');
       await page.waitForSelector('.cs-bubble');
       assert.equal(await page.$('.toast'), null);
+      assert.deepEqual(await pdf.boundingBox(), before);
       assert.match(await page.$eval('.cs-status', (el) => el.textContent), /Soon.*building/);
       assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), 'Download PDF');
       await page.keyboard.press('Escape');
       await page.waitForSelector('.cs-bubble', { hidden: true });
+      assert.deepEqual(await pdf.boundingBox(), before);
       await page.keyboard.press('Space');
       await page.waitForSelector('.cs-bubble');
       await page.keyboard.press('Tab');
