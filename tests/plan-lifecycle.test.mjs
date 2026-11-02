@@ -327,7 +327,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     const expiredCount = () => page.$$eval('.chip', (els) => els.filter((e) => e.textContent.trim() === 'Expired').length);
 
     // Fresh visitor: exactly the seven seeds, five of them Expired.
-    await page.goto('http://127.0.0.1:4175');
+    await page.goto('http://127.0.0.1:4175/?demo=1');
     await clickButton(page, 'My plans');
     await page.waitForSelector('.plancard');
     assert.equal((await cardNames()).length, 7);
@@ -430,7 +430,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4174');
+    await page.goto('http://127.0.0.1:4174/?demo=1');
 
     // A clean visitor sees samples without a recovery notice.
     await clickButton(page, 'My plans');
@@ -500,7 +500,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
         return original.call(this, key, value);
       };
     });
-    await blocked.goto('http://127.0.0.1:4174');
+    await blocked.goto('http://127.0.0.1:4174/?demo=1');
     await blocked.evaluate(() => localStorage.setItem('compass-saved-plans', '{still here'));
     await blocked.reload();
     await clickButton(blocked, 'My plans');
