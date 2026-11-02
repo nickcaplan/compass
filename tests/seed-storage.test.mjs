@@ -39,3 +39,19 @@ for (const failingKey of ['meta', 'plans']) {
     }
   });
 }
+
+test('initialization preserves a pre-existing plan and its order across reload', () => {
+  const existing = { id: 'user-plan', savedAt: '2026-01-01T00:00:00.000Z', brief: { name: 'My campaign', budget: 12345 } };
+  const data = new Map([['plans', JSON.stringify([existing])]]);
+  const window = { localStorage: {
+    getItem: (key) => data.get(key) ?? null,
+    setItem: (key, value) => data.set(key, value),
+  } };
+  const run = factory(window, () => JSON.parse(data.get('plans')), () => [{ id: 'seed-a', brief: {} }, { id: 'seed-b', brief: {} }], 'meta', 1, 'plans');
+  run();
+  const first = JSON.parse(data.get('plans'));
+  assert.deepEqual(first[0], existing);
+  assert.deepEqual(first.map((p) => p.id), ['user-plan', 'seed-a', 'seed-b']);
+  run();
+  assert.deepEqual(JSON.parse(data.get('plans')), first);
+});
