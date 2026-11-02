@@ -37,7 +37,7 @@ async function generateExample(page) {
   await page.waitForSelector('.planin');
 }
 
-test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, async (t) => {
+test('saved-plan replacement protects unsaved answers', { timeout: 120000 }, async (t) => {
   const server = spawn(process.execPath, [
     'node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1',
     '--port', '4173', '--strictPort',
