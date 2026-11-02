@@ -30,9 +30,11 @@ with its own correctness tests.
 
 ## 2026-10-31 - Inert actions say so
 
-Save plan, Download PDF, Speak to a specialist, Sign in, My plans and Support
-show a note that they are part of the full product. This keeps the demo
-honest: nothing implies a working backend that does not exist.
+Historical decision, partly superseded: Save plan and My plans now work in
+browser-local storage. The pending contact, authentication and PDF-feedback
+PRs replace their respective inert actions. See project-brief.md for the
+current production versus preview scope; this entry records the original
+31 October decision rather than asserting those controls are still inert.
 
 ## 2026-10-31 - Four seniority levels from the brief
 
