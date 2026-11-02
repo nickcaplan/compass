@@ -6,15 +6,15 @@ const key='sb-ctailpmcoyvaplwbwskf-auth-token';
 const user=(metadata={})=>({id:'test-profile',email:'profile@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:metadata,created_at:'2026-01-01T00:00:00Z'});
 const session=u=>({access_token:'test',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,refresh_token:'test-refresh',expires_in:3600,user:u});
 test('profile completion, failure, persistence, and existing-plan gate', {timeout:60000},async()=>{
- const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','4191','--strictPort'],{stdio:'ignore'});let browser;
+ const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
  try {
-  for(let i=0;i<100;i++){try{if((await fetch('http://127.0.0.1:4191')).ok)break}catch{}await new Promise(r=>setTimeout(r,100));}
-  browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true});
+  const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
+  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true});
   for(const width of [1440,390]){for(const theme of ['dark','light']){
    const ctx=await browser.createBrowserContext();const p=await ctx.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});
    const click=label=>p.evaluate(l=>[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===l)?.click(),label);
    await p.evaluateOnNewDocument((theme)=>localStorage.setItem('compass-theme',theme),theme);
-   await p.goto('http://127.0.0.1:4191');await p.waitForSelector('.themebtn');await click('Fill it in for me');await p.waitForFunction(()=>!document.querySelector('.gen').disabled);await p.locator('.gen').click();await p.waitForSelector('#f-gate-email');assert.equal(await p.$('.metrics'),null);
+   await p.goto(url);await p.waitForSelector('.themebtn');await click('Fill it in for me');await p.waitForFunction(()=>!document.querySelector('.gen').disabled);await p.locator('.gen').click();await p.waitForSelector('#f-gate-email');assert.equal(await p.$('.metrics'),null);
    const brief=await p.evaluate(()=>({name:document.querySelector('#f-name').value,objectives:['awareness'],kpis:['Reach'],audiences:['Procurement'],seniority:['Manager'],budget:10000,start:'2026-12-01',end:'2027-02-01'}));
    await p.evaluate(brief=>localStorage.setItem('compass-saved-plans',JSON.stringify([{id:'existing',savedAt:'2026-11-01T12:00:00Z',brief}])),brief);
    await p.reload();await p.waitForSelector('.themebtn');await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('#f-gate-email');assert.equal(await p.$('.metrics'),null,'Anonymous saved plan must be gated');assert.equal(await p.$('#f-name'),null,'Saved brief remains read-only while gated');

@@ -719,6 +719,7 @@ export default function App() {
   }
 
   function reset() {
+    try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* private mode */ }
     clearPlannerState();
     window.scrollTo(0, 0);
   }
