@@ -153,7 +153,8 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.reload();
       await clickButton(page, 'My plans');
       await page.waitForSelector('.plancard');
-      const todayChips = await page.$$eval('.plancard .chips .chip', (chips) => chips.map((chip) => chip.textContent));
+      const todayChips = await page.$eval('.plancard', (card) =>
+        [...card.querySelectorAll('.chips .chip')].map((chip) => chip.textContent));
       assert.equal(todayChips.includes('Expired'), false);
       await page.evaluate(({ start, end }) => {
         const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
@@ -245,10 +246,16 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         await otherPage.goto('http://127.0.0.1:4173');
         await clickButton(otherPage, 'My plans');
         await otherPage.waitForSelector('.pc-actions');
-        await clickButton(otherPage, 'Delete');
+        const deleteHandle = await otherPage.evaluateHandle(() =>
+          [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes('Saved spring rename'))?.querySelector('button.ghost'));
+        const deleteButton = deleteHandle.asElement();
+        assert.ok(deleteButton, 'saved plan card not found');
+        await deleteButton.click();
+        await deleteHandle.dispose();
         await otherPage.waitForSelector('[role="alertdialog"]');
         await otherPage.locator('.confirm .btn').click();
-        await otherPage.waitForSelector('.plancard', { hidden: true });
+        await otherPage.waitForFunction(() =>
+          ![...document.querySelectorAll('.plancard')].some((c) => c.textContent.includes('Saved spring rename')));
       } finally {
         await otherPage.close();
       }
@@ -257,7 +264,9 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       assert.equal(await page.$eval('#f-name', (input) => input.value), '');
       assert.match(await page.$eval('.toast', (toast) => toast.textContent), /no longer in My plans/);
       await clickButton(page, 'My plans');
-      assert.equal(await page.$('.plancard'), null);
+      const stillThere = await page.$$eval('.plancard', (cards) =>
+        cards.some((c) => c.textContent.includes('Saved spring rename')));
+      assert.equal(stillThere, false);
     });
   } finally {
     await browser?.close();
@@ -325,7 +334,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     assert.equal((await cardNames()).length, 4);
 
     // The visitor's own plan lands first and is never overwritten by seeds.
-    await clickButton(page, 'Plan a campaign');
+    await clickButton(page, 'Planner');
     await generateExample(page);
     const userName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
