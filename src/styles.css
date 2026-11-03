@@ -85,6 +85,8 @@ h1{font-family:Poppins,sans-serif;font-weight:800;font-size:52px;line-height:1.0
 .form h2{font-family:Poppins,sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;color:var(--text)}
 .form .hint{font-size:12.5px;margin-bottom:20px}
 .field{margin-bottom:15px}
+/* Each planning step has its own boundary without changing the input order. */
+.planning-step{padding:14px;border:1px solid var(--line-mid);border-radius:12px;background:var(--bg)}
 label{display:block;font-family:Roboto,system-ui,sans-serif;font-size:10.5px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;margin-bottom:7px}
 .ctl{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:500;font-family:Roboto,system-ui,sans-serif}
 select.ctl,input.ctl{appearance:none;-webkit-appearance:none;border:0;outline:none}
@@ -389,11 +391,11 @@ input.ctl{color:var(--text)}
 @media(prefers-reduced-motion:reduce){.cs-wrap .ghost{animation:none;transition:none}.cs-showing .ghost{border-color:var(--accent)}}
 /* One decorative reel, no input lock or live announcements. */
 .industry-eyebrow{display:flex;align-items:center;flex-wrap:wrap;column-gap:.45em;row-gap:.15em;line-height:1.8}
-.industry-reel{color:var(--accent-ink);display:inline-block;width:calc(13ch + 2.34em);height:1.8em;overflow:hidden;position:relative;mask-image:linear-gradient(transparent,#000 20%,#000 80%,transparent)}
+.industry-reel{color:var(--accent-ink);display:inline-block;width:max-content;max-width:100%;height:1.8em;overflow:hidden;position:relative;mask-image:linear-gradient(transparent,#000 20%,#000 80%,transparent)}
 .industry-reel-track{display:flex;flex-direction:column;animation:industry-spin 2.6s cubic-bezier(.18,.32,.12,1) both;will-change:transform}
 .industry-reel-track>span{height:1.8em;line-height:1.8;flex:none;white-space:nowrap}
-@keyframes industry-spin{0%{transform:translateY(0)}96%{transform:translateY(-23.43em)}100%{transform:translateY(-23.4em)}}
-@media(prefers-reduced-motion:reduce){.industry-reel-track{animation:none;transform:translateY(-23.4em)}}
+@keyframes industry-spin{0%{transform:translateY(0)}96%{transform:translateY(-16.23em)}100%{transform:translateY(-16.2em)}}
+@media(prefers-reduced-motion:reduce){.industry-reel-track{animation:none;transform:translateY(-16.2em)}}
 
 .industry-accessible{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 
@@ -408,3 +410,5 @@ input.ctl{color:var(--text)}
 .plancard>.expired::before{content:'◷';font-size:14px}
 .plancard.is-expired .pc-main>b{color:var(--text2)}
 :root[data-theme=light] .plancard>.expired{border-color:#d4a9ac;color:#8f353d;background:#f8e9eb}
+/* Inset inputs need their own edge inside matching-background planning cards. */
+.planning-step input.ctl{border:1px solid var(--line-mid)}
