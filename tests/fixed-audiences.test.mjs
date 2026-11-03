@@ -13,7 +13,7 @@ test('natural audience pills stay consistent and invalid saved choices require a
    server.once('error',reject);server.stdout.on('data',b=>{out+=b;const m=stripVTControlCharacters(out).match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}});
   });
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true});
-  for(const width of[320,390,768,1440]) {
+  for(const width of[320,375,390,414,768,980,981,1200,1440]) {
    const ctx=await browser.createBrowserContext(),p=await ctx.newPage();await p.setViewport({width,height:900});p.setDefaultTimeout(7000);
    await p.goto(url+'?demo=1');await p.waitForSelector('[aria-labelledby=g-audience]');await p.evaluate(()=>document.fonts.ready);
    const labels=()=>p.$$eval('[aria-labelledby=g-audience] button',bs=>bs.map(b=>b.textContent.trim()));assert.deepEqual(await labels(),expected);
@@ -28,6 +28,9 @@ test('natural audience pills stay consistent and invalid saved choices require a
     // Full labels remain single-line. Natural flex wrapping pairs only where
     // the unmodified shared pill dimensions fit in the current card.
     assert.ok(g.every(x=>x.height===g[0].height));
+    const available=await p.$eval('[aria-labelledby=g-audience]',e=>e.clientWidth);
+    if(g[2].width+g[3].width+8<=available)assert.equal(g[2].y,g[3].y);
+    else assert.ok(g[2].y<g[3].y);
     assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     if(process.env.SCREENSHOT_DIR){await p.$eval('[aria-labelledby=g-audience]',e=>e.scrollIntoView({block:'center'}));await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/audience-pairs-${process.env.HOSTED_URL?'hosted':'local'}-${width}-${theme}.png`})}
    }
