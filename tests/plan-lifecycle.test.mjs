@@ -1,3 +1,4 @@
+import { installAuthFixture, fixtureNavigation } from './helpers/auth-fixtures.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
@@ -36,7 +37,8 @@ async function generateExample(page) {
 // unexpired stored session without a network call, so this needs no live
 // Supabase project or credentials.
 async function signInTestUser(page) {
-  await page.evaluateOnNewDocument(() => {
+  await installAuthFixture(page);
+  await page.evaluateOnNewDocument(async () => {
     const session = {
       access_token: 'test-access-token',
       token_type: 'bearer',
@@ -53,7 +55,7 @@ async function signInTestUser(page) {
         created_at: '2026-01-01T00:00:00Z',
       },
     };
-    window.localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token', JSON.stringify(session));
+    await window.fixtureAuth.setItem('sb-ctailpmcoyvaplwbwskf-auth-token', JSON.stringify(session));
   });
 
 }
@@ -91,7 +93,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4173/?demo=1');
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4173/?demo=1'));
 
     // Anonymous first generation is gated behind real sign-in: the gate shows
     // the sign-in options and keeps the plan hidden.
@@ -292,7 +294,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         cards.filter((c) => c.textContent.includes(n)).length, savedName);
       let beforeCount = 0;
       try {
-        await otherPage.goto('http://127.0.0.1:4173');
+        await (await installAuthFixture(otherPage), fixtureNavigation(otherPage,'http://127.0.0.1:4173'));
         await clickButton(otherPage, 'My plans');
         await otherPage.waitForSelector('.pc-actions');
         beforeCount = await cardsWithName(otherPage);
@@ -364,7 +366,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     const expiredCount = () => page.$$eval('.chip', (els) => els.filter((e) => e.textContent.trim() === 'Expired').length);
 
     // Fresh visitor: exactly the seven seeds, five of them Expired.
-    await page.goto('http://127.0.0.1:4175/?demo=1');
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4175/?demo=1'));
     await clickButton(page, 'My plans');
     await page.waitForSelector('.plancard');
     assert.equal((await cardNames()).length, 7);
@@ -397,7 +399,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
 
     // The visitor's own plan lands first and is never overwritten by seeds.
     await signInTestUser(page);
-    await page.goto('http://127.0.0.1:4175/?demo=1');
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4175/?demo=1'));
     await clickButton(page, 'Planner');
     await generateExample(page);
     const userName = await page.$eval('#f-name', (input) => input.value);
@@ -469,7 +471,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4174/?demo=1');
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4174/?demo=1'));
 
     // A clean visitor sees samples without a recovery notice.
     await clickButton(page, 'My plans');
@@ -501,7 +503,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
 
     // Saving works normally afterwards, and the unreadable copy is kept.
     await signInTestUser(page);
-    await page.goto('http://127.0.0.1:4174/?demo=1');
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4174/?demo=1'));
     await clickButton(page, 'Planner');
     await generateExample(page);
     await clickButton(page, 'Save plan');
@@ -541,7 +543,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
         return original.call(this, key, value);
       };
     });
-    await blocked.goto('http://127.0.0.1:4174/?demo=1');
+    await (await installAuthFixture(blocked), fixtureNavigation(blocked,'http://127.0.0.1:4174/?demo=1'));
     await blocked.evaluate(() => localStorage.setItem('compass-saved-plans', '{still here'));
     await blocked.reload();
     await clickButton(blocked, 'My plans');
@@ -558,7 +560,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
 
     // Saving is blocked while the unreadable original cannot be backed up.
     await signInTestUser(blocked);
-    await blocked.goto('http://127.0.0.1:4174/?demo=1');
+    await (await installAuthFixture(blocked), fixtureNavigation(blocked,'http://127.0.0.1:4174/?demo=1'));
     await clickButton(blocked, 'Planner');
     await generateExample(blocked);
     await clickButton(blocked, 'Save plan');
@@ -599,7 +601,7 @@ test('signed-out visitor is asked to log in before the plan reveals, brief kept'
     const page = await context.newPage();
     page.setDefaultTimeout(15000);
     await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4177/?demo=1');
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4177/?demo=1'));
 
     // Generate without a session: the gate asks for log-in and hides the plan.
     await clickButton(page, 'Fill it in for me');

@@ -2,7 +2,7 @@ import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDr
 import type { DraftBinding } from './authDraft';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
+import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 import EmailAuth from './EmailAuth';
 
 import logoUrl from './assets/thh-logo.svg';
@@ -812,16 +812,20 @@ export default function App() {
       for (const { snap } of candidates) {
         for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
         const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
-        if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)) {
-          setSavedEntry({ id: entry.id, mode: entry.mode });
-        }
+        const restoredSavedEntry: { id: string; mode: 'view' | 'edit' } | null = entry && typeof entry.id === 'string' &&
+          (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)
+          ? { id: entry.id, mode: entry.mode } : null;
+        if (restoredSavedEntry) setSavedEntry(restoredSavedEntry);
         const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
         const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
         setBrief(snap.brief); setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
         setBudgetText(snap.budgetText); setStage(restoredStage);
         latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
-          savedEntry: null, budgetText: snap.budgetText, stage: restoredStage };
+          savedEntry: restoredSavedEntry, budgetText: snap.budgetText, stage: restoredStage };
         anonymousBinding.current = null;
+        // Reset mode can reload before completion. Keep restored work bound to
+        // its verified account instead of consuming its only durable copy.
+        if (authController.recovering) stashAuthDraft({ accountId: user.id });
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
         if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
         break;
@@ -862,7 +866,9 @@ export default function App() {
     const startupEpoch = authEpoch.current;
     supabase.auth.getSession().then(({ data }) => {
       if (startupEpoch !== authEpoch.current && data.session?.user.id !== currentAccount.current?.id) return;
+      if (authController.error) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
       applyAuthUser(data.session?.user ?? null, false, true);
+      if (!authController.recovering) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
       initialSessionPending.current = false;
       // Only a tab loaded with a session may consume the shared snapshot.
       // A later cross-tab SIGNED_IN must leave it for the callback tab.
@@ -883,9 +889,11 @@ export default function App() {
           applyAuthUser(result.user);
         }).catch(() => { /* Keep the current profile gate; never infer completion on failure. */ });
       }
-    });
+    }).catch(error => { setAuthNotice(error instanceof Error ? error.message : 'Secure browser storage is unavailable. Log-in is paused.'); });
+    void authController.ready.then(() => { if (authController.error) { setAuthNotice(authController.error.message); recoveryPrincipal.current = null; setRecoveringPassword(false); } });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       applyAuthUser(session?.user ?? null, false, event === 'INITIAL_SESSION' || (event === 'TOKEN_REFRESHED' && initialSessionPending.current));
+      if (!authController.recovering) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
       // Auth events also arrive from other tabs: re-gate a visible plan when
       // the session is gone, and stop re-stashing the draft once signed in.
       // Draft restore stays on the getSession path so only the freshly loaded
@@ -898,7 +906,8 @@ export default function App() {
       }
       if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
     });
-    return () => { subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
+    const stopErrors = authController.onError(error => setAuthNotice(error.message));
+    return () => { stopErrors(); subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
     // One subscription per mount; planner/account/flow state is read through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1316,9 +1325,12 @@ export default function App() {
     if (!id) return;
     setProfileSaving(true);
     setProfileError(null);
+    let generation: number | null = null;
     try {
+      generation = await authController.capture();
       const { data, error } = await supabase.auth.getSession();
       if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
       if (error || data.session?.user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
       const token = data.session.access_token;
       const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
@@ -1327,10 +1339,12 @@ export default function App() {
       });
       const user = await response.json() as User;
       if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
       if (!response.ok || user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
       // Re-read the SDK session, but never persist captured credentials ourselves.
       const current = await supabase.auth.getSession();
       if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
       if (current.error || current.data.session?.user.id !== id) {
         setProfileError('Your session changed. Please log in again.'); return;
       }
@@ -1338,7 +1352,7 @@ export default function App() {
       canonicalProfile.current = user;
       applyAuthUser(user, true);
     } catch {
-      if (epoch === authEpoch.current) setProfileError('Could not save your details. Please try again.');
+      if (epoch === authEpoch.current && (generation === null || await authController.isCurrent(generation))) setProfileError('Could not save your details. Please try again.');
     } finally {
       setProfileSaving(false);
     }
@@ -1404,6 +1418,8 @@ export default function App() {
     } catch {
       failed = true;
     }
+    const canonical = await supabase.auth.getSession().catch(() => null);
+    if (canonical?.data.session) return;
     mayRestoreAuthDraft.current = false;
     recoveryPrincipal.current = null;
     setRecoveringPassword(false);
