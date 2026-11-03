@@ -37,5 +37,5 @@ test('market options preserve shared pill styling and multi-selection without re
  }
  await p.$eval('[aria-labelledby=g-market]',e=>e.scrollIntoView({block:'center'}));if(process.env.SCREENSHOT_DIR)await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/markets-local-${width}.png`});await p.close();
  }
- }finally{await browser?.close();server?.kill()}
+ }finally{try{await browser?.close()}finally{server?.kill()}}
 });
