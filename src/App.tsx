@@ -1396,9 +1396,9 @@ export default function App() {
                   <b>A Hybrid House specialist can pick it up from here.</b>
 
                 </div>
-                <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                <a className="btn specialist-link" href="https://thehybridhouse.co.uk/contact/" target="_blank" rel="noreferrer">
                   Speak to a specialist
-                </button>
+                </a>
               </div>
               <div className="secondary">
                 {viewingSaved ? (
