@@ -1,3 +1,4 @@
+import {stripVTControlCharacters} from 'node:util';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
@@ -20,15 +21,15 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
       server.once('error', error => { clearTimeout(timeout); reject(error); });
       server.once('exit', code => { clearTimeout(timeout); reject(new Error(`Preview exited early: ${code}`)); });
       server.stdout.on('data', chunk => {
-        output += chunk.toString().replace(/\x1b\[[0-9;]*m/g, '');
-        const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
+        output += chunk.toString();
+        const match = stripVTControlCharacters(output).match(/http:\/\/127\.0\.0\.1:\d+\//);
         if (match) { clearTimeout(timeout); resolve(match[0]); }
       });
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) {
       const page = await browser.newPage(); await page.setViewport({width,height:900});
-      await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
+      await page.evaluateOnNewDocument(()=>localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify({access_token:'test',refresh_token:'test',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'pdf-test',email:'pdf@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'PDF Test',compass_profile_complete:true}}})));await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
       await page.waitForFunction(()=>!document.querySelector('.gen').disabled); await page.evaluate(()=>document.querySelector('.gen').click()); await page.waitForSelector('.cs-wrap button');
       for (const saved of [false,true]) {
         if(saved){await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save plan').click());await page.waitForSelector('.bsum');}
