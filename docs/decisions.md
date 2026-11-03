@@ -111,3 +111,7 @@ insets; below the existing 980px single-column breakpoint, the page gutter is
 on the 400px desktop form, enough for the approximately 327px long pair. Natural
 flex fallback remains on narrower screens and with wider/enlarged text. No
 fixed columns, truncation, font shrinking or label changes are introduced.
+
+Nick requested removal of the "Choose at least one audience." helper on
+3 November. The helper and its description reference are removed; selection
+validation and invalid saved-audience cleanup remain unchanged.
