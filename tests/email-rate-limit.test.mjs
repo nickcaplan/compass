@@ -16,7 +16,7 @@ test('email rate limits get distinct inline messages without an invented countdo
    if(req.method()==='OPTIONS')return req.respond({status:204,headers});
    let status=200,body={};
    const isAuth=/\/(recover|signup|token)(\?|$)/.test(req.url()); if(isAuth) requestCount++;
-   if((req.url().includes('/recover')||req.url().includes('/signup')||req.url().includes('/token'))&&nextError){
+   if((req.url().includes('/recover')||req.url().includes('/signup')||req.url().includes('/token')||(req.url().includes('/user')&&req.method()==='PUT'))&&nextError){
     status=429;body=nextError;nextError=null;
    }
    const respond=()=>req.respond({status,headers,contentType:'application/json',body:JSON.stringify(body)});
@@ -57,6 +57,9 @@ test('email rate limits get distinct inline messages without an invented countdo
   assert.equal(requestCount,countBefore+1);assert.equal(await p.$('form [role=alert]'),null);
   assert.equal(await p.$eval('#f-signin-email',e=>e.value),'throttle@example.com');
   assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:quota@example.com')).brief.name),draftName);
+  // All mapper callers are covered, including sign-in and principal-pinned update.
+  await p.evaluate(()=>document.querySelector('.email-modes button').click());await p.locator('#f-signin-password').fill('test-only-password');nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);
+  const recoveryUser={id:'rate-user',email:'rate@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Rate User',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'};const recoverySession={access_token:'rate-user-token',refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:recoveryUser};await p.evaluate(s=>localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify(s)),recoverySession);await p.goto(url+'?demo=1#type=recovery');await p.reload();await p.waitForSelector('.cancel-recovery');await p.locator('#f-signin-password').fill('rate-new-test-only');nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);
   await context.close();
  }finally{await browser?.close();server.kill()}
  // 4. Ordinary failures keep their existing copy (plain 400 on reset).
