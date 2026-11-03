@@ -221,13 +221,15 @@ function ComingSoonButton() {
     <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
       <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
         {notice > 0 && (
-          <span className="cs-bubble" id={description} key={notice}>
+          <span id={description} key={notice}>
             Coming soon
           </span>
         )}
       </span>
       <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
-        <span className="cs-label"><IconDownload />Download PDF</span>
+        {/* The button itself becomes the status: its box never moves and the
+            message never covers it, so no space is reserved or created. */}
+        <span className="cs-label" key={notice}>{notice ? '✧ Coming soon' : <><IconDownload />Download PDF</>}</span>
       </button>
     </span>
   );
