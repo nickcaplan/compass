@@ -42,7 +42,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   msg=await alertText(/Too many attempts from this network/);assert.match(msg,/Too many attempts from this network/);assert.doesNotMatch(msg,/\d+ (seconds|minutes)/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'throttle@example.com');
   // Draft and password survive all three failures. No real provider requests are used.
   assert.equal(await p.$eval('#f-signin-password',e=>e.value),'example-test-only');
-  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft')).brief.name),draftName);
+  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:quota@example.com')).brief.name),draftName);
   // Returning to reset clears the error, preserves email, and allows a retry.
   await p.evaluate(()=>document.querySelector('.email-modes button').click());
   assert.equal(await p.$('form [role=alert]'),null);
@@ -56,7 +56,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   await p.waitForSelector('form [role=status]');
   assert.equal(requestCount,countBefore+1);assert.equal(await p.$('form [role=alert]'),null);
   assert.equal(await p.$eval('#f-signin-email',e=>e.value),'throttle@example.com');
-  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft')).brief.name),draftName);
+  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:quota@example.com')).brief.name),draftName);
   await context.close();
  }finally{await browser?.close();server.kill()}
  // 4. Ordinary failures keep their existing copy (plain 400 on reset).
