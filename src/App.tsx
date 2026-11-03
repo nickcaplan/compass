@@ -896,14 +896,18 @@ export default function App() {
     return true;
   }
 
-  function savePlan() {
-    if (!submittedBrief) return;
+  // Captures the save row's viewport position and pauses browser scroll
+  // anchoring so it cannot double-count against the pin. Called only after
+  // persistence succeeds, so failed saves leave anchoring untouched.
+  function pinSaveRow() {
     saveAnchorY.current = saveRowRef.current
       ? saveRowRef.current.getBoundingClientRect().top
       : null;
-    // Browser scroll anchoring would partly compensate too and double-count
-    // against the pin below, so it is paused until the pin has painted.
     document.documentElement.style.overflowAnchor = 'none';
+  }
+
+  function savePlan() {
+    if (!submittedBrief) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
       if (!latest.some((p) => p.id === savedEntry.id)) {
@@ -915,6 +919,7 @@ export default function App() {
         p.id === savedEntry.id ? { ...p, brief: submittedBrief, savedAt: new Date().toISOString() } : p,
       );
       if (persist(updated)) {
+        pinSaveRow();
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
       } else {
@@ -934,6 +939,7 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
+      pinSaveRow();
       setSavedEntry({ id: entry.id, mode: 'view' });
       setJustSavedId(entry.id);
     } else {

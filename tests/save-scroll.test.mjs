@@ -22,23 +22,21 @@ async function clickButton(page, label) {
 }
 
 test('saving a plan keeps the save row steady in the viewport', { timeout: 60000 }, async () => {
-  const server = spawn(process.execPath, [
-    'node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1',
-    '--port', '4173', '--strictPort',
-  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
   let browser;
   try {
-    const deadline = Date.now() + 10000;
-    let ready = false;
-    while (Date.now() < deadline && server.exitCode === null) {
-      try {
-        const response = await fetch('http://127.0.0.1:4173', { signal: AbortSignal.timeout(1000) });
-        await response.body?.cancel();
-        if (response.ok) { ready = true; break; }
-      } catch { /* not up yet */ }
-      await new Promise((r) => setTimeout(r, 150));
-    }
-    assert.ok(ready, 'vite preview did not start');
+    // Use only the URL announced by this child, never an unrelated process.
+    const previewUrl = await new Promise((resolve, reject) => {
+      let output = '';
+      const timeout = setTimeout(() => reject(new Error('Preview server did not become ready')), 10000);
+      server.once('error', (error) => { clearTimeout(timeout); reject(error); });
+      server.once('exit', (code) => { clearTimeout(timeout); reject(new Error(`Preview exited early: ${code}`)); });
+      server.stdout.on('data', (chunk) => {
+        output += chunk.toString().replace(/\x1b\[[0-9;]*m/g, '');
+        const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
+        if (match) { clearTimeout(timeout); resolve(match[0]); }
+      });
+    });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     // Save swaps the tall form for a compact brief, shortening the page.
     // Wherever the visitor scrolled to, the row they tapped must stay put.
@@ -49,7 +47,7 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 60000
       for (const frac of [0.2, 0.5, 0.8]) {
         const page = await browser.newPage();
         await page.setViewport(vp);
-        await page.goto('http://127.0.0.1:4173/?demo=1', { waitUntil: 'networkidle0' });
+        await page.goto(`${previewUrl}?demo=1`, { waitUntil: 'networkidle0' });
         await clickButton(page, 'Fill it in for me');
         await page.waitForSelector('.planin', { timeout: 20000 });
         await page.evaluate((f) => {
