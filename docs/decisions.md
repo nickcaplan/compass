@@ -104,10 +104,10 @@ the stored cleanup succeeded.
 
 ## 2026-11-03 - Reclaim space for natural audience rows
 
-Follow-up research requested separately from52: keep the existing full-size,
-single-line pills and reclaim nested form whitespace. Planning cards use8px
-insets; below the existing980px single-column breakpoint, the page gutter is
-12px and form horizontal inset8px. This yields330px for pills at390px and328px
-on the400px desktop form, enough for the approximately327px long pair. Natural
+Follow-up research requested separately from 52: keep the existing full-size,
+single-line pills and reclaim nested form whitespace. Planning cards use 8px
+insets; below the existing 980px single-column breakpoint, the page gutter is
+12px and form horizontal inset 8px. This yields 330px for pills at 390px and 328px
+on the 400px desktop form, enough for the approximately 327px long pair. Natural
 flex fallback remains on narrower screens and with wider/enlarged text. No
 fixed columns, truncation, font shrinking or label changes are introduced.
