@@ -642,12 +642,14 @@ export default function App() {
   const recoveryPrincipal = useRef<string | null>(null);
   const googleCallbackPrincipal = useRef<string | null>(null);
   const googlePending = useRef(false);
+  const [earlierDraftKey, setEarlierDraftKey] = useState<string | null>(null);
   function applyAuthUser(user: User | null, reseed = false, hydrating = false) {
     const previous = currentAccount.current;
     if (previous?.id !== user?.id) authEpoch.current++;
     if (previous && previous.id !== user?.id) {
       mayRestoreAuthDraft.current = false;
       googleCallbackPrincipal.current = null;
+      setEarlierDraftKey(null);
       googlePending.current = false;
       recoveryPrincipal.current = null;
       setRecoveringPassword(false);
@@ -769,12 +771,31 @@ export default function App() {
     cleanupExpiredDrafts();
     const user = currentAccount.current;
     if (!user || (!allowSignIn && (!mayRestoreAuthDraft.current || (pageFromUrl() !== 'planner' && !recoveringPassword)))) return;
-    if (hasPlannerWork()) return;
     try {
       const pendingFlow = activeGoogleFlow();
       const providers: unknown = user.app_metadata.providers;
       const googleUser = user.app_metadata.provider === 'google' || (Array.isArray(providers) && providers.includes('google'));
       const flow = googleOAuthCallback && googleUser && googleCallbackPrincipal.current === user.id ? pendingFlow : null;
+      const alternativeKey = accountDraftKey(user.id) + ':earlier-google';
+      if (flow) {
+        const raw = window.localStorage.getItem(googleDraftKey(flow));
+        const snap: unknown = raw ? JSON.parse(raw) : null;
+        if (hasPlannerWork() && isAuthDraft(snap) && Date.now() - snap.ts <= 60 * 60 * 1000 &&
+          bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, flow)) {
+          // Only the verified callback principal may keep this second version.
+          // It is separate from the normal account snapshot, never an overwrite.
+          window.localStorage.setItem(alternativeKey, JSON.stringify({ ...snap, binding: { accountId: user.id } }));
+          window.localStorage.removeItem(googleDraftKey(flow));
+          window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+          setEarlierDraftKey(alternativeKey);
+          return;
+        }
+      }
+      const alternativeRaw = window.localStorage.getItem(alternativeKey);
+      const alternative: unknown = alternativeRaw ? JSON.parse(alternativeRaw) : null;
+      if (isAuthDraft(alternative) && Date.now() - alternative.ts <= 60 * 60 * 1000 &&
+        bindingMatches((alternative as typeof alternative & { binding?: unknown }).binding, user, null)) setEarlierDraftKey(alternativeKey);
+      if (hasPlannerWork()) return;
       const keys = [accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
       const candidates = keys.flatMap(key => {
         try {
@@ -802,6 +823,25 @@ export default function App() {
         break;
       }
     } catch { /* corrupted or unavailable storage */ }
+  }
+
+  function openEarlierDraft() {
+    const user = currentAccount.current;
+    if (!user || earlierDraftKey !== accountDraftKey(user.id) + ':earlier-google') return;
+    try {
+      const raw = window.localStorage.getItem(earlierDraftKey);
+      const snap: unknown = raw ? JSON.parse(raw) : null;
+      if (!isAuthDraft(snap) || Date.now() - snap.ts > 60 * 60 * 1000 ||
+        !bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, null)) return;
+      stashAuthDraft({ accountId: user.id });
+      // Swap versions so neither is discarded, including across a reload.
+      const current = { ...latestPlanner.current, binding: { accountId: user.id }, ts: Date.now() };
+      window.localStorage.setItem(earlierDraftKey, JSON.stringify(current));
+      setBrief(snap.brief); setSubmittedBrief(snap.submittedBrief); setBudgetText(snap.budgetText);
+      setStage(snap.stage === 'generating' ? 'filling' : snap.stage); setSavedEntry(null);
+      latestPlanner.current = { brief: snap.brief, submittedBrief: snap.submittedBrief, budgetText: snap.budgetText, stage: snap.stage, savedEntry: null };
+      stashAuthDraft({ accountId: user.id });
+    } catch { /* Storage failure leaves the current work unchanged. */ }
   }
 
   useEffect(() => {
@@ -1471,6 +1511,11 @@ export default function App() {
           ) : (
             <>
           <h2>Plan a campaign</h2>
+          {earlierDraftKey && <div className="draft-choice" role="status">
+            <p>Your other draft is also kept on this device. Your current answers have not changed.</p>
+            <button type="button" className="ghost" onClick={openEarlierDraft}>Switch to other draft</button>
+            <button type="button" className="ghost" onClick={() => setEarlierDraftKey(null)}>Keep current answers</button>
+          </div>}
           <div className="hint">No media expertise needed.</div>
 
           {demoMode && <>
