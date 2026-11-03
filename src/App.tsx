@@ -1634,8 +1634,8 @@ export default function App() {
                 {authEmail ? 'Add your details to see it. Your brief is kept.' : 'Log in to see it. Your brief is kept while you log in.'}
               </p>
               {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
-              {savedBriefReadOnly ? <button type="button" className="ghost" onClick={() => go('plans')}>View all plans</button> :
-                <button type="button" className="ghost" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
+              {savedBriefReadOnly ? <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button> :
+                <button type="button" className="ghost gate-secondary" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
             </div>
           )}
 
