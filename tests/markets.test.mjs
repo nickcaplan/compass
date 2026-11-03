@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {spawn} from 'node:child_process';
+import {stripVTControlCharacters} from 'node:util';
 import puppeteer from 'puppeteer-core';
 test('market options preserve shared pill styling and multi-selection without regional forecast claims',{timeout:60000},async()=>{
- const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
+ const server=process.env.HOSTED_URL?null:spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
  try{
- const url=await new Promise((resolve,reject)=>{let out='';const timeout=setTimeout(()=>reject(Error('server timeout')),10000);server.stdout.on('data',b=>{out+=b.toString().replace(/\x1b\[[0-9;]*m/g,'');const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timeout);resolve(m[0])}})});
+ const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let out='';const timeout=setTimeout(()=>reject(Error('server timeout')),10000);server.stdout.on('data',b=>{out+=stripVTControlCharacters(b.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timeout);resolve(m[0])}})});
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true});
  for(const width of[320,390,768,1440]){
  const p=await browser.newPage();await p.setViewport({width,height:900});await p.goto(url);await p.waitForSelector('[aria-labelledby=g-market]');
@@ -36,5 +37,5 @@ test('market options preserve shared pill styling and multi-selection without re
  }
  await p.$eval('[aria-labelledby=g-market]',e=>e.scrollIntoView({block:'center'}));if(process.env.SCREENSHOT_DIR)await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/markets-local-${width}.png`});await p.close();
  }
- }finally{await browser?.close();server.kill()}
+ }finally{await browser?.close();server?.kill()}
 });
