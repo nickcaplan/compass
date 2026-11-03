@@ -639,13 +639,17 @@ export default function App() {
   const currentAccount = useRef<User | null>(null);
   const initialSessionPending = useRef(true);
   const authEpoch = useRef(0);
+  const profileRevision = useRef(0);
+  const canonicalProfile = useRef<User | null>(null);
   const recoveryPrincipal = useRef<string | null>(null);
   const googleCallbackPrincipal = useRef<string | null>(null);
   const googlePending = useRef(false);
   const [earlierDraftKey, setEarlierDraftKey] = useState<string | null>(null);
   function applyAuthUser(user: User | null, reseed = false, hydrating = false) {
     const previous = currentAccount.current;
-    if (previous?.id !== user?.id) authEpoch.current++;
+    if (previous?.id !== user?.id) { authEpoch.current++; canonicalProfile.current = null; }
+    if (user && canonicalProfile.current?.id === user.id && !reseed)
+      user = { ...user, user_metadata: canonicalProfile.current.user_metadata };
     if (previous && previous.id !== user?.id) {
       mayRestoreAuthDraft.current = false;
       googleCallbackPrincipal.current = null;
@@ -867,6 +871,17 @@ export default function App() {
         if (callbackError) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
         if (googleOAuthCallback && !googleCallbackPrincipal.current && authEpoch.current <= 1) googleCallbackPrincipal.current = data.session.user.id;
         restoreAuthDraft();
+        // Canonical metadata is read without mutating SDK-owned session storage.
+        // A late lookup must not replace a new account or a more recent save.
+        const id = data.session.user.id;
+        const epoch = authEpoch.current;
+        const revision = profileRevision.current;
+        void supabase.auth.getUser(data.session.access_token).then(({ data: result, error }) => {
+          if (error || !result.user || result.user.id !== id || currentAccount.current?.id !== id ||
+            epoch !== authEpoch.current || revision !== profileRevision.current) return;
+          canonicalProfile.current = result.user;
+          applyAuthUser(result.user);
+        }).catch(() => { /* Keep the current profile gate; never infer completion on failure. */ });
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -1313,12 +1328,14 @@ export default function App() {
       const user = await response.json() as User;
       if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
       if (!response.ok || user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
-      // The default browser client reads this same local session. Never replace
-      // a session changed by another tab while this request was in flight.
-      const key = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
-      const stored = JSON.parse(window.localStorage.getItem(key) ?? 'null');
-      if (!stored || stored.user?.id !== id) return;
-      window.localStorage.setItem(key, JSON.stringify({ ...stored, user }));
+      // Re-read the SDK session, but never persist captured credentials ourselves.
+      const current = await supabase.auth.getSession();
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (current.error || current.data.session?.user.id !== id) {
+        setProfileError('Your session changed. Please log in again.'); return;
+      }
+      profileRevision.current++;
+      canonicalProfile.current = user;
       applyAuthUser(user, true);
     } catch {
       if (epoch === authEpoch.current) setProfileError('Could not save your details. Please try again.');

@@ -34,7 +34,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   let msg=await alertText(/email limit/i);assert.match(msg,/email limit/i);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
   // 2. Per-recipient cooldown: never pins server seconds that would go stale on screen.
   nextError={error_code:'over_email_send_rate_limit',code:'over_email_send_rate_limit',msg:'For security purposes, you can only request this after 37 seconds.'};await submit();
-  msg=await alertText(/wait a short while/);assert.match(msg,/wait a short while/);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
+  await p.waitForSelector('form [role=status]');msg=await p.$eval('form [role=status]',e=>e.textContent);const cooldownNotice=msg;assert.match(msg,/If an account exists/);assert.doesNotMatch(msg,/we have sent|You requested an email/);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
   // 3. IP throttle on signup: distinct network message.
   await p.evaluate(()=>[...document.querySelectorAll('.email-modes button')].find(e=>e.textContent==='Create account').click());
   await p.locator('#f-signin-email').fill('throttle@example.com');await p.locator('#f-signin-password').fill('example-test-only');
@@ -54,7 +54,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   // A second submit while the response is pending must not start another call.
   await p.evaluate(()=>document.querySelector('form[aria-label="Email account"]').requestSubmit());
   await p.waitForSelector('form [role=status]');
-  assert.equal(requestCount,countBefore+1);assert.equal(await p.$('form [role=alert]'),null);
+  assert.equal(await p.$eval('form [role=status]',e=>e.textContent),cooldownNotice,'Success and cooldown have identical conditional status');assert.equal(requestCount,countBefore+1);assert.equal(await p.$('form [role=alert]'),null);
   assert.equal(await p.$eval('#f-signin-email',e=>e.value),'throttle@example.com');
   assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:quota@example.com')).brief.name),draftName);
   // All mapper callers are covered, including sign-in and principal-pinned update.
