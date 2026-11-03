@@ -9,6 +9,20 @@ test('specialist link preserves presentation and opens only the verified contact
  try{
  const local=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('Preview not ready')),10000);server.once('error',reject);server.stdout.on('data',b=>{out+=b;const m=stripVTControlCharacters(out).match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true});
+ // Pause new pages before any request so the external destination is always
+ // fulfilled locally in required CI. The real URL was verified separately.
+ const client=await browser.target().createCDPSession();
+ client.on('Target.attachedToTarget',async event=>{
+  const session=client.connection().session(event.sessionId);
+  if(event.targetInfo.type==='page'){
+   await session.send('Fetch.enable',{patterns:[{urlPattern:'https://thehybridhouse.co.uk/*',requestStage:'Request'}]});
+   session.on('Fetch.requestPaused',async request=>{
+    await session.send('Fetch.fulfillRequest',{requestId:request.requestId,responseCode:200,responseHeaders:[{name:'Content-Type',value:'text/html'}],body:Buffer.from('<!doctype html><title>Contact navigation fixture</title><h1>Contact</h1>').toString('base64')});
+   });
+  }
+  await session.send('Runtime.runIfWaitingForDebugger');
+ });
+ await client.send('Target.setAutoAttach',{autoAttach:true,waitForDebuggerOnStart:true,flatten:true});
  for(const width of[390,1440]){
   const page=await browser.newPage();await page.setViewport({width,height:900});
   await page.goto((process.env.HOSTED_URL??local)+'?demo=1');await page.waitForSelector('.demofill');
@@ -23,9 +37,9 @@ test('specialist link preserves presentation and opens only the verified contact
   await link.evaluate(e=>e.scrollIntoView({block:'center'}));await link.hover();await link.focus();
   assert.deepEqual(await link.evaluate(e=>({color:getComputedStyle(e).color,decoration:getComputedStyle(e).textDecorationLine})),{color:'rgb(20, 20, 20)',decoration:'none'});
   if(process.env.SCREENSHOT_DIR)await page.screenshot({path:`${process.env.SCREENSHOT_DIR}/specialist-contact-${process.env.HOSTED_URL?'hosted':'local'}-${width}.png`});
-  // Enter opens the public contact page, with no plan/query payload. No form submit.
+  // Enter must open the expected external URL in a new tab, with no payload.
   const targetPromise=browser.waitForTarget(t=>t.opener()===page.target());await page.keyboard.press('Enter');const target=await targetPromise;const popup=await target.page();
-  await popup.waitForNetworkIdle();assert.equal(new URL(popup.url()).origin,'https://thehybridhouse.co.uk');assert.equal(new URL(popup.url()).pathname,'/contact/');assert.equal(new URL(popup.url()).search,'');
+  await popup.waitForSelector('h1');assert.equal(await popup.title(),'Contact navigation fixture');assert.equal(new URL(popup.url()).origin,'https://thehybridhouse.co.uk');assert.equal(new URL(popup.url()).pathname,'/contact/');assert.equal(new URL(popup.url()).search,'');
   assert.equal(await page.$('.toast'),null);await popup.close();await page.close();
  }
  }finally{await browser?.close();server.kill()}
