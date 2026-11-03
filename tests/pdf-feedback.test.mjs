@@ -33,8 +33,11 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
       for (const saved of [false,true]) {
         if(saved){await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save plan').click());await page.waitForSelector('.bsum');}
         await page.$eval('.cs-wrap button',e=>e.scrollIntoView({block:'center'}));
+        // The plan reveal settles for a moment after generation; only measure once the layout is still.
+        await page.waitForFunction(()=>new Promise(res=>{const e=document.querySelector('.cs-wrap');const a=e.getBoundingClientRect().top+scrollY;setTimeout(()=>res(Math.abs(e.getBoundingClientRect().top+scrollY-a)<0.5),600)}),{polling:200});
         const button=await page.$eval('.cs-wrap button',e=>({width:e.offsetWidth,height:e.offsetHeight,left:e.offsetLeft,top:e.offsetTop}));
         const nextTop=await page.evaluate(()=>{const n=document.querySelector('.cs-wrap').nextElementSibling;return n?n.offsetTop:null});
+        const wrapPos=await page.evaluate(()=>{const r=document.querySelector('.cs-wrap').getBoundingClientRect();return {x:r.left,y:r.top+scrollY}});
         assert.equal(await page.$eval('.cs-label',e=>e.textContent.trim()),'Download PDF');
         await page.locator('.cs-wrap button').click();
         // The button itself becomes the status: label swaps in place.
@@ -43,6 +46,7 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
         // No layout shift: the button box and the following action never move.
         assert.deepEqual(await page.$eval('.cs-wrap button',e=>({width:e.offsetWidth,height:e.offsetHeight,left:e.offsetLeft,top:e.offsetTop})),button);
         assert.equal(await page.evaluate(()=>{const n=document.querySelector('.cs-wrap').nextElementSibling;return n?n.offsetTop:null}),nextTop);
+        assert.deepEqual(await page.evaluate(()=>{const r=document.querySelector('.cs-wrap').getBoundingClientRect();return {x:r.left,y:r.top+scrollY}}),wrapPos);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
         await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelector('.cs-label')?.textContent.trim()==='Download PDF');
         await page.locator('.cs-wrap button').click();
