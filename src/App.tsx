@@ -637,13 +637,15 @@ export default function App() {
 
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
-  function applyAuthUser(user: User | null, reseed = false) {
+  const initialSessionPending = useRef(true);
+  function applyAuthUser(user: User | null, reseed = false, hydrating = false) {
     const previous = currentAccount.current;
     if (previous && previous.id !== user?.id) {
       stashAuthDraft({ accountId: previous.id });
       clearPlannerState();
       anonymousBinding.current = null;
     } else if (!previous && user && hasPlannerWork() &&
+      !(hydrating && !anonymousBinding.current) &&
       !bindingMatches(anonymousBinding.current, user, null)) {
       // An unrelated login must not adopt an abandoned anonymous brief.
       clearPlannerState();
@@ -776,14 +778,15 @@ export default function App() {
       try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
       setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
     supabase.auth.getSession().then(({ data }) => {
-      applyAuthUser(data.session?.user ?? null);
+      applyAuthUser(data.session?.user ?? null, false, true);
+      initialSessionPending.current = false;
       // Only a tab loaded with a session may consume the shared snapshot.
       // A later cross-tab SIGNED_IN must leave it for the callback tab.
       mayRestoreAuthDraft.current = Boolean(data.session);
       if (data.session) restoreAuthDraft();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      applyAuthUser(session?.user ?? null);
+      applyAuthUser(session?.user ?? null, false, event === 'INITIAL_SESSION' || (event === 'TOKEN_REFRESHED' && initialSessionPending.current));
       // Auth events also arrive from other tabs: re-gate a visible plan when
       // the session is gone, and stop re-stashing the draft once signed in.
       // Draft restore stays on the getSession path so only the freshly loaded
