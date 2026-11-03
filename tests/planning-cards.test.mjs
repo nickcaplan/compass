@@ -38,8 +38,13 @@ test('planning cards stay readable and inputs remain usable', { timeout: 60000 }
       await page.waitForFunction(()=>[...document.querySelectorAll('.planning-step')].find(e=>e.querySelector('label')?.textContent==='KPI')?.querySelector('button'));
       assert.equal(await page.$eval('#f-name',e=>e.value),'Readable planning cards');
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+      assert.equal(await page.$$eval('.planning-step input.ctl', es=>es.every(e=>getComputedStyle(e).borderTopStyle==='solid'&&getComputedStyle(e).borderTopWidth==='1px')),true);
+      await page.locator('#f-name').fill('Focus border check');
+      await page.focus('#f-name');
+      assert.equal(await page.$eval('#f-name',e=>getComputedStyle(e).outlineStyle),'solid');
       await page.$eval('.themebtn',e=>e.click());
       assert.equal(await page.$$eval('.planning-step',es=>es.every(e=>getComputedStyle(e).borderTopStyle==='solid')),true);
+      assert.equal(await page.$$eval('.planning-step input.ctl',es=>es.every(e=>getComputedStyle(e).borderTopStyle==='solid')),true);
       await page.close();
     }
   } finally { await browser?.close(); server.kill(); }

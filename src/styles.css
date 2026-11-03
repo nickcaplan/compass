@@ -406,3 +406,5 @@ input.ctl{color:var(--text)}
 .plancard>.expired::before{content:'◷';font-size:14px}
 .plancard.is-expired .pc-main>b{color:var(--text2)}
 :root[data-theme=light] .plancard>.expired{border-color:#d4a9ac;color:#8f353d;background:#f8e9eb}
+/* Inset inputs need their own edge inside matching-background planning cards. */
+.planning-step input.ctl{border:1px solid var(--line-mid)}
