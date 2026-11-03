@@ -757,7 +757,9 @@ export default function App() {
     if (hasPlannerWork()) return;
     try {
       const pendingFlow = activeGoogleFlow();
-      const flow = googleOAuthCallback && user.app_metadata.provider === 'google' ? pendingFlow : null;
+      const providers: unknown = user.app_metadata.providers;
+      const googleUser = user.app_metadata.provider === 'google' || (Array.isArray(providers) && providers.includes('google'));
+      const flow = googleOAuthCallback && googleUser ? pendingFlow : null;
       const keys = [accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
       const candidates = keys.flatMap(key => {
         try {
