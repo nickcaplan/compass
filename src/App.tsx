@@ -2,7 +2,7 @@ import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDr
 import type { DraftBinding } from './authDraft';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase, googleOAuthCallback, emailAuthCallback } from './supabase';
+import { supabase, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 import EmailAuth from './EmailAuth';
 
 import logoUrl from './assets/thh-logo.svg';
@@ -852,6 +852,8 @@ export default function App() {
       // An anonymous Google cancellation may retry its own per-tab draft.
       // getSession below revokes this handle if any account is established.
       setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
+    const onPageShow = (event: PageTransitionEvent) => { if (event.persisted) googlePending.current = false; };
+    window.addEventListener('pageshow', onPageShow);
     const startupEpoch = authEpoch.current;
     supabase.auth.getSession().then(({ data }) => {
       if (startupEpoch !== authEpoch.current && data.session?.user.id !== currentAccount.current?.id) return;
@@ -880,7 +882,7 @@ export default function App() {
       }
       if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
     });
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
     // One subscription per mount; planner/account/flow state is read through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1293,19 +1295,32 @@ export default function App() {
   async function completeProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!profileName.trim() || profileSaving) return;
+    const epoch = authEpoch.current;
+    const id = currentAccount.current?.id;
+    if (!id) return;
     setProfileSaving(true);
     setProfileError(null);
     try {
-      const { data, error } = await supabase.auth.updateUser({
-        data: { full_name: profileName.trim(), company: profileCompany.trim(), compass_profile_complete: true },
+      const { data, error } = await supabase.auth.getSession();
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (error || data.session?.user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
+      const token = data.session.access_token;
+      const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        method: 'PUT', headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { full_name: profileName.trim(), company: profileCompany.trim(), compass_profile_complete: true } }),
       });
-      if (error || !data.user) {
-        setProfileError('Could not save your details. Please try again.');
-        return;
-      }
-      applyAuthUser(data.user, true);
+      const user = await response.json() as User;
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!response.ok || user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
+      // The default browser client reads this same local session. Never replace
+      // a session changed by another tab while this request was in flight.
+      const key = 'sb-ctailpmcoyvaplwbwskf-auth-token';
+      const stored = JSON.parse(window.localStorage.getItem(key) ?? 'null');
+      if (!stored || stored.user?.id !== id || stored.access_token !== token) return;
+      window.localStorage.setItem(key, JSON.stringify({ ...stored, user }));
+      applyAuthUser(user, true);
     } catch {
-      setProfileError('Could not save your details. Please try again.');
+      if (epoch === authEpoch.current) setProfileError('Could not save your details. Please try again.');
     } finally {
       setProfileSaving(false);
     }
