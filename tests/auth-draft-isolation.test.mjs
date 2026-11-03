@@ -11,8 +11,8 @@ async function click(p,label){await p.waitForFunction(l=>[...document.querySelec
 async function login(p,id){await p.waitForSelector('#f-signin-email');await p.locator('#f-signin-email').fill(id+'@example.com');await p.locator('#f-signin-password').fill('test-only-password');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('#f-name');}
 async function broadcast(p,s){await p.evaluate(s=>{const c=new BroadcastChannel('sb-ctailpmcoyvaplwbwskf-auth-token');c.postMessage({event:s?'SIGNED_IN':'SIGNED_OUT',session:s});setTimeout(()=>c.close(),100)},s);}
 test('unfinished drafts stay with their account or bound anonymous flow across logout, reload and account replacement',{timeout:60000},async()=>{
- const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
- try{let out='';const url=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.stdout.on('data',c=>{out+=c;const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
+ const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
+ try{let out='';const url=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.stdout.on('data',c=>{out+=c.toString().replace(/\x1b\[[0-9;]*m/g,'');const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
  browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
  for(const width of [390,1440]){
   const ctx=await browser.createBrowserContext(),p=await ctx.newPage();p.setDefaultTimeout(7000);await p.setViewport({width,height:900});let failure=false,logoutFail=false;
