@@ -7,4 +7,6 @@ import { createClient } from '@supabase/supabase-js';
 const callback = new URLSearchParams(window.location.hash.slice(1));
 export const googleOAuthCallback = callback.has('access_token') && callback.has('provider_token') && !callback.has('type');
 export const emailAuthCallback = callback.has('access_token') && !googleOAuthCallback;
-export const supabase = createClient('https://ctailpmcoyvaplwbwskf.supabase.co', 'sb_publishable_J3Kaa7y4KExb-ICrCA1FIA_z4lYfhG7');
+export const SUPABASE_URL = 'https://ctailpmcoyvaplwbwskf.supabase.co';
+export const SUPABASE_PUBLIC_KEY = 'sb_publishable_J3Kaa7y4KExb-ICrCA1FIA_z4lYfhG7';
+export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);

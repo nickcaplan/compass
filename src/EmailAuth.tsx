@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase } from './supabase';
+import { supabase, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 
 type Mode = 'signin' | 'signup' | 'reset' | 'update';
-export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail }: {
+export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail, recoveryUserId, isRecoveryCurrent }: {
+  recoveryUserId: string | null; isRecoveryCurrent: (id: string) => boolean;
   idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string) => void;
 }) {
   const [mode, setMode] = useState<Mode>('signin');
@@ -31,13 +32,28 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         if (result.data.session) onAuthenticated(result.data.session.user);
         else setNotice('Check your inbox to confirm your email, then return to log in. If you already have an account, log in instead.');
       } else if (activeMode === 'update') {
-        const result = await supabase.auth.updateUser({ password });
+        // Capture A's token and check its principal before sending. updateUser()
+        // otherwise looks up whichever session is active after its internal await.
+        const id = recoveryUserId;
+        if (!id || !isRecoveryCurrent(id)) return;
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || data.session?.user.id !== id || !isRecoveryCurrent(id)) return;
+        const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
+          method: 'PUT',
+          headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        const body = await response.json();
+        if (!isRecoveryCurrent(id)) return;
+        const result = { data: { user: response.ok ? body as User : null },
+          error: response.ok ? null : { code: body.code ?? body.error_code, message: body.msg ?? body.message } };
         if (result.error || !result.data.user) {
           setError(result.error?.code === 'same_password' ? 'Choose a different password from your current one.' :
             result.error?.code === 'weak_password' ? 'Choose a stronger password with at least 8 characters.' :
             'Could not update your password. Try again, or request a fresh reset link if this one has expired.');
           return;
         }
+        if (result.data.user.id !== id) return;
         setPassword(''); onAuthenticated(result.data.user);
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
