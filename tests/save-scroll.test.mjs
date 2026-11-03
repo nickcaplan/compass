@@ -66,39 +66,24 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 60000
       }
     }
 
-    // Leaving the saved state must clear the temporary bottom slack. Only a
-    // filled page tall enough to bottom-clamp after the save swap creates
-    // slack, and the demo picker is random, so re-pick (each pick excludes
-    // the current example) until a known clamping variant appears. Stubbing
-    // Math.random would also freeze plan generation and change the page
-    // height, defeating the setup.
+    // Leaving the saved state must clear the temporary bottom slack. With
+    // the page scrolled to the very bottom, saving always creates slack
+    // (measured 258-322px across all five examples at this viewport), so
+    // this exercises the clamped state deterministically with real
+    // generation and page height, whatever example the picker chooses.
     {
-      const clamping = ['UK Laboratory Procurement Campaign', 'European R&D Awareness Drive'];
       const page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 800 });
       await page.goto(`${previewUrl}?demo=1`, { waitUntil: 'networkidle0' });
-      const nameOf = () => page.evaluate(() => [...document.querySelectorAll('input')].map((i) => i.value)[0] || '');
       await clickButton(page, 'Fill it in for me');
       await page.waitForSelector('.planin', { timeout: 20000 });
-      let name = await nameOf();
-      for (let attempt = 0; attempt < 12 && !clamping.includes(name); attempt++) {
-        await clickButton(page, 'Try another example');
-        await page.waitForSelector('[role=alertdialog]', { timeout: 5000 });
-        await clickButton(page, 'Replace with example');
-        await page.waitForFunction((prev) => ([...document.querySelectorAll('input')].map((i) => i.value)[0] || '') !== prev, { timeout: 20000 }, name);
-        await page.waitForSelector('.planin', { timeout: 20000 });
-        name = await nameOf();
-      }
-      assert.ok(clamping.includes(name), `no clamping demo variant after 12 picks (last: ${name})`);
-      await page.evaluate(() => {
-        const el = document.querySelector('.secondary');
-        window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.5));
-      });
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await new Promise((r) => setTimeout(r, 250));
       await clickButton(page, 'Save plan');
-      await new Promise((r) => setTimeout(r, 400));
+      await page.waitForSelector('.ghost.saved', { timeout: 10000 });
+      await new Promise((r) => setTimeout(r, 300));
       const slack = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
-      assert.ok(slack > 0, `expected temporary slack after saving the clamping variant, got ${slack}px`);
+      assert.ok(slack > 0, `expected temporary slack after saving from the bottom, got ${slack}px`);
       await clickButton(page, 'Edit plan');
       await page.waitForSelector('input', { timeout: 10000 });
       const left = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
