@@ -1,3 +1,4 @@
+import {stripVTControlCharacters} from 'node:util';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import test from 'node:test';
@@ -8,7 +9,7 @@ const session=u=>({access_token:'test',token_type:'bearer',expires_at:Math.floor
 test('profile completion, failure, persistence, and existing-plan gate', {timeout:60000},async()=>{
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
  try {
-  const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
+  const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString();const match=stripVTControlCharacters(out).match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true});
   for(const width of [1440,390]){for(const theme of ['dark','light']){
    const ctx=await browser.createBrowserContext();const p=await ctx.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});
@@ -42,7 +43,7 @@ test('profile completion, failure, persistence, and existing-plan gate', {timeou
 test('signed-in account view shows account state, not log-in prompt', {timeout:60000}, async()=>{
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
  try {
-  const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.stdout.on('data',chunk=>{out+=chunk.toString();const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
+  const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.stdout.on('data',chunk=>{out+=chunk.toString();const match=stripVTControlCharacters(out).match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true});
   for(const width of [1440,390]){for(const theme of ['dark','light']){
    const ctx=await browser.createBrowserContext();const p=await ctx.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});

@@ -1,3 +1,4 @@
+import {stripVTControlCharacters} from 'node:util';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import test from 'node:test';
@@ -12,7 +13,7 @@ async function login(p,id){await p.waitForSelector('#f-signin-email');await p.lo
 async function broadcast(p,s){await p.evaluate(s=>{const c=new BroadcastChannel('sb-ctailpmcoyvaplwbwskf-auth-token');c.postMessage({event:s?'SIGNED_IN':'SIGNED_OUT',session:s});setTimeout(()=>c.close(),100)},s);}
 test('unfinished drafts stay with their account or bound anonymous flow across logout, reload and account replacement',{timeout:60000},async()=>{
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
- try{let out='',errors='';const url=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('No preview ready: '+errors)),10000);server.once('error',e=>{clearTimeout(timer);reject(e)});server.once('exit',code=>{clearTimeout(timer);reject(Error('Preview exited '+code+': '+errors))});server.stderr.on('data',c=>{errors+=c});server.stdout.on('data',c=>{out+=c.toString().replace(/\x1b\[[0-9;]*m/g,'');const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
+ try{let out='',errors='';const url=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('No preview ready: '+errors)),10000);server.once('error',e=>{clearTimeout(timer);reject(e)});server.once('exit',code=>{clearTimeout(timer);reject(Error('Preview exited '+code+': '+errors))});server.stderr.on('data',c=>{errors+=c});server.stdout.on('data',c=>{out+=c.toString();const m=stripVTControlCharacters(out).match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
  for(const width of [390,1440]){
   const hydratingCtx=await browser.createBrowserContext(),h=await hydratingCtx.newPage();await h.setViewport({width,height:900});h.setDefaultTimeout(7000);
