@@ -158,6 +158,9 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
 import {
   AUDIENCES,
   EMPTY_BRIEF,
+  MARKETS,
+  marketLabels,
+
   OBJECTIVES,
   SENIORITY_LEVELS,
   answeredCount,
@@ -255,6 +258,7 @@ function isBrief(value: unknown): value is Brief {
     typeof b.name === 'string' &&
     strArr(b.objectives) &&
     (b.objectives as string[]).every((id) => OBJECTIVES.some((o) => o.id === id)) &&
+    (b.markets === undefined || (strArr(b.markets) && (b.markets as string[]).every(id=>MARKETS.some(m=>m.id===id)))) &&
     strArr(b.kpis) &&
     strArr(b.audiences) &&
     strArr(b.seniority) &&
@@ -763,7 +767,7 @@ export default function App() {
 
   // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
-    const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
+    const hasInput = count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
       clearCue();
       setConfirmFill(true);
@@ -777,7 +781,7 @@ export default function App() {
     setSubmittedBrief(null);
     setStage('filling');
     window.clearTimeout(cueTimer.current);
-    if (answeredCount(d) >= 6) {
+    if (answeredCount(d) >= 7) {
       setCueSeq((n) => n + 1);
       setCueGen(true);
     }
@@ -812,7 +816,7 @@ export default function App() {
   }, [stage]);
 
   function generate() {
-    if (count < 6) return;
+    if (count < 7) return;
     clearCue();
     setSubmittedBrief(brief);
     setHasGenerated(true);
@@ -922,7 +926,7 @@ export default function App() {
   function openPlan(entry: SavedPlan, force = false) {
     const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
     if (!force && !alreadyOpen) {
-      const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+      const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
       const unsavedPlan = stage === 'plan' && savedEntry === null;
       const unsavedEdit = savedEntry?.mode === 'edit';
       const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
@@ -953,12 +957,13 @@ export default function App() {
 
   const chips: { label: string; soft?: boolean }[] = [];
   if (viewObjectiveLabels.length) chips.push({ label: `Objective: ${viewObjectiveLabels.join(' + ')}` });
+  if (viewBrief.markets?.length) chips.push({label:`Market: ${marketLabels(viewBrief.markets)}`});
   if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
   if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
   if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
   if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
-  if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
+  if (stage === 'filling' && count < 7) chips.push({ label: 'choosing...', soft: true });
 
   return (
     <div className="wrap">
@@ -1038,6 +1043,7 @@ export default function App() {
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
                 <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
+                <div><div className="k">Market</div><div className="v">{marketLabels(brief.markets) || 'Not specified'}</div></div>
                 <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
                 <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
                 <div><div className="k">Seniority</div><div className="v">{brief.seniority.join(' + ') || '-'}</div></div>
@@ -1097,6 +1103,13 @@ export default function App() {
                   {o.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="field planning-step">
+            <label id="g-market">Market</label>
+            <div className="pills" role="group" aria-labelledby="g-market">
+              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
             </div>
           </div>
 
@@ -1233,7 +1246,7 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 7 || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
             </>
@@ -1297,9 +1310,9 @@ export default function App() {
               </div>
               <div className="prog">
                 <div className="bar">
-                  <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />
+                  <div className="fill" style={{ width: `${(count / 7) * 100}%` }} />
                 </div>
-                <div className="t">{count} OF 6 ANSWERED</div>
+                <div className="t">{count} OF 7 ANSWERED</div>
               </div>
               <SkeletonBlock />
               <p className="keep">
@@ -1318,6 +1331,7 @@ export default function App() {
               <div className="chips">
                 <span className="chip">{viewObjectiveLabels.join(' + ')}</span>
                 <span className="chip">{viewBrief.kpis.join(' + ')}</span>
+                <span className="chip">Market: {marketLabels(viewBrief.markets) || 'Not specified'}</span>
                 <span className="chip">{viewBrief.audiences.join(' + ')}</span>
                 <span className="chip">{viewBrief.seniority.join(' + ')}</span>
                 <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
@@ -1524,6 +1538,7 @@ export default function App() {
                       </b>
                       <div className="chips">
                         {objLabels && <span className="chip">{objLabels}</span>}
+                        <span className="chip">Market: {marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
                         )}

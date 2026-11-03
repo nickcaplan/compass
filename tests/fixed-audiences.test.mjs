@@ -40,7 +40,7 @@ test('natural audience pills stay consistent and invalid saved choices require a
    await p.reload();await p.waitForSelector('[aria-labelledby=g-audience]');
    await p.locator('[aria-labelledby=g-audience] button').click();await p.keyboard.press('Space');assert.equal(await p.$eval('[aria-labelledby=g-audience] button',e=>e.getAttribute('aria-pressed')),'false');await p.keyboard.press('Space');assert.equal(await p.$eval('[aria-labelledby=g-audience] button',e=>e.getAttribute('aria-pressed')),'true');
    const futureDate=days=>{const date=new Date();date.setDate(date.getDate()+days);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`};
-   const old={id:'legacy',savedAt:new Date().toISOString(),brief:{name:'Legacy R&D',objectives:['awareness'],kpis:['Reach'],audiences:['R&D','Department Head'],seniority:['Manager'],budget:10000,start:futureDate(30),end:futureDate(90)}};
+   const old={id:'legacy',savedAt:new Date().toISOString(),brief:{name:'Legacy R&D',markets:['uk'],objectives:['awareness'],kpis:['Reach'],audiences:['R&D','Department Head'],seniority:['Manager'],budget:10000,start:futureDate(30),end:futureDate(90)}};
    await p.evaluate(plan=>localStorage.setItem('compass-saved-plans',JSON.stringify([plan])),old);await p.reload();await p.waitForSelector('.themebtn');
    const click=async text=>{const h=await p.evaluateHandle(t=>[...document.querySelectorAll('button')].find(e=>e.textContent.trim().replace(/\s*→$/,'')===t),text);assert.ok(h.asElement(),'Button not found: '+text);await h.asElement().click();await h.dispose()};
    const stored=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans')));
