@@ -410,4 +410,3 @@ input.ctl{color:var(--text)}
 /* Inset inputs need their own edge inside matching-background planning cards. */
 .planning-step input.ctl{border:1px solid var(--line-mid)}
 
-.market-hint{font-size:12px;color:var(--text2);margin:10px 0 0;line-height:1.5}

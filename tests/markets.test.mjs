@@ -13,7 +13,8 @@ test('market options preserve shared pill styling and multi-selection without re
  assert.equal(await p.$$eval('.planning-step label',es=>es.map(e=>e.textContent).slice(1,4).join(',')),'Objective,Market,KPI');
  await p.locator('[aria-labelledby=g-market] button').click();await p.focus('[aria-labelledby=g-market] button:nth-child(2)');await p.keyboard.press('Space');
  assert.deepEqual(await p.$$eval('[aria-labelledby=g-market] button',bs=>bs.map(b=>b.getAttribute('aria-pressed'))),['true','true','false','false']);
- assert.match(await p.$eval('#market-hint',e=>e.textContent),/do not change by market/);
+ assert.equal(await p.$('#market-hint'),null);
+ assert.equal(await p.$eval('[aria-labelledby=g-market]',e=>e.hasAttribute('aria-describedby')),false);
  assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.equal(await p.$$eval('[aria-labelledby=g-market] button',bs=>bs.every(b=>b.getBoundingClientRect().height===document.querySelector('[aria-labelledby=g-objective] button').getBoundingClientRect().height)),true);
  if(width===390){

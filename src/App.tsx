@@ -1108,10 +1108,9 @@ export default function App() {
 
           <div className="field planning-step">
             <label id="g-market">Market</label>
-            <div className="pills" role="group" aria-labelledby="g-market" aria-describedby="market-hint">
+            <div className="pills" role="group" aria-labelledby="g-market">
               {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
             </div>
-            <p id="market-hint" className="market-hint">Choose one or more markets. Demo forecasts are illustrative and do not change by market.</p>
           </div>
 
           <div className="field planning-step">

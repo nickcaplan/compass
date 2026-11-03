@@ -96,8 +96,10 @@ generation gate. A market requirement and real regional inventory matching can
 be addressed with the inventory integration, not invented in this change.
 
 The current concept uses illustrative Publisher A/B/C forecasts, not the master
-workbook's real inventory. Market selection records intent only; the form says
-forecasts do not change by market. No UK/France/Germany inventory eligibility or
+workbook's real inventory. Market selection records intent only;
+forecasts do not change by market. Nick requested removal of the inline market
+hint on 3 November; the form has no market hint text, while this forecast
+limitation remains documented here. No UK/France/Germany inventory eligibility or
 regional cost/coverage is implied. No source document, provider setting or
 external account was changed.
 
