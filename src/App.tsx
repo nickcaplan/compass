@@ -1176,6 +1176,7 @@ export default function App() {
 
   async function continueWithGoogle() {
     const previousBinding = anonymousBinding.current;
+    const previousPlanner = latestPlanner.current;
     let flow: string | null = null;
     if (currentAccount.current) stashAuthDraft();
     else {
@@ -1199,6 +1200,9 @@ export default function App() {
         if (flow) window.localStorage.removeItem(googleDraftKey(flow));
       } catch { /* private mode */ }
       anonymousBinding.current = previousBinding;
+      setBrief(previousPlanner.brief); setSubmittedBrief(previousPlanner.submittedBrief);
+      setBudgetText(previousPlanner.budgetText); setStage(previousPlanner.stage);
+      setSavedEntry(previousPlanner.savedEntry); latestPlanner.current = previousPlanner;
     }
   }
 
@@ -1260,7 +1264,7 @@ export default function App() {
           </button>
         </div>
         <div className="divider"><span>or</span></div></>}
-        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true);
+        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); stashAuthDraft({ accountId: user.id });
           try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
           anonymousBinding.current = null;
           setRecoveringPassword(false); setAuthNotice(null); go('planner'); }} />
