@@ -1188,10 +1188,9 @@ export default function App() {
       try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { /* private mode */ }
       stashAuthDraft(anonymousBinding.current);
     }
-    const redirect = new URL(window.location.origin + '/');
-    if (demoMode) redirect.searchParams.set('demo', '1');
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google', options: { redirectTo: redirect.toString() },
+      provider: 'google',
+      options: { redirectTo: window.location.origin + (demoMode ? '/?demo=1' : '') },
     });
     if (error) {
       setAuthNotice('Google log-in failed - please try again');
