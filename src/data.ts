@@ -46,30 +46,16 @@ export const OBJECTIVES: Objective[] = [
   },
 ];
 
-// Job-function taxonomy from the Compass brief (section 6).
+// Fixed V1 audiences from Ben's combined feedback, 2 November 2026.
 export const AUDIENCES: string[] = [
+  'Procurement',
+  'Laboratory Manager',
   'Laboratory Technician',
   'Scientist / Researcher',
-  'Laboratory Manager',
-  'Procurement',
   'Purchasing Manager',
-  'Purchasing Lead',
-  'Operations',
-  'Engineering',
   'Quality / Compliance',
-  'R&D',
-  'Department Head',
-  'Director',
 ];
 
-// Audiences shown first in the form. The brief (section 6) lists the
-// taxonomy without ranking it; this first-visible pair is a proposed default
-// grounded in the brief's worked example (Audience: Procurement) and the
-// prototype slice in the project notes (procurement and lab managers),
-// pending Nick's confirmation. Everything else sits under "Show more".
-export const PRIMARY_AUDIENCES: string[] = ['Procurement', 'Laboratory Manager'];
-
-// Seniority levels from the Compass brief (section 7). Multiple selections allowed.
 export const SENIORITY_LEVELS: string[] = [
   'Technician / Practitioner',
   'Manager',
@@ -119,7 +105,7 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     name: 'European R&D Awareness Drive',
     objectives: ['awareness'],
     kpis: ['Reach', 'Impressions'],
-    audiences: ['Scientist / Researcher', 'R&D'],
+    audiences: ['Scientist / Researcher', 'Laboratory Technician'],
     seniority: ['Senior Manager / Head'],
     budget: 150000,
   },
@@ -143,7 +129,7 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     name: 'Operations Webinar Programme',
     objectives: ['consideration'],
     kpis: ['Webinar registrations'],
-    audiences: ['Operations', 'Engineering'],
+    audiences: ['Purchasing Manager', 'Quality / Compliance'],
     seniority: ['Director / Executive'],
     budget: 120000,
   },
