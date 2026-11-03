@@ -835,7 +835,8 @@ export default function App() {
         !bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, null)) return;
       stashAuthDraft({ accountId: user.id });
       // Swap versions so neither is discarded, including across a reload.
-      const current = { ...latestPlanner.current, binding: { accountId: user.id }, ts: Date.now() };
+      const live = latestPlanner.current;
+      const current = { ...live, stage: live.stage === 'generating' ? 'filling' : live.stage, binding: { accountId: user.id }, ts: Date.now() };
       window.localStorage.setItem(earlierDraftKey, JSON.stringify(current));
       setBrief(snap.brief); setSubmittedBrief(snap.submittedBrief); setBudgetText(snap.budgetText);
       setStage(snap.stage === 'generating' ? 'filling' : snap.stage); setSavedEntry(null);
@@ -1314,9 +1315,9 @@ export default function App() {
       if (!response.ok || user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
       // The default browser client reads this same local session. Never replace
       // a session changed by another tab while this request was in flight.
-      const key = 'sb-ctailpmcoyvaplwbwskf-auth-token';
+      const key = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
       const stored = JSON.parse(window.localStorage.getItem(key) ?? 'null');
-      if (!stored || stored.user?.id !== id || stored.access_token !== token) return;
+      if (!stored || stored.user?.id !== id) return;
       window.localStorage.setItem(key, JSON.stringify({ ...stored, user }));
       applyAuthUser(user, true);
     } catch {
