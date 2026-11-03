@@ -130,3 +130,20 @@ recovery callbacks can reload the page, so the browser-local draft snapshot
 remains necessary. The gate offers these same account flows plus profile
 completion. These are implementation notes for this unmerged branch, not a
 claim that the earlier product decision or production site has changed.
+
+## 2026-11-03 - Bind unfinished auth drafts to an account or originating flow
+
+Unfinished planner state is no longer handed to the next account using the
+same browser. An account transition stashes the prior account's unfinished
+work under its account ID and clears visible planner state. That account
+can resume its own work after logging in again. Anonymous email attempts
+are bound to the first submitted address; changing the address does not
+relabel the previous attempt's draft. Google redirects use an originating
+tab's one-time flow token, not an email-bound draft. Legacy ownerless
+snapshots are not restored. Drafts expire after an hour. The existing
+browser-wide demo saved-plan list is unchanged and is not account storage.
+
+## 2026-11-03 - Readable PR evidence
+
+Post one readable screenshot per PR comment. Do not combine screenshot
+proof into a composite or a grouped comment; Nick found that hard to read.
