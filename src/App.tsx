@@ -1531,7 +1531,7 @@ export default function App() {
           )}
         </section>
       </div>
-      <div ref={saveSpacerRef} aria-hidden="true" />
+      <div ref={saveSpacerRef} className="savespacer" aria-hidden="true" />
         </>
       )}
 

@@ -43,6 +43,10 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 60000
     // The exception is a page that becomes shorter than the viewport can
     // scroll: the browser clamps the scroll position, so only a reduced
     // movement is asserted there.
+    // Leaving the saved state must clear the temporary bottom slack. The
+    // clamped combination depends on the filled example's height, so sweep
+    // every combination and verify cleanup on the first one with real slack.
+    let cleanupChecked = false;
     for (const vp of [{ name: 'phone', width: 390, height: 844 }, { name: 'desktop', width: 1280, height: 800 }]) {
       for (const frac of [0.2, 0.5, 0.8]) {
         const page = await browser.newPage();
@@ -62,9 +66,18 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 60000
         const shift = Math.abs(after - before);
         assert.ok(shift <= 60, `${vp.name} at ${Math.round(frac * 100)}% viewport: save row moved ${shift}px (was up to 330px without the pin)`);
         assert.ok(await page.$('.ghost.saved'), 'Saved state button shown');
+        const slack = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
+        if (slack > 0 && !cleanupChecked) {
+          await clickButton(page, 'Edit plan');
+          await page.waitForSelector('input', { timeout: 10000 });
+          const left = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
+          assert.equal(left, 0, `save spacer still ${left}px after Edit plan`);
+          cleanupChecked = true;
+        }
         await page.close();
       }
     }
+    assert.ok(cleanupChecked, 'no viewport and scroll combination produced save slack to clear');
   } finally {
     browser?.close();
     server.kill();
