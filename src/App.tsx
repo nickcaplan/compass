@@ -767,7 +767,7 @@ export default function App() {
 
   // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
-    const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
+    const hasInput = count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
       clearCue();
       setConfirmFill(true);
@@ -926,7 +926,7 @@ export default function App() {
   function openPlan(entry: SavedPlan, force = false) {
     const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
     if (!force && !alreadyOpen) {
-      const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+      const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
       const unsavedPlan = stage === 'plan' && savedEntry === null;
       const unsavedEdit = savedEntry?.mode === 'edit';
       const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;

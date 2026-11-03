@@ -18,7 +18,10 @@ test('market options preserve shared pill styling and multi-selection without re
  assert.equal(await p.$$eval('[aria-labelledby=g-market] button',bs=>bs.every(b=>b.getBoundingClientRect().height===document.querySelector('[aria-labelledby=g-objective] button').getBoundingClientRect().height)),true);
  if(width===390){
   const click=async text=>{const h=await p.evaluateHandle(t=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim().replace(/\s*→$/,'')===t),text);assert.ok(h.asElement(),text);await h.asElement().click();await h.dispose()};
-  await p.goto(url+'?demo=1');await p.waitForSelector('.demofill');await click('Fill it in for me');await p.waitForSelector('.planin',{timeout:20000});const forecasts=await p.$eval('.metrics',e=>e.textContent);
+  await p.goto(url+'?demo=1');await p.waitForSelector('.demofill');
+  await p.locator('[aria-labelledby=g-market] button').click();await click('Fill it in for me');await p.waitForSelector('[role=alertdialog]');await p.keyboard.press('Escape');await p.waitForSelector('[role=alertdialog]',{hidden:true});assert.equal(await p.$eval('[aria-labelledby=g-market] button',e=>e.getAttribute('aria-pressed')),'true');
+  await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('[role=alertdialog]');await p.keyboard.press('Escape');await p.waitForSelector('[role=alertdialog]',{hidden:true});await click('Planner');assert.equal(await p.$eval('[aria-labelledby=g-market] button',e=>e.getAttribute('aria-pressed')),'true');
+  await click('Fill it in for me');await p.waitForSelector('[role=alertdialog]');await click('Replace with example');await p.waitForSelector('.planin',{timeout:20000});const forecasts=await p.$eval('.metrics',e=>e.textContent);
   await p.locator('[aria-labelledby=g-market] button').click();await p.focus('[aria-labelledby=g-market] button:nth-child(2)');await p.keyboard.press('Space');
   await click('Regenerate my plan');await p.waitForSelector('.planin',{timeout:20000});assert.equal(await p.$eval('.metrics',e=>e.textContent),forecasts);await click('Save plan');await p.waitForSelector('.bsum');
   assert.match(await p.$eval('.bsum',e=>e.textContent),/North America \+ UK/);
