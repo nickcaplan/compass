@@ -548,18 +548,18 @@ function DemoCap() {
   return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
 }
 
-const REEL_INDUSTRIES = ['Life sciences', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Life sciences'];
+const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
 
 function IndustryReel() {
   return (
     <div className="eyebrow industry-eyebrow">
-      <span className="industry-accessible">Life sciences media planning</span>
+      <span className="industry-accessible">Life Sciences Media Planning</span>
+      <span aria-hidden="true">Life Sciences</span>
       <span className="industry-reel" aria-hidden="true">
         <span className="industry-reel-track">
-          {REEL_INDUSTRIES.map((industry, index) => <span key={index}>{industry}</span>)}
+          {REEL_SERVICES.map((service, index) => <span key={index}>{service}</span>)}
         </span>
       </span>
-      <span aria-hidden="true">media planning</span>
     </div>
   );
 }
@@ -1393,14 +1393,8 @@ export default function App() {
               </div>
               <div className="cta">
                 <div>
-                  <b>Want us to validate or activate this plan?</b>
-                  <p>
-                A{' '}
-                <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
-                  Hybrid House
-                </a>{' '}
-                media specialist can pick it up from here.
-              </p>
+                  <b>A Hybrid House specialist can pick it up from here.</b>
+
                 </div>
                 <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
                   Speak to a specialist

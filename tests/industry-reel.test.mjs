@@ -9,7 +9,7 @@ const chromePath = process.platform === 'darwin'
   ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
   : '/usr/bin/google-chrome';
 
-async function visibleIndustry(page) {
+async function visibleService(page) {
   return page.$eval('.industry-reel', reel => {
     const viewport = reel.getBoundingClientRect();
     const center = viewport.top + viewport.height / 2;
@@ -20,7 +20,7 @@ async function visibleIndustry(page) {
   });
 }
 
-test('industry reel settles in 2.6 seconds and never blocks interaction', { timeout: 60000 }, async () => {
+test('service reel settles in 2.6 seconds and never blocks interaction', { timeout: 60000 }, async () => {
   const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
   let browser;
   try {
@@ -37,28 +37,38 @@ test('industry reel settles in 2.6 seconds and never blocks interaction', { time
       });
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
-    for (const width of [390, 1440]) {
+    for (const width of [320, 390, 1440]) {
+      for (const font of [null, 'Arial,sans-serif', 'system-ui,sans-serif']) {
       const page = await browser.newPage();
       await page.setViewport({ width, height: 900 });
       await page.goto(previewUrl+'?demo=1');
       await page.waitForSelector('.industry-reel-track');
+      assert.equal(await page.$eval('.industry-accessible', e => e.textContent), 'Life Sciences Media Planning');
+      assert.deepEqual(await page.$$eval('.industry-reel-track > span', es => es.map(e=>e.textContent)), ['Media Planning','Data Infrastructure','Analytics','Measurement','Publisher Partnerships','Sponsorship','Events','Paid Social','SEO','Media Planning']);
       await page.evaluate(() => document.fonts.ready);
+      if(font) await page.addStyleTag({content: `.industry-eyebrow{font-family:${font}!important}`});
       const before = await page.$eval('.hero', e => e.getBoundingClientRect().toJSON());
       const animation = await page.$eval('.industry-reel-track', e => {
         const a = e.getAnimations()[0]; a.currentTime = 650; a.play();
         return a.effect.getTiming().duration;
       });
       assert.equal(animation, 2600);
+      for (let row=0; row<10; row++) {
+        await page.$eval('.industry-reel-track', (e,index) => {e.style.animation='none'; e.style.transform=`translateY(${-index*1.8}em)`;},row);
+        assert.equal(await page.$eval('.industry-reel',e=>[...e.querySelectorAll('.industry-reel-track > span')].every(row=>{const range=document.createRange();range.selectNodeContents(row);return range.getBoundingClientRect().width <= e.getBoundingClientRect().width;})),true);
+      }
+      await page.$eval('.industry-reel-track', e=>{e.style.animation='';e.style.transform='';e.getAnimations()[0].currentTime=650});
       await page.locator('#f-name').fill('Typing during the spin');
       assert.equal(await page.$eval('#f-name', e => e.value), 'Typing during the spin');
       await page.$eval('.industry-reel-track', e => e.getAnimations()[0].currentTime = 2600);
       assert.deepEqual(await page.$eval('.hero', e => e.getBoundingClientRect().toJSON()), before);
-      assert.equal(await visibleIndustry(page), 'Life sciences');
+      assert.equal(await visibleService(page), 'Media Planning');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
       assert.equal(await page.$eval('.industry-reel-track', e => e.getAnimations().length), 0);
-      assert.equal(await visibleIndustry(page), 'Life sciences');
+      assert.equal(await visibleService(page), 'Media Planning');
       await page.close();
+      }
     }
   } finally { await browser?.close(); server.kill(); }
 });
