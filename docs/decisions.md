@@ -91,9 +91,11 @@ KPI. His authenticated3November16:14:42/16:14:58 clarification selects North Ame
 UK, France and Germany, excluding Europe, and allows multiple choices. Stable
 IDs keep the taxonomy extensible. Selection is stored with the brief and shown
 in generated and saved summaries. Existing plans have no inferred region and
-show Not specified. This standalone demo addition does not impose a new hidden
-generation gate. A market requirement and real regional inventory matching can
-be addressed with the inventory integration, not invented in this change.
+show Not specified. Nick made Market required on 3 November at 20:18. At least one market is
+needed to generate or regenerate, and progress counts seven required fields.
+Older plans without markets remain viewable as Not specified; editing them
+requires a market before regeneration. Real regional inventory matching is
+not invented in this change.
 
 The current concept uses illustrative Publisher A/B/C forecasts, not the master
 workbook's real inventory. Market selection records intent only;
@@ -120,3 +122,8 @@ stay unchanged. Empty audiences remain empty until a visitor chooses one before
 regenerating. Seed plans likewise no longer introduce retired audiences. A
 failed cleanup write uses the existing storage error state and does not pretend
 the stored cleanup succeeded.
+
+Nick clarified demo fill is for testing and must include Market. Generated
+example briefs use UK as explicit illustrative test data, not inferred visitor
+geography; existing saved plans are not backfilled. The auto-generation flow
+continues with all seven required answers populated.

@@ -781,7 +781,7 @@ export default function App() {
     setSubmittedBrief(null);
     setStage('filling');
     window.clearTimeout(cueTimer.current);
-    if (answeredCount(d) >= 6) {
+    if (answeredCount(d) >= 7) {
       setCueSeq((n) => n + 1);
       setCueGen(true);
     }
@@ -816,7 +816,7 @@ export default function App() {
   }, [stage]);
 
   function generate() {
-    if (count < 6) return;
+    if (count < 7) return;
     clearCue();
     setSubmittedBrief(brief);
     setHasGenerated(true);
@@ -963,7 +963,7 @@ export default function App() {
   if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
   if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
-  if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
+  if (stage === 'filling' && count < 7) chips.push({ label: 'choosing...', soft: true });
 
   return (
     <div className="wrap">
@@ -1249,7 +1249,7 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 7 || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
             </>
@@ -1313,9 +1313,9 @@ export default function App() {
               </div>
               <div className="prog">
                 <div className="bar">
-                  <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />
+                  <div className="fill" style={{ width: `${(count / 7) * 100}%` }} />
                 </div>
-                <div className="t">{count} OF 6 ANSWERED</div>
+                <div className="t">{count} OF 7 ANSWERED</div>
               </div>
               <SkeletonBlock />
               <p className="keep">

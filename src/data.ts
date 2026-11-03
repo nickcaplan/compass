@@ -161,11 +161,12 @@ export function demoBrief(excludeName?: string): Brief {
   end.setDate(end.getDate() + 83); // 12 weeks
   const iso = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return { ...pick, kpis: [...pick.kpis], audiences: [...pick.audiences], seniority: [...pick.seniority], objectives: [...pick.objectives], start: iso(start), end: iso(end) };
+  return { ...pick, markets: ['uk'], kpis: [...pick.kpis], audiences: [...pick.audiences], seniority: [...pick.seniority], objectives: [...pick.objectives], start: iso(start), end: iso(end) };
 }
 
 export function answeredCount(b: Brief): number {
   return [
+    (b.markets?.length ?? 0) > 0,
     b.objectives.length > 0,
     b.kpis.length > 0,
     b.audiences.length > 0,
