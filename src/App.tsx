@@ -1393,7 +1393,7 @@ export default function App() {
               </div>
               <div className="cta">
                 <div>
-                  <b>Want us to validate or activate this plan?</b>
+                  <b>A Hybrid House specialist can pick it up from here.</b>
                   <p>
                 A{' '}
                 <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
