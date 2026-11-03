@@ -87,7 +87,7 @@ Dates stack vertically on small screens so the fields never clip.
 ## 2026-11-03 - Market brief selection
 
 Nick's edited combined-feedback document places Market between Objective and
-KPI. His authenticated3November14:42/14:58 clarification selects North America,
+KPI. His authenticated3November16:14:42/16:14:58 clarification selects North America,
 UK, France and Germany, excluding Europe, and allows multiple choices. Stable
 IDs keep the taxonomy extensible. Selection is stored with the brief and shown
 in generated and saved summaries. Existing plans have no inferred region and
