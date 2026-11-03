@@ -638,8 +638,22 @@ export default function App() {
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
   const initialSessionPending = useRef(true);
+  const authEpoch = useRef(0);
+  const recoveryPrincipal = useRef<string | null>(null);
+  const googleCallbackPrincipal = useRef<string | null>(null);
+  const googlePending = useRef(false);
   function applyAuthUser(user: User | null, reseed = false, hydrating = false) {
     const previous = currentAccount.current;
+    if (previous?.id !== user?.id) authEpoch.current++;
+    if (previous && previous.id !== user?.id) {
+      mayRestoreAuthDraft.current = false;
+      googleCallbackPrincipal.current = null;
+      googlePending.current = false;
+      recoveryPrincipal.current = null;
+      setRecoveringPassword(false);
+      try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
+    }
+    if (recoveringPassword && user && !recoveryPrincipal.current && !previous) recoveryPrincipal.current = user.id;
     if (previous && previous.id !== user?.id) {
       stashAuthDraft({ accountId: previous.id });
       clearPlannerState();
@@ -759,7 +773,7 @@ export default function App() {
       const pendingFlow = activeGoogleFlow();
       const providers: unknown = user.app_metadata.providers;
       const googleUser = user.app_metadata.provider === 'google' || (Array.isArray(providers) && providers.includes('google'));
-      const flow = googleOAuthCallback && googleUser ? pendingFlow : null;
+      const flow = googleOAuthCallback && googleUser && googleCallbackPrincipal.current === user.id ? pendingFlow : null;
       const keys = [accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
       const candidates = keys.flatMap(key => {
         try {
@@ -796,13 +810,18 @@ export default function App() {
     if (callbackError) {
       try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
       setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
+    const startupEpoch = authEpoch.current;
     supabase.auth.getSession().then(({ data }) => {
+      if (startupEpoch !== authEpoch.current && data.session?.user.id !== currentAccount.current?.id) return;
       applyAuthUser(data.session?.user ?? null, false, true);
       initialSessionPending.current = false;
       // Only a tab loaded with a session may consume the shared snapshot.
       // A later cross-tab SIGNED_IN must leave it for the callback tab.
       mayRestoreAuthDraft.current = Boolean(data.session);
-      if (data.session) restoreAuthDraft();
+      if (data.session) {
+        if (googleOAuthCallback && !googleCallbackPrincipal.current && authEpoch.current <= 1) googleCallbackPrincipal.current = data.session.user.id;
+        restoreAuthDraft();
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       applyAuthUser(session?.user ?? null, false, event === 'INITIAL_SESSION' || (event === 'TOKEN_REFRESHED' && initialSessionPending.current));
@@ -816,7 +835,7 @@ export default function App() {
         setStage((s) => (s === 'plan' ? 'gate' : s));
         setSavedEntry(null);
       }
-      if (event === 'PASSWORD_RECOVERY') { setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
+      if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
     });
     return () => subscription.unsubscribe();
     // One subscription per mount; planner/account/flow state is read through refs.
@@ -1177,6 +1196,9 @@ export default function App() {
   }
 
   async function continueWithGoogle() {
+    if (googlePending.current) return;
+    googlePending.current = true;
+    const epoch = authEpoch.current;
     const previousBinding = anonymousBinding.current;
     const previousPlanner = latestPlanner.current;
     let flow: string | null = null;
@@ -1191,11 +1213,17 @@ export default function App() {
       try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { /* private mode */ }
       stashAuthDraft(anonymousBinding.current);
     }
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + (demoMode ? '/?demo=1' : '') },
-    });
-    if (error) {
+    let failed = false;
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + (demoMode ? '/?demo=1' : '') },
+      });
+      failed = Boolean(error);
+    } catch { failed = true; }
+    if (failed) {
+      googlePending.current = false;
+      if (epoch !== authEpoch.current) return;
       setAuthNotice('Google log-in failed - please try again');
       try {
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
@@ -1266,7 +1294,9 @@ export default function App() {
           </button>
         </div>
         <div className="divider"><span>or</span></div></>}
-        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); stashAuthDraft({ accountId: user.id });
+        <EmailAuth key={`${idPrefix}:${authUser?.id ?? 'anonymous'}:${recoveringPassword}`} idPrefix={idPrefix} recovery={recoveringPassword}
+          recoveryUserId={recoveryPrincipal.current}
+          isRecoveryCurrent={id => recoveryPrincipal.current === id && currentAccount.current?.id === id} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); stashAuthDraft({ accountId: user.id });
           try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
           anonymousBinding.current = null;
           setRecoveringPassword(false); setAuthNotice(null); go('planner'); }} />
@@ -1288,6 +1318,8 @@ export default function App() {
       failed = true;
     }
     mayRestoreAuthDraft.current = false;
+    recoveryPrincipal.current = null;
+    setRecoveringPassword(false);
     applyAuthUser(null);
     anonymousBinding.current = null;
     try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
