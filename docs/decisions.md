@@ -115,3 +115,8 @@ fixed columns, truncation, font shrinking or label changes are introduced.
 Nick requested removal of the "Choose at least one audience." helper on
 3 November. The helper and its description reference are removed; selection
 validation and invalid saved-audience cleanup remain unchanged.
+
+Nick requested a single desktop row for Objective options on 3 November.
+The desktop form column is 416px rather than 400px, keeping all three
+full-size objective pills together without a pill-specific style exception.
+The 980px single-column breakpoint and natural enlarged-text wrapping stay.

@@ -7,6 +7,9 @@ test('natural audience rows use available space and retain narrow and enlarged-t
  const p=await b.newPage();await p.setViewport({width,height:900});await p.goto(url+'?demo=1');await p.waitForSelector('[aria-labelledby=g-audience]');await p.evaluate(()=>document.fonts.ready);if(variant==='loaded')assert.equal(await p.evaluate(()=>[...document.fonts].some(f=>f.family.replaceAll('\"','')==='Roboto'&&f.status==='loaded')),true,'Roboto must actually load for loaded-font geometry');
  if(variant==='fallback')await p.addStyleTag({content:'.pill{font-family:Arial,sans-serif}'});
  if(variant==='double')await p.addStyleTag({content:'.pill{font-size:26px}'});
+ const objectives=await p.$$eval('[aria-labelledby=g-objective] button',bs=>bs.map(e=>{const r=e.getBoundingClientRect();return{y:r.y,w:r.width,clip:e.scrollWidth>e.clientWidth}}));
+ assert.ok(objectives.every(e=>!e.clip));
+ if(width>980&&variant!=='double')assert.equal(new Set(objectives.map(e=>e.y)).size,1,'desktop objective options share one row');
  const g=await p.$$eval('[aria-labelledby=g-audience] button',bs=>bs.map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height,clip:e.scrollWidth>e.clientWidth}}));
  assert.ok(g.every(e=>!e.clip));assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  if(variant!=='double'){
