@@ -3,6 +3,10 @@ import type { FormEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 
+const resetNotice = 'If an account exists for that email, check your inbox and spam folder for a reset link. If you requested one recently, please wait before trying again.';
+
+function recipientCooldown(err: AuthErrorLike): boolean { return /after \d+ seconds?/i.test(err?.message ?? ''); }
+
 type Mode = 'signin' | 'signup' | 'reset' | 'update';
 type AuthErrorLike = { code?: string; message?: string } | null;
 function authErrorMessage(err: AuthErrorLike, fallback: string): string {
@@ -42,8 +46,10 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
     try {
       if (activeMode === 'reset') {
         const result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
-        if (result.error) { setError(authErrorMessage(result.error, 'Could not request a reset email. Please try again.')); return; }
-        setNotice('If an account exists for that email, we have sent a reset link. Check your inbox and spam folder.');
+        if (result.error && !recipientCooldown(result.error)) { setError(authErrorMessage(result.error, 'Could not request a reset email. Please try again.')); return; }
+        // Success and recipient cooldown expose the same truthful, conditional status.
+        // This is UI privacy only; the provider API still exposes its own errors.
+        setNotice(resetNotice);
       } else if (activeMode === 'signup') {
         const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') } });
         if (result.error) { setError(result.error.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' : authErrorMessage(result.error, 'Could not create your account. Try logging in if you already have one.')); return; }
