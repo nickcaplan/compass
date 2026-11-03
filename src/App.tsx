@@ -1,4 +1,10 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDraftKey, bindingMatches } from './authDraft';
+import type { DraftBinding } from './authDraft';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
+import EmailAuth from './EmailAuth';
+
 import logoUrl from './assets/thh-logo.svg';
 
 const iconProps = {
@@ -102,7 +108,7 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const cancelCb = useRef(onCancel);
-  cancelCb.current = onCancel;
+  useLayoutEffect(() => { cancelCb.current = onCancel; }, [onCancel]);
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cancelRef.current?.focus();
@@ -177,7 +183,7 @@ import {
   type ObjectiveId,
 } from './data';
 
-type Stage = 'empty' | 'filling' | 'generating' | 'plan';
+type Stage = 'empty' | 'filling' | 'generating' | 'gate' | 'plan';
 
 function ComingSoonButton() {
   const [notice, setNotice] = useState(0);
@@ -236,6 +242,16 @@ function ComingSoonButton() {
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
 type Page = 'planner' | 'plans' | 'signin' | 'pricing';
+const PAGE_ROUTES: Record<Page, string> = { planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing' };
+function pageFromUrl(): Page {
+  return (Object.keys(PAGE_ROUTES) as Page[]).find(page => PAGE_ROUTES[page] === window.location.hash) ?? 'planner';
+}
+function writePageUrl(page: Page, replace = false) {
+  const url = new URL(window.location.href);
+  url.hash = PAGE_ROUTES[page];
+  window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
+}
+
 
 interface SavedPlan {
   id: string;
@@ -247,6 +263,23 @@ interface SavedPlan {
 // My Plans design is clickable end-to-end without a backend. Real saved
 // plans across devices need sign-in + database - not built yet.
 const PLANS_KEY = 'compass-saved-plans';
+
+const AUTH_DRAFT_STAGES: Stage[] = ['empty', 'filling', 'gate', 'plan'];
+
+function isAuthDraft(
+  value: unknown,
+): value is { brief: Brief; submittedBrief: Brief | null; budgetText: string; stage: Stage; ts: number } {
+  if (value === null || typeof value !== 'object') return false;
+  const s = value as Record<string, unknown>;
+  return (
+    isBrief(s.brief) &&
+    (s.submittedBrief === null || isBrief(s.submittedBrief)) &&
+    typeof s.budgetText === 'string' &&
+    AUTH_DRAFT_STAGES.includes(s.stage as Stage) &&
+    typeof s.ts === 'number' &&
+    Number.isFinite(s.ts)
+  );
+}
 
 function isBrief(value: unknown): value is Brief {
   if (value === null || typeof value !== 'object') return false;
@@ -581,7 +614,74 @@ export default function App() {
   const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
-  const [page, setPage] = useState<Page>('planner');
+  const [page, setPage] = useState<Page>(pageFromUrl);
+  useEffect(() => {
+    const syncPage = () => { setPage(pageFromUrl()); window.scrollTo(0, 0); };
+    window.addEventListener('popstate', syncPage);
+    window.addEventListener('hashchange', syncPage);
+    // Leave OAuth fragments intact for the auth client to consume.
+    if (!window.location.hash) writePageUrl(pageFromUrl(), true);
+    return () => { window.removeEventListener('popstate', syncPage); window.removeEventListener('hashchange', syncPage); };
+  }, []);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [profileName, setProfileName] = useState('');
+  const [profileCompany, setProfileCompany] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [recoveringPassword, setRecoveringPassword] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery');
+  const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
+    typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
+  const canViewPlan = Boolean(authEmail && profileComplete && !recoveringPassword);
+
+  const profileSource = useRef<string | null>(null);
+  const currentAccount = useRef<User | null>(null);
+  const initialSessionPending = useRef(true);
+  const authEpoch = useRef(0);
+  const profileRevision = useRef(0);
+  const canonicalProfile = useRef<User | null>(null);
+  const recoveryPrincipal = useRef<string | null>(null);
+  const googleCallbackPrincipal = useRef<string | null>(null);
+  const googlePending = useRef(false);
+  const [earlierDraftKey, setEarlierDraftKey] = useState<string | null>(null);
+  function applyAuthUser(user: User | null, reseed = false, hydrating = false) {
+    const previous = currentAccount.current;
+    if (previous?.id !== user?.id) { authEpoch.current++; canonicalProfile.current = null; }
+    if (user && canonicalProfile.current?.id === user.id && !reseed)
+      user = { ...user, user_metadata: canonicalProfile.current.user_metadata };
+    if (previous && previous.id !== user?.id) {
+      mayRestoreAuthDraft.current = false;
+      googleCallbackPrincipal.current = null;
+      setEarlierDraftKey(null);
+      googlePending.current = false;
+      recoveryPrincipal.current = null;
+      setRecoveringPassword(false);
+      try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
+    }
+    if (recoveringPassword && user && !recoveryPrincipal.current && !previous) recoveryPrincipal.current = user.id;
+    if (previous && previous.id !== user?.id) {
+      stashAuthDraft({ accountId: previous.id });
+      clearPlannerState();
+      anonymousBinding.current = null;
+    } else if (!previous && user && hasPlannerWork() &&
+      !(hydrating && !anonymousBinding.current) &&
+      !bindingMatches(anonymousBinding.current, user, null)) {
+      // An unrelated login must not adopt an abandoned anonymous brief.
+      clearPlannerState();
+    }
+    if (user && !googleOAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
+    currentAccount.current = user;
+    setAuthUser(user);
+    setAuthEmail(user?.email ?? null);
+    const source = user?.id ?? null;
+    if (user && profileSource.current === source && !reseed) return;
+    profileSource.current = source;
+    setProfileName(typeof user?.user_metadata.full_name === 'string' ? user.user_metadata.full_name :
+      typeof user?.user_metadata.name === 'string' ? user.user_metadata.name : '');
+    setProfileCompany(typeof user?.user_metadata.company === 'string' ? user.user_metadata.company : '');
+    setProfileError(null);
+  }
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
     recoverCorruptPlans();
@@ -614,6 +714,217 @@ export default function App() {
     }
   }, [theme]);
 
+  // A sign-in round trip (Google redirect, verification or recovery link) reloads the app,
+  // so the in-progress brief and generated plan are stashed on this device
+  // first and restored when the user lands back. Expires after an hour.
+  const latestPlanner = useRef({ brief, submittedBrief, savedEntry, budgetText, stage });
+  useLayoutEffect(() => {
+    latestPlanner.current = { brief, submittedBrief, savedEntry, budgetText, stage };
+  }, [brief, submittedBrief, savedEntry, budgetText, stage]);
+  const anonymousBinding = useRef<DraftBinding | null>(null);
+  function activeGoogleFlow(): string | null {
+    try { return window.sessionStorage.getItem(AUTH_FLOW_KEY); } catch { return null; }
+  }
+  function hasPlannerWork() {
+    const current = latestPlanner.current;
+    return current.stage !== 'empty' || current.submittedBrief !== null || current.savedEntry !== null ||
+      answeredCount(current.brief) > 0 || current.brief.name.trim() !== '' || current.budgetText.trim() !== '' ||
+      current.brief.start !== '' || current.brief.end !== '';
+  }
+  function bindingKey(binding: DraftBinding) {
+    return 'accountId' in binding ? accountDraftKey(binding.accountId) :
+      'email' in binding ? emailDraftKey(binding.email) : googleDraftKey(binding.googleFlow);
+  }
+  function cleanupExpiredDrafts() {
+    try {
+      for (const key of Object.keys(window.localStorage)) {
+        if (key !== AUTH_DRAFT_KEY && !key.startsWith(AUTH_DRAFT_KEY + ':')) continue;
+        try {
+          const value: unknown = JSON.parse(window.localStorage.getItem(key) ?? 'null');
+          if (value && typeof value === 'object' && 'ts' in value && typeof value.ts === 'number' &&
+            Date.now() - value.ts > 60 * 60 * 1000) window.localStorage.removeItem(key);
+        } catch { /* Leave unknown or corrupted work alone. */ }
+      }
+    } catch { /* private mode */ }
+  }
+  function stashAuthDraft(binding: DraftBinding | null = currentAccount.current ? { accountId: currentAccount.current.id } : anonymousBinding.current) {
+    cleanupExpiredDrafts();
+    if (!binding || !hasPlannerWork()) return;
+    try {
+      const current = latestPlanner.current;
+      const snap = { ...current, binding, stage: current.stage === 'generating' ? 'filling' : current.stage, ts: Date.now() };
+      window.localStorage.setItem(bindingKey(binding), JSON.stringify(snap));
+    } catch { /* private mode */ }
+  }
+  function beginEmail(email: string) {
+    setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n);
+    if (currentAccount.current) { stashAuthDraft(); return; }
+    const binding: DraftBinding = { email: email.trim().toLowerCase() };
+    const previous = anonymousBinding.current;
+    if (previous && ('email' in previous ? previous.email !== binding.email : true)) {
+      stashAuthDraft(previous);
+      clearPlannerState();
+    }
+    // The first submitted address owns this anonymous attempt, even if it fails.
+    anonymousBinding.current = binding;
+    try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
+    stashAuthDraft(binding);
+  }
+  const mayRestoreAuthDraft = useRef(false);
+  function restoreAuthDraft(allowSignIn = false) {
+    cleanupExpiredDrafts();
+    const user = currentAccount.current;
+    if (!user || (!allowSignIn && (!mayRestoreAuthDraft.current || (pageFromUrl() !== 'planner' && !recoveringPassword)))) return;
+    try {
+      const pendingFlow = activeGoogleFlow();
+      const providers: unknown = user.app_metadata.providers;
+      const googleUser = user.app_metadata.provider === 'google' || (Array.isArray(providers) && providers.includes('google'));
+      const flow = googleOAuthCallback && googleUser && googleCallbackPrincipal.current === user.id ? pendingFlow : null;
+      const alternativeKey = accountDraftKey(user.id) + ':earlier-google';
+      if (flow) {
+        const raw = window.localStorage.getItem(googleDraftKey(flow));
+        const snap: unknown = raw ? JSON.parse(raw) : null;
+        if (hasPlannerWork() && isAuthDraft(snap) && Date.now() - snap.ts <= 60 * 60 * 1000 &&
+          bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, flow)) {
+          // Only the verified callback principal may keep this second version.
+          // It is separate from the normal account snapshot, never an overwrite.
+          window.localStorage.setItem(alternativeKey, JSON.stringify({ ...snap, binding: { accountId: user.id } }));
+          window.localStorage.removeItem(googleDraftKey(flow));
+          window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+          setEarlierDraftKey(alternativeKey);
+          return;
+        }
+      }
+      const alternativeRaw = window.localStorage.getItem(alternativeKey);
+      const alternative: unknown = alternativeRaw ? JSON.parse(alternativeRaw) : null;
+      if (isAuthDraft(alternative) && Date.now() - alternative.ts <= 60 * 60 * 1000 &&
+        bindingMatches((alternative as typeof alternative & { binding?: unknown }).binding, user, null)) setEarlierDraftKey(alternativeKey);
+      if (hasPlannerWork()) return;
+      const keys = [accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
+      const candidates = keys.flatMap(key => {
+        try {
+          const raw = window.localStorage.getItem(key);
+          const snap: unknown = raw ? JSON.parse(raw) : null;
+          return isAuthDraft(snap) && Date.now() - snap.ts <= 60 * 60 * 1000 &&
+            bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, flow) ? [{ key, snap }] : [];
+        } catch { return []; }
+      }).sort((a, b) => b.snap.ts - a.snap.ts);
+      for (const { snap } of candidates) {
+        for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
+        const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
+        if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)) {
+          setSavedEntry({ id: entry.id, mode: entry.mode });
+        }
+        const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
+        const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
+        setBrief(snap.brief); setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
+        setBudgetText(snap.budgetText); setStage(restoredStage);
+        latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
+          savedEntry: null, budgetText: snap.budgetText, stage: restoredStage };
+        anonymousBinding.current = null;
+        window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+        if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
+        break;
+      }
+    } catch { /* corrupted or unavailable storage */ }
+  }
+
+  function openEarlierDraft() {
+    const user = currentAccount.current;
+    if (!user || earlierDraftKey !== accountDraftKey(user.id) + ':earlier-google') return;
+    try {
+      const raw = window.localStorage.getItem(earlierDraftKey);
+      const snap: unknown = raw ? JSON.parse(raw) : null;
+      if (!isAuthDraft(snap) || Date.now() - snap.ts > 60 * 60 * 1000 ||
+        !bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, null)) return;
+      stashAuthDraft({ accountId: user.id });
+      // Swap versions so neither is discarded, including across a reload.
+      const live = latestPlanner.current;
+      const current = { ...live, stage: live.stage === 'generating' ? 'filling' : live.stage, binding: { accountId: user.id }, ts: Date.now() };
+      window.localStorage.setItem(earlierDraftKey, JSON.stringify(current));
+      setBrief(snap.brief); setSubmittedBrief(snap.submittedBrief); setBudgetText(snap.budgetText);
+      setStage(snap.stage === 'generating' ? 'filling' : snap.stage); setSavedEntry(null);
+      latestPlanner.current = { brief: snap.brief, submittedBrief: snap.submittedBrief, budgetText: snap.budgetText, stage: snap.stage, savedEntry: null };
+      stashAuthDraft({ accountId: user.id });
+    } catch { /* Storage failure leaves the current work unchanged. */ }
+  }
+
+  useEffect(() => {
+    cleanupExpiredDrafts();
+    if (emailAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
+    const callbackError = new URLSearchParams(window.location.hash.slice(1)).get('error_description');
+    if (callbackError) {
+      // An anonymous Google cancellation may retry its own per-tab draft.
+      // getSession below revokes this handle if any account is established.
+      setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
+    const onPageShow = (event: PageTransitionEvent) => { if (event.persisted) googlePending.current = false; };
+    window.addEventListener('pageshow', onPageShow);
+    const startupEpoch = authEpoch.current;
+    supabase.auth.getSession().then(({ data }) => {
+      if (startupEpoch !== authEpoch.current && data.session?.user.id !== currentAccount.current?.id) return;
+      if (authController.error) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
+      applyAuthUser(data.session?.user ?? null, false, true);
+      if (!authController.recovering) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
+      initialSessionPending.current = false;
+      // Only a tab loaded with a session may consume the shared snapshot.
+      // A later cross-tab SIGNED_IN must leave it for the callback tab.
+      mayRestoreAuthDraft.current = Boolean(data.session);
+      if (data.session) {
+        if (callbackError) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
+        if (googleOAuthCallback && !googleCallbackPrincipal.current && authEpoch.current <= 1) googleCallbackPrincipal.current = data.session.user.id;
+        restoreAuthDraft();
+        // Canonical metadata is read without mutating SDK-owned session storage.
+        // A late lookup must not replace a new account or a more recent save.
+        const id = data.session.user.id;
+        const epoch = authEpoch.current;
+        const revision = profileRevision.current;
+        void supabase.auth.getUser(data.session.access_token).then(({ data: result, error }) => {
+          if (error || !result.user || result.user.id !== id || currentAccount.current?.id !== id ||
+            epoch !== authEpoch.current || revision !== profileRevision.current) return;
+          canonicalProfile.current = result.user;
+          applyAuthUser(result.user);
+        }).catch(() => { /* Keep the current profile gate; never infer completion on failure. */ });
+      }
+    }).catch(error => { setAuthNotice(error instanceof Error ? error.message : 'Secure browser storage is unavailable. Log-in is paused.'); });
+    void authController.ready.then(() => { if (authController.error) { setAuthNotice(authController.error.message); recoveryPrincipal.current = null; setRecoveringPassword(false); } });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      applyAuthUser(session?.user ?? null, false, event === 'INITIAL_SESSION' || (event === 'TOKEN_REFRESHED' && initialSessionPending.current));
+      if (!authController.recovering) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
+      // Auth events also arrive from other tabs: re-gate a visible plan when
+      // the session is gone, and stop re-stashing the draft once signed in.
+      // Draft restore stays on the getSession path so only the freshly loaded
+      // tab consumes it; this tab keeps its in-memory brief.
+      if (!session) {
+        mayRestoreAuthDraft.current = false;
+        setRecoveringPassword(false);
+        setStage((s) => (s === 'plan' ? 'gate' : s));
+        setSavedEntry(null);
+      }
+      if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
+    });
+    const stopErrors = authController.onError(error => setAuthNotice(error.message));
+    return () => { stopErrors(); subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
+    // One subscription per mount; planner/account/flow state is read through refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // An explicit saved-plans landing defers the pending draft until Planner.
+  useEffect(() => {
+    if (page === 'planner' && authUser) restoreAuthDraft();
+    // Only a route/session transition may consume the pending snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, authUser?.id]);
+
+  // Reveal a plan only after authentication and first-time profile completion.
+  useEffect(() => {
+    if (stage === 'gate' && canViewPlan) setStage('plan');
+    if (stage === 'plan' && !canViewPlan) setStage('gate');
+  }, [stage, canViewPlan]);
+
+  useEffect(() => {
+    if (recoveringPassword && page !== 'signin') { setPage('signin'); writePageUrl('signin', true); }
+  }, [recoveringPassword, page]);
+
   // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
   // regains focus, so a page left open across midnight shows today's state.
   const [, setDayTick] = useState(0);
@@ -627,7 +938,7 @@ export default function App() {
 
   const count = answeredCount(brief);
   const weeks = campaignWeeks(brief.start, brief.end);
-  const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
+  const viewBrief = (stage === 'generating' || stage === 'gate' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
@@ -652,7 +963,8 @@ export default function App() {
     () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
     [stage, submittedBrief],
   );
-  const viewingSaved = savedEntry !== null && savedEntry.mode === 'view' && stage === 'plan';
+  const savedBriefReadOnly = savedEntry !== null && savedEntry.mode === 'view';
+  const viewingSaved = savedBriefReadOnly && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
 
@@ -678,9 +990,11 @@ export default function App() {
   useEffect(() => {
     if (stage !== 'generating') return;
     if (ticks < genSteps) return;
-    const id = window.setTimeout(() => setStage('plan'), 500);
+    // Plans are gated behind sign-in: without a session, show the gate
+    // first; the brief and generated plan stay intact behind it.
+    const id = window.setTimeout(() => setStage(canViewPlan ? 'plan' : 'gate'), 500);
     return () => window.clearTimeout(id);
-  }, [stage, ticks, genSteps]);
+  }, [stage, ticks, genSteps, canViewPlan]);
 
   function showToast(message: string) {
     setToast(message);
@@ -820,9 +1134,21 @@ export default function App() {
     setHasFilled(false);
     setSavedEntry(null);
     setJustSavedId(null);
+    setConfirmFill(false);
+    setDeleteTarget(null);
+    setOpenTarget(null);
+    latestPlanner.current = { brief: EMPTY_BRIEF, submittedBrief: null, savedEntry: null, budgetText: '', stage: 'empty' };
   }
 
   function reset() {
+    try {
+      window.localStorage.removeItem(AUTH_DRAFT_KEY);
+      const owner = currentAccount.current;
+      if (owner) window.localStorage.removeItem(accountDraftKey(owner.id));
+      if (anonymousBinding.current) window.localStorage.removeItem(bindingKey(anonymousBinding.current));
+      window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+    } catch { /* private mode */ }
+    anonymousBinding.current = null;
     clearPlannerState();
     window.scrollTo(0, 0);
   }
@@ -905,7 +1231,7 @@ export default function App() {
     setBrief(original.brief);
     setSubmittedBrief(original.brief);
     setBudgetText(original.brief.budget !== null ? original.brief.budget.toLocaleString('en-GB') : '');
-    setStage('plan');
+    setStage(canViewPlan ? 'plan' : 'gate');
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
@@ -925,18 +1251,192 @@ export default function App() {
     setBrief(entry.brief);
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
-    setStage('plan');
+    setStage(canViewPlan ? 'plan' : 'gate');
     setSavedEntry({ id: entry.id, mode: 'view' });
     setJustSavedId(null);
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage('planner');
+    writePageUrl('planner');
     window.scrollTo(0, 0);
+  }
+
+  async function continueWithGoogle() {
+    if (googlePending.current) return;
+    googlePending.current = true;
+    const epoch = authEpoch.current;
+    const previousBinding = anonymousBinding.current;
+    const previousPlanner = latestPlanner.current;
+    const previousFlow = activeGoogleFlow();
+    let flow: string | null = null;
+    if (currentAccount.current) stashAuthDraft();
+    else {
+      if (anonymousBinding.current) {
+        stashAuthDraft();
+        if (!('googleFlow' in anonymousBinding.current)) clearPlannerState();
+      }
+      let retryFlow: string | null = null;
+      if (previousFlow && !hasPlannerWork()) {
+        try {
+          const raw: unknown = JSON.parse(window.localStorage.getItem(googleDraftKey(previousFlow)) ?? 'null');
+          if (isAuthDraft(raw) && Date.now() - raw.ts <= 60 * 60 * 1000 &&
+            'binding' in raw && raw.binding && typeof raw.binding === 'object' &&
+            'googleFlow' in raw.binding && raw.binding.googleFlow === previousFlow) retryFlow = previousFlow;
+        } catch { /* Unknown work is never rebound. */ }
+      }
+      flow = retryFlow ?? crypto.randomUUID();
+      anonymousBinding.current = { googleFlow: flow };
+      try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { /* private mode */ }
+      stashAuthDraft(anonymousBinding.current);
+    }
+    let failed = false;
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + (demoMode ? '/?demo=1' : '') },
+      });
+      failed = Boolean(error);
+    } catch { failed = true; }
+    if (failed) {
+      googlePending.current = false;
+      if (epoch !== authEpoch.current) return;
+      setAuthNotice('Google log-in failed - please try again');
+      try {
+        if (previousFlow) window.sessionStorage.setItem(AUTH_FLOW_KEY, previousFlow);
+        else window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+        if (flow && flow !== previousFlow) window.localStorage.removeItem(googleDraftKey(flow));
+      } catch { /* private mode */ }
+      anonymousBinding.current = previousBinding;
+      setBrief(previousPlanner.brief); setSubmittedBrief(previousPlanner.submittedBrief);
+      setBudgetText(previousPlanner.budgetText); setStage(previousPlanner.stage);
+      setSavedEntry(previousPlanner.savedEntry); latestPlanner.current = previousPlanner;
+    }
+  }
+
+  async function completeProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profileName.trim() || profileSaving) return;
+    const epoch = authEpoch.current;
+    const id = currentAccount.current?.id;
+    if (!id) return;
+    setProfileSaving(true);
+    setProfileError(null);
+    let generation: number | null = null;
+    try {
+      generation = await authController.capture();
+      const { data, error } = await supabase.auth.getSession();
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
+      if (error || data.session?.user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
+      const token = data.session.access_token;
+      const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        method: 'PUT', headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { full_name: profileName.trim(), company: profileCompany.trim(), compass_profile_complete: true } }),
+      });
+      const user = await response.json() as User;
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
+      if (!response.ok || user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
+      // Re-read the SDK session, but never persist captured credentials ourselves.
+      const current = await supabase.auth.getSession();
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
+      if (current.error || current.data.session?.user.id !== id) {
+        setProfileError('Your session changed. Please log in again.'); return;
+      }
+      profileRevision.current++;
+      canonicalProfile.current = user;
+      applyAuthUser(user, true);
+    } catch {
+      if (epoch === authEpoch.current && (generation === null || await authController.isCurrent(generation))) setProfileError('Could not save your details. Please try again.');
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  function renderProfileFields(idPrefix: string) {
+    return (
+      <form onSubmit={(event) => { void completeProfile(event); }} aria-label="Complete your profile">
+        <p className="pagesub">Logged in as {authEmail}. Add your details to continue.</p>
+        <div className="field">
+          <label htmlFor={`${idPrefix}-name`}>Name</label>
+          <input id={`${idPrefix}-name`} className="ctl" autoComplete="name" required maxLength={160}
+            value={profileName} disabled={profileSaving} onChange={(event) => setProfileName(event.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor={`${idPrefix}-company`}>Company <span className="muted">(optional)</span></label>
+          <input id={`${idPrefix}-company`} className="ctl" autoComplete="organization" maxLength={160}
+            value={profileCompany} disabled={profileSaving} onChange={(event) => setProfileCompany(event.target.value)} />
+        </div>
+        {profileError && <p className="fieldnote" role="alert">{profileError}</p>}
+        <button type="submit" className="gen" disabled={profileSaving || !profileName.trim()}>
+          {profileSaving ? 'Saving details...' : 'Continue'}
+        </button>
+      </form>
+    );
+  }
+
+  function renderSignInFields(idPrefix: string) {
+    return (
+      <>
+        {!recoveringPassword && <><div className="ssolist">
+          <button type="button" className="sso" onClick={() => { void continueWithGoogle(); }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
+              <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z" />
+              <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.3 6.8C.5 8.4 0 10.1 0 12s.5 3.6 1.3 5.2l3.9-2.9z" />
+              <path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.8 1.3 6.8l3.9 2.9c.9-2.9 3.6-5 6.8-5z" />
+            </svg>
+            Continue with Google
+          </button>
+        </div>
+        <div className="divider"><span>or</span></div></>}
+        <EmailAuth key={`${idPrefix}:${authUser?.id ?? 'anonymous'}:${recoveringPassword}`} idPrefix={idPrefix} recovery={recoveringPassword}
+          recoveryUserId={recoveryPrincipal.current}
+          isRecoveryCurrent={id => recoveryPrincipal.current === id && currentAccount.current?.id === id} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); stashAuthDraft({ accountId: user.id });
+          try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
+          anonymousBinding.current = null;
+          setRecoveringPassword(false); setAuthNotice(null); go('planner'); }} />
+        {recoveringPassword && (
+          <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
+            Cancel password reset
+          </button>
+        )}
+      </>
+    );
+  }
+
+  async function signOut(notice = 'Logged out', scope?: 'local' | 'global') {
+    let failed = false;
+    try {
+      const { error } = await supabase.auth.signOut(scope ? { scope } : undefined);
+      failed = Boolean(error);
+    } catch {
+      failed = true;
+    }
+    const canonical = await supabase.auth.getSession().catch(() => null);
+    if (canonical?.data.session) return;
+    mayRestoreAuthDraft.current = false;
+    recoveryPrincipal.current = null;
+    setRecoveringPassword(false);
+    applyAuthUser(null);
+    anonymousBinding.current = null;
+    try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
+    setAuthNotice(null);
+    // applyAuthUser has already stashed and cleared the prior account's planner.
+    setAuthNotice(failed ? 'Log-out encountered an error. Other sessions may still be active.' : notice);
+  }
+
+  async function cancelRecovery() {
+    // Local scope: cancelling a reset must not sign the visitor out on other devices.
+    await signOut('Password reset cancelled - log in with your current password.', 'local');
+    setRecoveringPassword(false);
   }
 
   function go(p: Page) {
     window.clearTimeout(toastTimer.current);
     setToast(null);
+    if (pageFromUrl() !== p || window.location.hash !== PAGE_ROUTES[p]) writePageUrl(p);
     setPage(p);
     window.scrollTo(0, 0);
   }
@@ -979,9 +1479,6 @@ export default function App() {
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
           <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
-          <button type="button" className="signin" onClick={() => go('signin')}>
-            Sign in
-          </button>
           <button
             type="button"
             className="themebtn"
@@ -998,6 +1495,18 @@ export default function App() {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M20 13.5A8.5 8.5 0 1 1 10.5 4a7 7 0 0 0 9.5 9.5z" />
               </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            className="signin"
+            onClick={() => go('signin')}
+            aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Log in'}
+          >
+            {authEmail ? (
+              <span className="avatar" aria-hidden="true">{authEmail.charAt(0).toUpperCase()}</span>
+            ) : (
+              'Log in'
             )}
           </button>
           </div>
@@ -1018,8 +1527,8 @@ export default function App() {
       </header>
 
       <div className="layout">
-        <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
-          {viewingSaved ? (
+        <section className="card form" aria-label={savedBriefReadOnly ? 'Saved plan brief' : 'Plan a campaign'}>
+          {savedBriefReadOnly ? (
             <>
               <div className="planhead">
                 <h2>Your brief</h2>
@@ -1034,9 +1543,9 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <button type="button" className="gen" onClick={editSavedPlan}>
+              {canViewPlan && <button type="button" className="gen" onClick={editSavedPlan}>
                 Edit plan <span>&rarr;</span>
-              </button>
+              </button>}
               <div className="viewactions">
                 <button type="button" className="ghost" onClick={() => go('plans')}>
                   <IconBack />
@@ -1047,6 +1556,11 @@ export default function App() {
           ) : (
             <>
           <h2>Plan a campaign</h2>
+          {earlierDraftKey && <div className="draft-choice" role="status">
+            <p>Your other draft is also kept on this device. Your current answers have not changed.</p>
+            <button type="button" className="ghost" onClick={openEarlierDraft}>Switch to other draft</button>
+            <button type="button" className="ghost" onClick={() => setEarlierDraftKey(null)}>Keep current answers</button>
+          </div>}
           <div className="hint">No media expertise needed.</div>
 
           {demoMode && <>
@@ -1342,7 +1856,22 @@ export default function App() {
             </>
           )}
 
-          {stage === 'plan' && plan && (
+          {stage === 'gate' && (
+            <div className="planin">
+              <div className="planhead">
+                <h2>Your plan is ready</h2>
+                <DemoCap />
+              </div>
+              <p className="pagesub">
+                {authEmail ? 'Add your details to see it. Your brief is kept.' : 'Log in to see it. Your brief is kept while you log in.'}
+              </p>
+              {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
+              {savedBriefReadOnly ? <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button> :
+                <button type="button" className="ghost gate-secondary" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
+            </div>
+          )}
+
+          {stage === 'plan' && canViewPlan && plan && (
             <div className="planin">
               <div className="planhead">
                 <h2>{viewingSaved
@@ -1570,44 +2099,28 @@ export default function App() {
       )}
 
       {page === 'signin' && (
-        <section className="card pagecard signincard" aria-label="Sign in">
+        <section className="card pagecard signincard" aria-label={authEmail ? 'Account' : 'Log in'}>
           <div className="planhead">
-            <h2>Sign in to Compass</h2>
+            <h2>{recoveringPassword ? 'Reset your password' : authEmail && !profileComplete ? 'Complete your profile' : authEmail ? 'Your account' : 'Log in to Compass'}</h2>
             <DemoCap />
           </div>
-          <p className="pagesub">Save your plans and pick up where you left off.</p>
-          <div className="ssolist">
-            <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-              <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.2h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.7z" />
-                <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.8-5.1L1.3 17.2C3.3 21.2 7.3 24 12 24z" />
-                <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.3 6.8C.5 8.4 0 10.1 0 12s.5 3.6 1.3 5.2l3.9-2.9z" />
-                <path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.8 1.3 6.8l3.9 2.9c.9-2.9 3.6-5 6.8-5z" />
-              </svg>
-              Continue with Google
-            </button>
-            <button type="button" className="sso" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-              <svg width="16" height="16" viewBox="0 0 23 23" aria-hidden="true">
-                <rect x="1" y="1" width="10" height="10" fill="#F25022" />
-                <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
-                <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
-                <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
-              </svg>
-              Continue with Microsoft
-            </button>
-          </div>
-          <div className="divider"><span>or</span></div>
-          <div className="field">
-            <label htmlFor="f-email">Work email</label>
-            <input id="f-email" className="ctl" type="email" placeholder="you@company.com" />
-          </div>
-          <button type="button" className="gen" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
-            Continue with email <span>&rarr;</span>
-          </button>
+          {!authEmail && !recoveringPassword && <p className="pagesub">Save your plans and pick up where you left off.</p>}
+          {authNotice && <p className="fieldnote" role="alert">{authNotice}</p>}
+          {recoveringPassword ? renderSignInFields('f-signin') : authEmail && !profileComplete ? <>{renderProfileFields('f-signin-profile')}<button type="button" className="email-forgot" disabled={profileSaving} onClick={() => { void signOut(); }}>Log out</button></> : authEmail ? (
+            <>
+              <p className="pagesub">You are logged in as {authEmail}.</p>
+              <button type="button" className="gen" onClick={() => { void signOut(); }}>
+                Log out
+              </button>
+            </>
+          ) : (
+          <>
+          {renderSignInFields('f-signin')}
           <p className="finenote">
-            Design proposal - sign-in is not connected yet. Google and Microsoft shown; more
-            providers can be added when sign-in is built.
+            Use Google, or create an account with your email and a password.
           </p>
+          </>
+          )}
         </section>
       )}
 
