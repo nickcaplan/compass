@@ -3,7 +3,30 @@ import type { FormEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 
+const resetNotice = 'If an account exists for that email, check your inbox and spam folder for a reset link. If you requested one recently, please wait before trying again.';
+
+function recipientCooldown(err: AuthErrorLike): boolean { return /after \d+ seconds?/i.test(err?.message ?? ''); }
+
 type Mode = 'signin' | 'signup' | 'reset' | 'update';
+type AuthErrorLike = { code?: string; message?: string } | null;
+function authErrorMessage(err: AuthErrorLike, fallback: string): string {
+  const msg = err?.message ?? '';
+  const code = err?.code ?? '';
+  // Server-provided per-recipient cooldown. Checked first: Supabase reuses
+  // over_email_send_rate_limit for both the project quota and this cooldown, so
+  // only the message tells them apart. Deliberately no pinned seconds: the
+  // message persists until the next interaction and a stale countdown would
+  // outlive the real wait.
+  if (/after \d+ seconds?/i.test(msg))
+    return 'You requested an email for this address a moment ago. For security, please wait a short while before requesting another.';
+  if (code === 'over_email_send_rate_limit' || /email rate limit/i.test(msg))
+    return 'Compass cannot send more emails right now - our email limit for this period is reached. This is on our side, not a problem with your details. Please try again later.';
+  // IP throttle: no provider-guaranteed window is documented, so stay neutral.
+  if (code === 'over_request_rate_limit' || /request rate limit/i.test(msg) || /too many requests/i.test(msg))
+    return 'Too many attempts from this network. Please try again in a little while.';
+  return fallback;
+}
+
 export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail, recoveryUserId, isRecoveryCurrent }: {
   recoveryUserId: string | null; isRecoveryCurrent: (id: string) => boolean;
   idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string) => void;
@@ -23,11 +46,13 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
     try {
       if (activeMode === 'reset') {
         const result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
-        if (result.error) { setError('Could not request a reset email. Please try again.'); return; }
-        setNotice('If an account exists for that email, we have sent a reset link. Check your inbox and spam folder.');
+        if (result.error && !recipientCooldown(result.error)) { setError(authErrorMessage(result.error, 'Could not request a reset email. Please try again.')); return; }
+        // Success and recipient cooldown expose the same truthful, conditional status.
+        // This is UI privacy only; the provider API still exposes its own errors.
+        setNotice(resetNotice);
       } else if (activeMode === 'signup') {
         const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') } });
-        if (result.error) { setError(result.error.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' : 'Could not create your account. Try logging in if you already have one.'); return; }
+        if (result.error) { setError(result.error.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' : authErrorMessage(result.error, 'Could not create your account. Try logging in if you already have one.')); return; }
         setPassword('');
         if (result.data.session) onAuthenticated(result.data.session.user);
         else setNotice('Check your inbox to confirm your email, then return to log in. If you already have an account, log in instead.');
@@ -52,14 +77,14 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         if (result.error || !result.data.user) {
           setError(result.error?.code === 'same_password' ? 'Choose a different password from your current one.' :
             result.error?.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' :
-            'Could not update your password. Try again, or request a fresh reset link if this one has expired.');
+            authErrorMessage(result.error, 'Could not update your password. Try again, or request a fresh reset link if this one has expired.'));
           return;
         }
         if (result.data.user.id !== id) return;
         setPassword(''); onAuthenticated(result.data.user);
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        if (result.error || !result.data.user) { setError('Could not log in. Check your email and password, and confirm your email if you just signed up.'); return; }
+        if (result.error || !result.data.user) { setError(authErrorMessage(result.error, 'Could not log in. Check your email and password, and confirm your email if you just signed up.')); return; }
         setPassword(''); onAuthenticated(result.data.user);
       }
     } catch { setError('Could not connect. Please try again.'); }
