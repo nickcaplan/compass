@@ -1631,7 +1631,7 @@ export default function App() {
                 <DemoCap />
               </div>
               <p className="pagesub">
-                Log in to see it. Your brief is kept while you log in.
+                {authEmail ? 'Add your details to see it. Your brief is kept.' : 'Log in to see it. Your brief is kept while you log in.'}
               </p>
               {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
               {savedBriefReadOnly ? <button type="button" className="ghost" onClick={() => go('plans')}>View all plans</button> :
