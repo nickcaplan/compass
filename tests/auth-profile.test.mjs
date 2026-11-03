@@ -45,7 +45,7 @@ test('profile completion, failure, persistence, and existing-plan gate', {timeou
    canonical={};hold=true;release=null;
    await p.evaluate(({key,s})=>localStorage.setItem(key,JSON.stringify(s)),{key,s:session(user({}))});await p.reload();await p.waitForSelector('#f-signin-profile-name');
    await p.locator('#f-signin-profile-name').fill('Commit boundary A');await p.locator('form .gen').click();while(!release)await new Promise(r=>setTimeout(r,10));
-   const other=await ctx.newPage();await other.goto(url+'?demo=1');await other.waitForSelector('.themebtn');
+   const other=await ctx.newPage();await other.setRequestInterception(true);other.on('request',req=>req.respond({status:200,contentType:'text/html',body:'<!doctype html><title>Storage-only independent tab</title>'}));await other.goto(url+'?demo=1');
    await other.evaluate(({key,s})=>localStorage.setItem(key,JSON.stringify(s)),{key,s:replacement});release();
    await p.waitForFunction(()=>document.querySelector('[role=alert]')?.textContent.includes('Your session changed'));
    assert.equal(await p.evaluate(k=>JSON.parse(localStorage.getItem(k)).user.id,key),'account-b');await other.close();
