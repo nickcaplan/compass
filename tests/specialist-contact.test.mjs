@@ -25,6 +25,14 @@ test('specialist link preserves presentation and opens only the verified contact
  await client.send('Target.setAutoAttach',{autoAttach:true,waitForDebuggerOnStart:true,flatten:true});
  for(const width of[390,1440]){
   const page=await browser.newPage();await page.setViewport({width,height:900});
+  // Required CI proves the link with fallback fonts; loaded-font visuals are
+  // checked separately against the deployed preview.
+  await page.setRequestInterception(true);
+  page.on('request',request=>{
+   const host=new URL(request.url()).hostname;
+   if(host==='fonts.googleapis.com'||host==='fonts.gstatic.com')void request.abort();
+   else void request.continue();
+  });
   await page.goto((process.env.HOSTED_URL??local)+'?demo=1');await page.waitForSelector('.demofill');
   const unrelated=await page.$$eval('a[href^="mailto:"]',as=>as.map(a=>a.href));
   await page.locator('.demofill').click();await page.waitForSelector('.planin',{timeout:20000});
