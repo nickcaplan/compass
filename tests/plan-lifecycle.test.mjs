@@ -100,9 +100,8 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     // Anonymous first generation is gated behind real sign-in: the gate shows
     // the sign-in options and keeps the plan hidden.
     await clickButton(page, 'Fill it in for me');
-    await page.waitForFunction(() => !document.querySelector('.gen').disabled);
-    await page.locator('.gen').click();
-    await page.waitForSelector('.planin');
+    // Fill starts generation automatically. Do not race it with a second click.
+    await page.waitForSelector('#f-gate-email');
     assert.ok(await page.$('#f-gate-email'), 'First generation must show the sign-in gate');
     assert.ok(await page.$('.sso'), 'Gate must offer Continue with Google');
     assert.equal(await page.$('.planin .metrics'), null, 'Plan stays behind the gate');
