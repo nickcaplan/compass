@@ -588,7 +588,7 @@ export default function App() {
   });
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
   const [storageFailed] = useState(() => plansLoadFailed);
-  const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
+  const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit'; originalAudiences?: string[] } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
@@ -632,7 +632,8 @@ export default function App() {
     .filter((l) => l !== '');
   // Keep legacy selections visible and removable when editing older plans,
   // without making them choices for a new brief.
-  const legacyAudiences = brief.audiences.filter(a => !AUDIENCES.includes(a));
+  const legacyAudiences = (savedEntry?.mode === "edit" ? (savedEntry.originalAudiences ?? brief.audiences) : brief.audiences)
+    .filter(a => !AUDIENCES.includes(a));
   const visibleAudiences = [...AUDIENCES, ...legacyAudiences];
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
     .flatMap((o) => o.kpis)
@@ -879,7 +880,7 @@ export default function App() {
 
   function editSavedPlan() {
     setJustSavedId(null);
-    setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
+    setSavedEntry((s) => (s ? { ...s, mode: 'edit', originalAudiences: [...brief.audiences] } : s));
   }
 
   function cancelEditSaved() {
