@@ -105,6 +105,17 @@ limitation remains documented here. No UK/France/Germany inventory eligibility o
 regional cost/coverage is implied. No source document, provider setting or
 external account was changed.
 
+## 2026-11-03 - Specialist button opens Hybrid House contact
+
+Nick approved the shorter specialist prompt in54 and separately requested the
+specialist control take visitors to Hybrid House's contact page. The exact
+https://thehybridhouse.co.uk/contact/ page was read and verified as Contact,
+with "Let's start a conversation" and the business email. The existing
+"Speak to a specialist" control becomes a normal link with the same class
+and text, opening in a new tab like the site's other external links. No
+brief, account or saved plan is sent. Unrelated Contact/mailto controls stay
+unchanged. Separate preview PR, not included in54's merge approval.
+
 ## 2026-11-03 - Fixed audiences and demo cleanup
 
 Nick initially requested Laboratory Technician and Scientist / Researcher side
