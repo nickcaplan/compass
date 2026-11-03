@@ -1174,7 +1174,7 @@ export default function App() {
           </button>
         </div>
         <div className="divider"><span>or</span></div></>}
-        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={stashAuthDraft} onAuthenticated={user => { restoreAuthDraft(true); applyAuthUser(user); setRecoveringPassword(false); setAuthNotice(null); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
+        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={() => { setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n); stashAuthDraft(); }} onAuthenticated={user => { restoreAuthDraft(true); applyAuthUser(user); setRecoveringPassword(false); setAuthNotice(null); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
         {recoveringPassword && (
           <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
             Cancel password reset
