@@ -1394,13 +1394,7 @@ export default function App() {
               <div className="cta">
                 <div>
                   <b>A Hybrid House specialist can pick it up from here.</b>
-                  <p>
-                A{' '}
-                <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
-                  Hybrid House
-                </a>{' '}
-                media specialist can pick it up from here.
-              </p>
+
                 </div>
                 <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
                   Speak to a specialist
