@@ -1182,10 +1182,10 @@ export default function App() {
     );
   }
 
-  async function signOut(notice = 'Logged out') {
+  async function signOut(notice = 'Logged out', scope?: 'local' | 'global') {
     let failed = false;
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut(scope ? { scope } : undefined);
       failed = Boolean(error);
     } catch {
       failed = true;
@@ -1199,7 +1199,8 @@ export default function App() {
   }
 
   async function cancelRecovery() {
-    await signOut('Password reset cancelled - log in with your current password.');
+    // Local scope: cancelling a reset must not sign the visitor out on other devices.
+    await signOut('Password reset cancelled - log in with your current password.', 'local');
     setRecoveringPassword(false);
   }
 
