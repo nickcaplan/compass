@@ -332,7 +332,7 @@ function seedPlans(): SavedPlan[] {
         name: 'Global Reagent Launch Consideration',
         objectives: ['consideration'],
         kpis: ['Content downloads', 'Article engagement'],
-        audiences: ['R&D', 'Department Head'],
+        audiences: [],
         seniority: ['Director / Executive'],
         budget: 60000,
         start: isoDaysFromNow(-120),
@@ -341,7 +341,7 @@ function seedPlans(): SavedPlan[] {
     },
     { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], seniority: ['Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
     { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], seniority: ['Technician / Practitioner'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
-    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: ['R&D'], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
   ];
 }
 
@@ -475,9 +475,29 @@ function loadPlans(): SavedPlan[] {
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
         isBrief(p.brief),
-    );
+    ).map(p => ({ ...p, brief: { ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) } }));
   } catch {
     return [];
+  }
+}
+
+// Remove retired choices from existing browser-local demo plans, without
+// replacing audiences or deleting plans. A failed write uses the storage error UI.
+function cleanDemoAudiences(): void {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    if (raw === null) return;
+    const plans: SavedPlan[] = JSON.parse(raw);
+    let changed = false;
+    const cleaned = plans.map(p => {
+      const audiences = p.brief.audiences.filter(a => AUDIENCES.includes(a));
+      if (audiences.length === p.brief.audiences.length) return p;
+      changed = true;
+      return { ...p, brief: { ...p.brief, audiences } };
+    });
+    if (changed) window.localStorage.setItem(PLANS_KEY, JSON.stringify(cleaned));
+  } catch {
+    plansLoadFailed = true;
   }
 }
 
@@ -583,12 +603,15 @@ export default function App() {
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
     recoverCorruptPlans();
-    if (!plansLoadFailed) ensureSeedPlans();
+    if (!plansLoadFailed) {
+      ensureSeedPlans();
+      cleanDemoAudiences();
+    }
     return loadPlans();
   });
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
   const [storageFailed] = useState(() => plansLoadFailed);
-  const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit'; originalAudiences?: string[] } | null>(null);
+  const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
@@ -623,18 +646,13 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', refresh);
   }, []);
 
-  const count = answeredCount(brief);
+  const count = answeredCount({ ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) });
   const weeks = campaignWeeks(brief.start, brief.end);
   const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
-  // Keep legacy selections visible and removable when editing older plans,
-  // without making them choices for a new brief.
-  const legacyAudiences = (savedEntry?.mode === "edit" ? (savedEntry.originalAudiences ?? brief.audiences) : brief.audiences)
-    .filter(a => !AUDIENCES.includes(a));
-  const visibleAudiences = [...AUDIENCES, ...legacyAudiences];
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
     .flatMap((o) => o.kpis)
     .filter((k, i, a) => a.indexOf(k) === i);
@@ -880,7 +898,8 @@ export default function App() {
 
   function editSavedPlan() {
     setJustSavedId(null);
-    setSavedEntry((s) => (s ? { ...s, mode: 'edit', originalAudiences: [...brief.audiences] } : s));
+    setBrief(b => ({ ...b, audiences: b.audiences.filter(a => AUDIENCES.includes(a)) }));
+    setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
   }
 
   function cancelEditSaved() {
@@ -1104,8 +1123,8 @@ export default function App() {
 
           <div className="field">
             <label id="g-audience">Audience</label>
-            <div className="pills" role="group" aria-labelledby="g-audience">
-              {visibleAudiences.map((a) => (
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience" aria-describedby={brief.audiences.length === 0 ? "audience-update" : undefined}>
+              {AUDIENCES.map((a) => (
                 <button
                   key={a}
                   type="button"
@@ -1113,11 +1132,13 @@ export default function App() {
                   aria-pressed={brief.audiences.includes(a)}
                   onClick={() => toggleAudience(a)}
                 >
-                  {a}{legacyAudiences.includes(a) ? " (saved selection)" : ""}
+                  {a}
                 </button>
               ))}
-
             </div>
+            {brief.audiences.length === 0 && (
+              <p id="audience-update" className="audience-update">Choose at least one audience.</p>
+            )}
           </div>
 
           <div className="field">
