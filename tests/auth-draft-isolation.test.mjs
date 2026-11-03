@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import test from 'node:test';
+import puppeteer from 'puppeteer-core';
+const key='sb-ctailpmcoyvaplwbwskf-auth-token';
+const user=id=>({id,email:id+'@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:id,compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'});
+const session=id=>({access_token:'test',refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:user(id)});
+const brief=name=>({name,objectives:['awareness'],kpis:['Reach'],audiences:['Procurement'],seniority:['Manager'],budget:10000,start:'2026-12-01',end:'2027-02-01'});
+const snap=(name,binding)=>({brief:brief(name),submittedBrief:null,budgetText:'10000',stage:'filling',ts:Date.now(),binding});
+async function click(p,label){await p.waitForFunction(l=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim()===l),{},label);await p.evaluate(l=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===l).click(),label)}
+async function login(p,id){await p.waitForSelector('#f-signin-email');await p.locator('#f-signin-email').fill(id+'@example.com');await p.locator('#f-signin-password').fill('test-only-password');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('#f-name');}
+async function broadcast(p,s){await p.evaluate(s=>{const c=new BroadcastChannel('sb-ctailpmcoyvaplwbwskf-auth-token');c.postMessage({event:s?'SIGNED_IN':'SIGNED_OUT',session:s});setTimeout(()=>c.close(),100)},s);}
+test('unfinished drafts stay with their account or bound anonymous flow across logout, reload and account replacement',{timeout:60000},async()=>{
+ const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
+ try{let out='';const url=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.stdout.on('data',c=>{out+=c;const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
+ browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+ for(const width of [390,1440]){
+  const ctx=await browser.createBrowserContext(),p=await ctx.newPage();p.setDefaultTimeout(7000);await p.setViewport({width,height:900});let failure=false,logoutFail=false;
+  await p.setRequestInterception(true);p.on('request',req=>{if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS'};if(req.method()==='OPTIONS')return req.respond({status:204,headers});let status=200,body={};if(req.url().includes('/token')){const email=JSON.parse(req.postData()).email;body=session(email.split('@')[0]);if(failure){status=400;body={msg:'Invalid login credentials'}}}else if(req.url().includes('/logout')&&logoutFail){status=500;body={msg:'Mock logout failure'}}else if(req.url().includes('/user'))body=user('account-a');return req.respond({status,headers,contentType:'application/json',body:JSON.stringify(body)});});
+  await p.goto(url+'?demo=1');await p.waitForSelector('#f-name');await p.evaluate(({key,s})=>localStorage.setItem(key,JSON.stringify(s)),{key,s:session('account-a')});await p.reload();await p.waitForFunction(()=>document.querySelector('.signin')?.getAttribute('aria-label')?.includes('account-a@'));
+  await p.locator('#f-name').fill('Private account A draft');await p.locator('.signin').click();await click(p,'Log out');await p.waitForSelector('#f-signin-email');const savedBefore=await p.evaluate(()=>localStorage.getItem('compass-saved-plans'));
+  await login(p,'account-b');assert.equal(await p.$eval('#f-name',e=>e.value),'','B must not inherit A memory');assert.ok(await p.evaluate(()=>localStorage.getItem('compass-auth-draft:account:account-a')),'A draft retained privately');
+  await p.locator('.signin').click();await click(p,'Log out');await login(p,'account-a');assert.equal(await p.$eval('#f-name',e=>e.value),'Private account A draft','A can resume its own work');
+  // Direct account replacement, without an intervening sign-out, is isolated too.
+  await broadcast(p,session('account-b'));await p.waitForFunction(()=>document.querySelector('.signin')?.getAttribute('aria-label')?.includes('account-b@'));assert.equal(await p.$eval('#f-name',e=>e.value),'');
+  // Returning A can reload its own explicitly bound stored work.
+  await p.evaluate(({key,s})=>localStorage.setItem(key,JSON.stringify(s)),{key,s:session('account-a')});await p.reload();await p.waitForFunction(()=>document.querySelector('#f-name')?.value==='Private account A draft');
+  await p.locator('.signin').click();await click(p,'Log out');
+  // A legacy ownerless snapshot must never be relabelled to the next account.
+  await p.evaluate(s=>localStorage.setItem('compass-auth-draft',JSON.stringify(s)),snap('Legacy private draft',undefined));await p.reload();await login(p,'account-b');assert.equal(await p.$eval('#f-name',e=>e.value),'');assert.ok(await p.evaluate(()=>localStorage.getItem('compass-auth-draft')));
+  await p.locator('.signin').click();await click(p,'Log out');
+  // Anonymous failed A login binds work to A's submitted email. B cannot rebind it.
+  await click(p,'Planner');await p.waitForSelector('#f-name');await p.locator('#f-name').fill('Anonymous A attempt');await p.locator('.signin').click();failure=true;await p.locator('#f-signin-email').fill('account-a@example.com');await p.locator('#f-signin-password').fill('wrong-test-only');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('form [role=alert]');failure=false;
+  await login(p,'account-b');assert.equal(await p.$eval('#f-name',e=>e.value),'');assert.ok(await p.evaluate(()=>localStorage.getItem('compass-auth-draft:email:account-a@example.com')));
+  await p.locator('.signin').click();await click(p,'Log out');await p.reload();await login(p,'account-b');assert.equal(await p.$eval('#f-name',e=>e.value),'','B cannot consume A failed flow after reload');await p.locator('.signin').click();await click(p,'Log out');await login(p,'account-a');assert.equal(await p.$eval('#f-name',e=>e.value),'Anonymous A attempt');
+  // Provider API logout errors must still clear the local SDK token and stay out on reload.
+  logoutFail=true;await p.locator('.signin').click();await click(p,'Log out');await p.waitForSelector('#f-signin-email');assert.match(await p.$eval('.pagecard > [role=alert]',e=>e.textContent),/Other sessions may still be active/);assert.equal(await p.evaluate(k=>localStorage.getItem(k),key),null);await p.reload();await p.waitForSelector('#f-signin-email');assert.equal(await p.$eval('.signin',e=>e.textContent.trim()),'Log in');logoutFail=false;
+  // A canceled recovery retains the originating account's work, never B's.
+  await p.evaluate(({key,s,d})=>{localStorage.setItem(key,JSON.stringify(s));localStorage.setItem('compass-auth-draft:account:account-a',JSON.stringify(d))},{key,s:session('account-a'),d:snap('Recovery A work',{accountId:'account-a'})});await p.goto(url+'?demo=1#type=recovery');await p.reload();await p.waitForSelector('.cancel-recovery');await p.locator('.cancel-recovery').click();await p.waitForSelector('#f-signin-email');await login(p,'account-b');assert.equal(await p.$eval('#f-name',e=>e.value),'');await p.locator('.signin').click();await click(p,'Log out');await login(p,'account-a');assert.equal(await p.$eval('#f-name',e=>e.value),'Recovery A work');
+  // A Google return can restore only its originating tab's one-time flow.
+  const googleCtx=await browser.createBrowserContext(),g=await googleCtx.newPage();g.setDefaultTimeout(7000);
+  await g.goto(url+'?demo=1');await g.waitForSelector('#f-name');
+  await g.evaluate(({key,s,d})=>{localStorage.setItem(key,JSON.stringify(s));localStorage.setItem('compass-auth-draft:google:originating-flow',JSON.stringify(d));sessionStorage.removeItem('compass-auth-flow')},{key,s:session('account-b'),d:snap('Originating Google work',{googleFlow:'originating-flow'})});await g.reload();await g.waitForFunction(()=>document.querySelector('.signin')?.getAttribute('aria-label')?.includes('account-b@'));assert.equal(await g.$eval('#f-name',e=>e.value),'','Unrelated session cannot claim a Google draft');
+  await g.setRequestInterception(true);g.on('request',req=>{if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};return req.respond({status:req.method()==='OPTIONS'?204:200,headers,contentType:'application/json',body:req.method()==='OPTIONS'?'':JSON.stringify(user('account-b'))})});await g.evaluate(()=>sessionStorage.setItem('compass-auth-flow','originating-flow'));await g.goto(url+'?demo=1#access_token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhY2NvdW50LWIiLCJleHAiOjQwMDAwMDAwMDB9.fake&refresh_token=test&expires_in=3600&token_type=bearer');await g.reload();await g.waitForFunction(()=>document.querySelector('#f-name')?.value==='Originating Google work');assert.equal(await g.evaluate(()=>sessionStorage.getItem('compass-auth-flow')),null,'Flow is consumed once');await googleCtx.close();
+  assert.equal(await p.evaluate(()=>localStorage.getItem('compass-saved-plans')),savedBefore,'Saved-plan store is not silently deleted or rewritten');await ctx.close();
+ }
+ }finally{await browser?.close();server.kill()}
+});
