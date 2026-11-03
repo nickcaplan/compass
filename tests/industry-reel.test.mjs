@@ -38,6 +38,7 @@ test('service reel settles in 2.6 seconds and never blocks interaction', { timeo
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) {
+      for (const font of [null, 'Arial,sans-serif', 'system-ui,sans-serif']) {
       const page = await browser.newPage();
       await page.setViewport({ width, height: 900 });
       await page.goto(previewUrl+'?demo=1');
@@ -45,6 +46,7 @@ test('service reel settles in 2.6 seconds and never blocks interaction', { timeo
       assert.equal(await page.$eval('.industry-accessible', e => e.textContent), 'Life Sciences Media Planning');
       assert.deepEqual(await page.$$eval('.industry-reel-track > span', es => es.map(e=>e.textContent)), ['Media Planning','Data Infrastructure','Analytics','Measurement','Publisher Partnerships','Sponsorship','Events','Paid Social','SEO','Media Planning']);
       await page.evaluate(() => document.fonts.ready);
+      if(font) await page.addStyleTag({content: `.industry-eyebrow{font-family:${font}!important}`});
       const before = await page.$eval('.hero', e => e.getBoundingClientRect().toJSON());
       const animation = await page.$eval('.industry-reel-track', e => {
         const a = e.getAnimations()[0]; a.currentTime = 650; a.play();
@@ -66,6 +68,7 @@ test('service reel settles in 2.6 seconds and never blocks interaction', { timeo
       assert.equal(await page.$eval('.industry-reel-track', e => e.getAnimations().length), 0);
       assert.equal(await visibleService(page), 'Media Planning');
       await page.close();
+      }
     }
   } finally { await browser?.close(); server.kill(); }
 });
