@@ -142,7 +142,7 @@ export class AuthController {
       const callback = new URLSearchParams(window.location.search).get('compassAuth');
       const state = await this.read();
       if (!callback || callback !== state.callback) {
-        this.callbackNotice = new Error('This log-in or reset link is no longer current. Request a fresh link.');
+        this.callbackNotice = new Error('This link does not match a current request in this browser. Open it in the browser where you requested it, or request a fresh link.');
       } else {
         // Claim the one-time callback before network work. A second tab cannot
         // reuse its authority, and the bound generation cannot become newer.

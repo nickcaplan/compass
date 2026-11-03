@@ -208,3 +208,8 @@ logout independently of SDK/server refresh-race handling. This is not proof of
 every provider/network interleaving. Direct profile/password requests already
 sent cannot be undone; guards reject stale local acceptance and prevent a later
 request from silently taking a replacement account token.
+
+Email links work only in the browser profile where they were requested. Opening
+one in another browser, device or in-app browser fails the binding check and
+shows the mismatch notice. Request a fresh link in the intended browser. An
+already used or superseded link also fails. Strict binding is not relaxed.
