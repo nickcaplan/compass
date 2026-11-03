@@ -420,3 +420,7 @@ input.ctl{color:var(--text)}
 .cancel-recovery{margin-top:10px}
 
 .gate-secondary{margin-top:10px}
+
+.draft-choice{margin:14px 0;padding:14px;border:1px solid var(--accent-line);border-radius:12px;font-size:12px;line-height:1.5}
+.draft-choice p{margin:0 0 12px}
+.draft-choice button{display:block;width:100%;margin-top:10px;white-space:normal}
