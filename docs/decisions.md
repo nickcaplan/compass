@@ -148,7 +148,9 @@ browser-wide demo saved-plan list is unchanged and is not account storage.
 Post one readable screenshot per PR comment. Do not combine screenshot
 proof into a composite or a grouped comment; Nick found that hard to read.
 
-Auth lifecycle follow-up: only an OAuth-shaped callback with a fresh
+## 2026-11-03 - Auth lifecycle follow-up
+
+Only an OAuth-shaped callback with a fresh
 provider token, no email/recovery type, Google provider metadata and the
 originating tab's pending one-time flow may restore a Google draft. Email
 callbacks invalidate a pending Google flow. Exact provider redirect URLs
