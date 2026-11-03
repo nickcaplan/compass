@@ -1,6 +1,8 @@
+import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDraftKey, bindingMatches } from './authDraft';
+import type { DraftBinding } from './authDraft';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase } from './supabase';
+import { supabase, arrivedFromAuthCallback } from './supabase';
 import EmailAuth from './EmailAuth';
 
 import logoUrl from './assets/thh-logo.svg';
@@ -634,7 +636,19 @@ export default function App() {
   const canViewPlan = Boolean(authEmail && profileComplete && !recoveringPassword);
 
   const profileSource = useRef<string | null>(null);
+  const currentAccount = useRef<User | null>(null);
   function applyAuthUser(user: User | null, reseed = false) {
+    const previous = currentAccount.current;
+    if (previous && previous.id !== user?.id) {
+      stashAuthDraft({ accountId: previous.id });
+      clearPlannerState();
+      anonymousBinding.current = null;
+    } else if (!previous && user && hasPlannerWork() &&
+      !bindingMatches(anonymousBinding.current, user, null)) {
+      // An unrelated login must not adopt an abandoned anonymous brief.
+      clearPlannerState();
+    }
+    currentAccount.current = user;
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
     const source = user?.id ?? null;
@@ -680,67 +694,87 @@ export default function App() {
   // A sign-in round trip (Google redirect, verification or recovery link) reloads the app,
   // so the in-progress brief and generated plan are stashed on this device
   // first and restored when the user lands back. Expires after an hour.
-  const AUTH_DRAFT_KEY = 'compass-auth-draft';
   const latestPlanner = useRef({ brief, submittedBrief, savedEntry, budgetText, stage });
   useLayoutEffect(() => {
     latestPlanner.current = { brief, submittedBrief, savedEntry, budgetText, stage };
   }, [brief, submittedBrief, savedEntry, budgetText, stage]);
+  const anonymousBinding = useRef<DraftBinding | null>(null);
+  function activeGoogleFlow(): string | null {
+    try { return window.sessionStorage.getItem(AUTH_FLOW_KEY); } catch { return null; }
+  }
   function hasPlannerWork() {
     const current = latestPlanner.current;
     return current.stage !== 'empty' || current.submittedBrief !== null || current.savedEntry !== null ||
       answeredCount(current.brief) > 0 || current.brief.name.trim() !== '' || current.budgetText.trim() !== '' ||
       current.brief.start !== '' || current.brief.end !== '';
   }
-  function stashAuthDraft() {
+  function bindingKey(binding: DraftBinding) {
+    return 'accountId' in binding ? accountDraftKey(binding.accountId) :
+      'email' in binding ? emailDraftKey(binding.email) : googleDraftKey(binding.googleFlow);
+  }
+  function stashAuthDraft(binding: DraftBinding | null = currentAccount.current ? { accountId: currentAccount.current.id } : anonymousBinding.current) {
+    if (!binding || !hasPlannerWork()) return;
     try {
-      if (!hasPlannerWork() && window.localStorage.getItem(AUTH_DRAFT_KEY)) return;
-      const snap = {
-        brief,
-        submittedBrief,
-        savedEntry,
-        budgetText,
-        stage: stage === 'generating' ? 'filling' : stage,
-        ts: Date.now(),
-      };
-      window.localStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify(snap));
-    } catch {
-      /* private mode */
+      const current = latestPlanner.current;
+      const snap = { ...current, binding, stage: current.stage === 'generating' ? 'filling' : current.stage, ts: Date.now() };
+      window.localStorage.setItem(bindingKey(binding), JSON.stringify(snap));
+    } catch { /* private mode */ }
+  }
+  function beginEmail(email: string) {
+    setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n);
+    if (currentAccount.current) { stashAuthDraft(); return; }
+    const binding: DraftBinding = { email: email.trim().toLowerCase() };
+    const previous = anonymousBinding.current;
+    if (previous && ('email' in previous ? previous.email !== binding.email : true)) {
+      stashAuthDraft(previous);
+      clearPlannerState();
     }
+    // The first submitted address owns this anonymous attempt, even if it fails.
+    anonymousBinding.current = binding;
+    try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
+    stashAuthDraft(binding);
   }
   const mayRestoreAuthDraft = useRef(false);
   function restoreAuthDraft(allowSignIn = false) {
-    // Only the session-owning callback tab may consume a shared snapshot.
-    // Explicit email sign-in restores on the successful submit path.
-    if (!allowSignIn && (!mayRestoreAuthDraft.current || (pageFromUrl() !== 'planner' && !recoveringPassword))) return;
+    const user = currentAccount.current;
+    if (!user || (!allowSignIn && (!mayRestoreAuthDraft.current || (pageFromUrl() !== 'planner' && !recoveringPassword)))) return;
     if (hasPlannerWork()) return;
     try {
-      const raw = window.localStorage.getItem(AUTH_DRAFT_KEY);
-      if (!raw) return;
-      window.localStorage.removeItem(AUTH_DRAFT_KEY);
-      const snap: unknown = JSON.parse(raw);
-      if (!isAuthDraft(snap) || Date.now() - snap.ts > 60 * 60 * 1000) return;
-      const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
-      if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') &&
-          loadPlans().some((p) => p.id === entry.id)) {
-        setSavedEntry({ id: entry.id, mode: entry.mode });
+      const flow = arrivedFromAuthCallback ? activeGoogleFlow() : null;
+      const keys = [accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
+      const candidates = keys.flatMap(key => {
+        try {
+          const raw = window.localStorage.getItem(key);
+          const snap: unknown = raw ? JSON.parse(raw) : null;
+          return isAuthDraft(snap) && Date.now() - snap.ts <= 60 * 60 * 1000 &&
+            bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, flow) ? [{ key, snap }] : [];
+        } catch { return []; }
+      }).sort((a, b) => b.snap.ts - a.snap.ts);
+      for (const { snap } of candidates) {
+        for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
+        const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
+        if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)) {
+          setSavedEntry({ id: entry.id, mode: entry.mode });
+        }
+        const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
+        const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
+        setBrief(snap.brief); setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
+        setBudgetText(snap.budgetText); setStage(restoredStage);
+        latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
+          savedEntry: null, budgetText: snap.budgetText, stage: restoredStage };
+        anonymousBinding.current = null;
+        window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+        if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
+        break;
       }
-      const unchangedPlan = snap.submittedBrief !== null &&
-        JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
-      setBrief(snap.brief);
-      setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
-      setBudgetText(snap.budgetText);
-      // Back to the brief is navigation, not an edit. Keep an unchanged
-      // generated plan available after the sign-in round trip.
-      setStage(snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage);
-      if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
-    } catch {
-      /* corrupted or unavailable storage */
-    }
+    } catch { /* corrupted or unavailable storage */ }
   }
 
   useEffect(() => {
     const callbackError = new URLSearchParams(window.location.hash.slice(1)).get('error_description');
-    if (callbackError) { setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
+    if (callbackError) {
+      try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
+      setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
     supabase.auth.getSession().then(({ data }) => {
       applyAuthUser(data.session?.user ?? null);
       // Only a tab loaded with a session may consume the shared snapshot.
@@ -763,6 +797,8 @@ export default function App() {
       if (event === 'PASSWORD_RECOVERY') { setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
     });
     return () => subscription.unsubscribe();
+    // One subscription per mount; planner/account/flow state is read through refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // An explicit saved-plans landing defers the pending draft until Planner.
@@ -991,10 +1027,21 @@ export default function App() {
     setHasFilled(false);
     setSavedEntry(null);
     setJustSavedId(null);
+    setConfirmFill(false);
+    setDeleteTarget(null);
+    setOpenTarget(null);
+    latestPlanner.current = { brief: EMPTY_BRIEF, submittedBrief: null, savedEntry: null, budgetText: '', stage: 'empty' };
   }
 
   function reset() {
-    try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* private mode */ }
+    try {
+      window.localStorage.removeItem(AUTH_DRAFT_KEY);
+      const owner = currentAccount.current;
+      if (owner) window.localStorage.removeItem(accountDraftKey(owner.id));
+      if (anonymousBinding.current) window.localStorage.removeItem(bindingKey(anonymousBinding.current));
+      window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+    } catch { /* private mode */ }
+    anonymousBinding.current = null;
     clearPlannerState();
     window.scrollTo(0, 0);
   }
@@ -1108,12 +1155,26 @@ export default function App() {
   }
 
   async function continueWithGoogle() {
-    stashAuthDraft();
+    if (currentAccount.current) stashAuthDraft();
+    else {
+      if (anonymousBinding.current) {
+        stashAuthDraft(); clearPlannerState();
+      }
+      const flow = crypto.randomUUID();
+      anonymousBinding.current = { googleFlow: flow };
+      try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { /* private mode */ }
+      stashAuthDraft(anonymousBinding.current);
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
     });
-    if (error) setAuthNotice('Google log-in failed - please try again');
+    if (error) {
+      setAuthNotice('Google log-in failed - please try again');
+      try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
+      clearPlannerState();
+      anonymousBinding.current = null;
+    }
   }
 
   async function completeProfile(event: React.FormEvent<HTMLFormElement>) {
@@ -1174,7 +1235,7 @@ export default function App() {
           </button>
         </div>
         <div className="divider"><span>or</span></div></>}
-        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={() => { setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n); stashAuthDraft(); }} onAuthenticated={user => { restoreAuthDraft(true); applyAuthUser(user); setRecoveringPassword(false); setAuthNotice(null); try { window.localStorage.removeItem(AUTH_DRAFT_KEY); } catch { /* storage unavailable */ } go('planner'); }} />
+        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); setRecoveringPassword(false); setAuthNotice(null); go('planner'); }} />
         {recoveringPassword && (
           <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
             Cancel password reset
@@ -1194,9 +1255,10 @@ export default function App() {
     }
     mayRestoreAuthDraft.current = false;
     applyAuthUser(null);
+    anonymousBinding.current = null;
+    try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
     setAuthNotice(null);
-    // A signed-out visitor should not keep seeing a gated plan.
-    if (stage === 'plan') setStage('gate');
+    // applyAuthUser has already stashed and cleared the prior account's planner.
     setAuthNotice(failed ? 'Log-out encountered an error. Other sessions may still be active.' : notice);
   }
 

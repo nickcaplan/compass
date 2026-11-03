@@ -24,7 +24,7 @@ function authErrorMessage(err: AuthErrorLike, fallback: string): string {
 }
 
 export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail }: {
-  idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: () => void;
+  idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string) => void;
 }) {
   const [mode, setMode] = useState<Mode>('signin');
   const activeMode = recovery ? 'update' : mode;
@@ -37,7 +37,7 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
-    setError(null); setNotice(null); setBusy(true); beforeEmail();
+    setError(null); setNotice(null); setBusy(true); beforeEmail(email);
     try {
       if (activeMode === 'reset') {
         const result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
