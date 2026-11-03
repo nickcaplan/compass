@@ -79,7 +79,14 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 60000
       await page.waitForSelector('.planin', { timeout: 20000 });
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await new Promise((r) => setTimeout(r, 250));
-      await clickButton(page, 'Save plan');
+      // Click in page context: ElementHandle.click scrolls the button into
+      // view first, moving the page away from the bottom and defeating the
+      // scenario on some runners. A real user at the bottom clicks without
+      // any scroll.
+      await page.evaluate(() => {
+        const button = [...document.querySelectorAll('button')].find((x) => x.textContent.trim().replace(/\s*→$/, '') === 'Save plan' && !x.disabled);
+        button.click();
+      });
       await page.waitForSelector('.ghost.saved', { timeout: 10000 });
       await new Promise((r) => setTimeout(r, 300));
       const slack = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
