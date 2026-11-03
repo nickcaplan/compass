@@ -37,7 +37,11 @@ test('specialist link preserves presentation and opens only the verified contact
   const unrelated=await page.$$eval('a[href^="mailto:"]',as=>as.map(a=>a.href));
   await page.locator('.demofill').click();await page.waitForSelector('.planin',{timeout:20000});
   assert.equal(await page.$eval('.cta b',e=>e.textContent),'A Hybrid House specialist can pick it up from here.');
-  const link=await page.$('.cta a');assert.ok(link);assert.equal(await link.evaluate(e=>e.textContent.trim()),'Speak to a specialist');
+  // The parked pricing CTA also uses a.btn. Probe that shared selector
+  // without exposing a new route or changing its existing presentation.
+  const probe=await page.evaluateHandle(()=>{const c=document.createElement('div');c.className='cta';const a=document.createElement('a');a.className='btn';a.href='#';a.textContent='Unrelated CTA';c.append(a);document.body.append(c);return c});
+  assert.equal(await probe.evaluate(c=>getComputedStyle(c.firstChild).textDecorationLine),'underline');await probe.evaluate(c=>c.remove());await probe.dispose();
+  const link=await page.$('.cta a.specialist-link');assert.ok(link);assert.equal(await link.evaluate(e=>e.textContent.trim()),'Speak to a specialist');
   assert.deepEqual(await link.evaluate(e=>({href:e.href,target:e.target,rel:e.rel})),{href:'https://thehybridhouse.co.uk/contact/',target:'_blank',rel:'noreferrer'});
   assert.equal(await page.$('.cta button'),null);
   assert.deepEqual(await page.$$eval('a[href^="mailto:"]',as=>as.map(a=>a.href)),unrelated);
