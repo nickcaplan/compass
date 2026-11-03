@@ -82,6 +82,8 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
           return;
         }
         if (result.data.user.id !== id) return;
+        await authController.finishRecovery(generation, id);
+        if (!(await authController.isCurrent(generation))) return;
         setPassword(''); onAuthenticated(result.data.user);
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });

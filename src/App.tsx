@@ -902,7 +902,8 @@ export default function App() {
       }
       if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
     });
-    return () => { subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
+    const stopErrors = authController.onError(error => setAuthNotice(error.message));
+    return () => { stopErrors(); subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
     // One subscription per mount; planner/account/flow state is read through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1324,7 +1325,8 @@ export default function App() {
     try {
       generation = await authController.capture();
       const { data, error } = await supabase.auth.getSession();
-      if (epoch !== authEpoch.current || currentAccount.current?.id !== id || !(await authController.isCurrent(generation))) return;
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
       if (error || data.session?.user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
       const token = data.session.access_token;
       const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
@@ -1332,11 +1334,13 @@ export default function App() {
         body: JSON.stringify({ data: { full_name: profileName.trim(), company: profileCompany.trim(), compass_profile_complete: true } }),
       });
       const user = await response.json() as User;
-      if (epoch !== authEpoch.current || currentAccount.current?.id !== id || !(await authController.isCurrent(generation))) return;
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
       if (!response.ok || user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
       // Re-read the SDK session, but never persist captured credentials ourselves.
       const current = await supabase.auth.getSession();
-      if (epoch !== authEpoch.current || currentAccount.current?.id !== id || !(await authController.isCurrent(generation))) return;
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (!(await authController.isCurrent(generation))) { setProfileError('Your session changed. Please log in again.'); return; }
       if (current.error || current.data.session?.user.id !== id) {
         setProfileError('Your session changed. Please log in again.'); return;
       }

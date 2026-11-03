@@ -194,3 +194,17 @@ responses. Helpers in `tests/helpers` translate old test fixtures into the new
 store, never production tokens. Inherited assertions on profile, drafts,
 recovery, saved-plan lifecycle and inline errors remain. New controller tests
 must not install that compatibility helper when proving legacy-token rejection.
+
+Recovery mode is persisted only for the verified principal and intent generation,
+so a reload keeps the reset form while a new intent or successful completion
+removes that mode. The callback URL is cleaned even when verification fails.
+Runtime storage failure is fail-closed until reload, including pending writes.
+
+The pinned auth-js 2.118.0 default refresh path remains unchanged: no deprecated
+custom lock, external lock wrapper or internal SDK patch. Two-tab regressions
+exercise concurrent same-generation refresh with a delayed successful rotation
+and an already-used-token rejection. Generation fences cover replacement and
+logout independently of SDK/server refresh-race handling. This is not proof of
+every provider/network interleaving. Direct profile/password requests already
+sent cannot be undone; guards reject stale local acceptance and prevent a later
+request from silently taking a replacement account token.

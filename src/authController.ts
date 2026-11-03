@@ -4,9 +4,10 @@ const URL = 'https://ctailpmcoyvaplwbwskf.supabase.co';
 const KEY = 'sb_publishable_J3Kaa7y4KExb-ICrCA1FIA_z4lYfhG7';
 const STORE = 'state';
 const SESSION_KEY = 'compass-session-v2';
-type State = { generation: number; values: Record<string, string>; callback?: string };
+type State = { generation: number; values: Record<string, string>; callback?: string; recovery?: { generation: number; userId: string } };
 type Listener = (event: AuthChangeEvent, session: Session | null) => void;
-const stale = () => new Error('Your session changed. Please try again.');
+class StaleGeneration extends Error {}
+const stale = () => new StaleGeneration('Your session changed. Please try again.');
 const unavailable = () => new Error('Secure browser storage is unavailable. Log-in is paused.');
 
 /** One browser-wide authority. Every session write compares and commits in one transaction. */
@@ -14,6 +15,7 @@ export class AuthController {
   private db: Promise<IDBDatabase>;
   private channel: BroadcastChannel | null = null;
   private listeners = new Set<Listener>();
+  private errorListeners = new Set<(error: Error) => void>();
   private clients = new Map<number, SupabaseClient>();
   private failure: Error | null = null;
   private callbackNotice: Error | null = null;
@@ -43,27 +45,38 @@ export class AuthController {
 
   /** Never await network or SDK work inside an IndexedDB transaction. */
   private async transaction<T>(work: (state: State, store: IDBObjectStore) => T, mode: IDBTransactionMode = 'readonly'): Promise<T> {
-    const db = await this.db;
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, mode), store = tx.objectStore(STORE);
-      let result: T;
-      const read = store.get('canonical');
-      read.onsuccess = () => {
-        try { result = work(read.result ?? { generation: 0, values: {} }, store); }
-        catch (error) { reject(error); tx.abort(); }
-      };
-      tx.oncomplete = () => resolve(result);
-      tx.onabort = tx.onerror = () => reject(unavailable());
-    });
+    try {
+      if (this.failure) throw this.failure;
+      const db = await this.db;
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, mode), store = tx.objectStore(STORE);
+        let result: T;
+        const read = store.get('canonical');
+        read.onsuccess = () => {
+          try { if (this.failure) throw this.failure; result = work(read.result ?? { generation: 0, values: {} }, store); }
+          catch (error) { reject(error); tx.abort(); }
+        };
+        tx.oncomplete = () => resolve(result);
+        tx.onabort = tx.onerror = () => reject(unavailable());
+      });
+    } catch (error) {
+      if (!(error instanceof StaleGeneration)) this.fail();
+      throw error;
+    }
   }
 
   private read() { return this.transaction(state => state); }
   private session(state: State): Session | null {
     const raw = state.values[SESSION_KEY];
-    return raw ? JSON.parse(raw) as Session : null;
+    if (!raw) return null;
+    const session = JSON.parse(raw) as Session;
+    return session.expires_at && session.expires_at > Date.now() / 1000 ? session : null;
   }
   private fail() {
+    if (this.failure) return;
     this.failure = unavailable();
+    this.recovery = false;
+    for (const listener of this.errorListeners) listener(this.failure);
     for (const client of this.clients.values()) client.auth.dispose();
     this.clients.clear();
     for (const listener of this.listeners) listener('SIGNED_OUT', null);
@@ -107,11 +120,13 @@ export class AuthController {
   }
 
   private async publish(event: AuthChangeEvent, generation?: number) {
-    if (!this.hydrated) return;
+    if (!this.hydrated || this.failure) return;
     try {
       const state = await this.read();
-      if (generation !== undefined && state.generation !== generation) return;
+      if (this.failure || (generation !== undefined && state.generation !== generation)) return;
       const session = this.session(state);
+      this.recovery = Boolean(session && state.recovery?.generation === state.generation && state.recovery.userId === session.user.id);
+      if (this.recovery && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) event = 'PASSWORD_RECOVERY';
       for (const [old, client] of this.clients) if (old !== state.generation) { client.auth.dispose(); this.clients.delete(old); }
       // Create the current generation's refresh owner even in passive tabs.
       this.client(state.generation);
@@ -123,6 +138,7 @@ export class AuthController {
   private async initialize() {
     const fragment = new URLSearchParams(window.location.hash.slice(1));
     if (fragment.has('access_token')) {
+      try {
       const callback = new URLSearchParams(window.location.search).get('compassAuth');
       const state = await this.read();
       if (!callback || callback !== state.callback) {
@@ -139,10 +155,17 @@ export class AuthController {
         const result = await client.auth.setSession({ access_token: fragment.get('access_token')!, refresh_token: fragment.get('refresh_token') ?? '' });
         if (result.error || (await this.read()).generation !== state.generation) this.recovery = false;
         if (result.error) this.callbackNotice = new Error('This log-in or reset link is invalid or has expired.');
-        await this.transaction((latest, store) => { if (latest.generation === state.generation) store.put({ ...latest, callback: undefined }, 'canonical'); }, 'readwrite');
+        await this.transaction((latest, store) => {
+          if (latest.generation !== state.generation) throw stale();
+          const session = this.session(latest);
+          const recovery = this.recovery && !result.error && session ? { generation: latest.generation, userId: session.user.id } : undefined;
+          store.put({ ...latest, callback: undefined, recovery }, 'canonical');
+        }, 'readwrite');
       }
-      const url = new window.URL(window.location.href); url.hash = ''; url.searchParams.delete('compassAuth');
-      window.history.replaceState(null, '', url.pathname + url.search);
+      } finally {
+        const url = new window.URL(window.location.href); url.hash = ''; url.searchParams.delete('compassAuth');
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
     }
     const state = await this.read();
     await this.client(state.generation).auth.initialize();
@@ -168,6 +191,7 @@ export class AuthController {
   async run<T>(work: (auth: SupabaseClient['auth']) => Promise<T>, clear = false) {
     const operation = await this.begin(clear);
     const result = await work(operation.auth);
+    if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
     return result;
   }
@@ -179,6 +203,7 @@ export class AuthController {
     if (new URLSearchParams(window.location.search).get('demo') === '1') url.searchParams.set('demo', '1');
     url.searchParams.set('compassAuth', token);
     const result = await work(operation.auth, url.toString());
+    if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
     return result;
   }
@@ -186,7 +211,13 @@ export class AuthController {
   async getSession() {
     await this.ready;
     if (this.failure) throw this.failure;
-    const state = await this.read();
+    let state = await this.read();
+    const result = await this.client(state.generation).auth.getSession();
+    const latest = await this.read();
+    if (this.failure) throw this.failure;
+    if (latest.generation !== state.generation) { state = latest; }
+    else if (result.error) return { data: { session: null }, error: result.error };
+    else state = latest;
     return { data: { session: this.session(state) }, error: null };
   }
   async lookup<T>(work: (auth: SupabaseClient['auth']) => Promise<T>) {
@@ -194,25 +225,46 @@ export class AuthController {
     if (this.failure) throw this.failure;
     const state = await this.read();
     const result = await work(this.client(state.generation).auth);
+    if (this.failure) throw this.failure;
     if ((await this.read()).generation !== state.generation) throw stale();
     return result;
   }
 
   /** Clear locally first; late remote logout cannot remove a later account. */
   async signOut(scope: 'local' | 'global' | 'others' = 'global') {
-    const previous = await this.getSession();
-    const token = previous.data.session?.access_token;
+    await this.ready;
+    if (this.failure) throw this.failure;
+    const state = await this.read();
+    // Logout must not wait for an expired session's refresh network request.
+    const previous = state.values[SESSION_KEY] ? JSON.parse(state.values[SESSION_KEY]) as Session : null;
+    const token = previous?.access_token;
     const operation = await this.begin(scope !== 'others');
     if (!token) return { error: null };
     const response = await fetch(`${URL}/auth/v1/logout?scope=${scope}`, { method: 'POST', headers: { apikey: KEY, Authorization: `Bearer ${token}` } });
+    if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
     return { error: response.ok || response.status === 401 || response.status === 403 ? null : new Error('Remote logout failed') };
   }
 
   async capture() { await this.ready; if (this.failure) throw this.failure; return (await this.read()).generation; }
-  async isCurrent(generation: number) { return !this.failure && (await this.read()).generation === generation; }
+  async isCurrent(generation: number) { try { return !this.failure && (await this.read()).generation === generation && !this.failure; } catch { return false; } }
+
+  async finishRecovery(generation: number, userId: string) {
+    if (this.failure) throw this.failure;
+    await this.transaction((state, store) => {
+      if (state.generation !== generation || this.session(state)?.user.id !== userId) throw stale();
+      store.put({ ...state, recovery: undefined }, 'canonical');
+    }, 'readwrite');
+    this.recovery = false;
+    await this.publish('USER_UPDATED', generation);
+  }
 
   async current(userId: string) { const { data } = await this.getSession(); return data.session?.user.id === userId; }
+  onError(listener: (error: Error) => void) {
+    this.errorListeners.add(listener);
+    if (this.failure) listener(this.failure);
+    return () => { this.errorListeners.delete(listener); };
+  }
   onAuthStateChange(listener: Listener) {
     this.listeners.add(listener);
     void this.ready.then(() => this.publish(this.recovery ? 'PASSWORD_RECOVERY' : 'INITIAL_SESSION'));
