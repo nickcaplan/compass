@@ -105,9 +105,6 @@ input[type="date"].ctl::-webkit-calendar-picker-indicator{display:none}
 .pills{display:flex;gap:8px;flex-wrap:wrap}
 .pill{border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;background:none;font-family:Roboto,system-ui,sans-serif}
 .pill.more{border-style:dashed}
-/* Keep audience pairs together without shrinking or clipping their labels. */
-.audience-pills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-.audience-pills .pill{min-width:0;min-height:44px;padding:7px 8px;line-height:1.35;overflow-wrap:anywhere}
 .audience-update{font-size:13px;color:var(--text2);margin-top:10px}
 .gen{width:100%;margin-top:22px;border:0;border-radius:12px;padding:15px;font-family:Poppins,sans-serif;font-weight:700;font-size:15.5px;cursor:pointer}
 .gen span{opacity:.7;font-weight:500}

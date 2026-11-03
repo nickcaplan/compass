@@ -84,12 +84,14 @@ and varies by browser, so each date field gets its own always-visible
 calendar button that opens the native picker (showPicker, focus fallback).
 Dates stack vertically on small screens so the fields never clip.
 
-## 2026-11-03 - Fixed audience pairs and demo cleanup
+## 2026-11-03 - Fixed audiences and demo cleanup
 
-Nick requested Laboratory Technician and Scientist / Researcher side by side.
-Audience choices now use two equal columns and at least 44px-high buttons, with
-full 13px labels wrapping inside the button when needed. No shortened labels,
-ellipsis or smaller type. Keyboard multi-select semantics remain unchanged.
+Nick initially requested Laboratory Technician and Scientist / Researcher side
+by side. After rejecting the equal-column multiline pills as inconsistent with
+other pills, Nick approved natural single-line pills on 3 November at16:09.
+They share the existing pill typography, padding and height. Choices pair only
+where they fit; narrow layouts stack rather than shrink, truncate or wrap labels.
+Keyboard multi-select semantics remain unchanged.
 
 Nick confirmed all saved plans are demo data and asked to remove invalid
 audiences directly, superseding legacy-choice preservation. On initialization,

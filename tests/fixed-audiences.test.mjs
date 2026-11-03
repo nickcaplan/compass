@@ -5,7 +5,7 @@ import test from 'node:test';
 import puppeteer from 'puppeteer-core';
 const expected=['Procurement','Laboratory Manager','Laboratory Technician','Scientist / Researcher','Purchasing Manager','Quality / Compliance'];
 
-test('audience pairs stay readable and invalid saved choices require a current audience with persisted demo cleanup', {timeout:120000}, async()=>{
+test('natural audience pills stay consistent and invalid saved choices require a current audience with persisted demo cleanup', {timeout:120000}, async()=>{
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
  try {
   const url=process.env.HOSTED_URL || await new Promise((resolve,reject)=>{
@@ -20,13 +20,20 @@ test('audience pairs stay readable and invalid saved choices require a current a
    const geometry=()=>p.$$eval('[aria-labelledby=g-audience] button',bs=>bs.map(b=>{const r=b.getBoundingClientRect(),s=getComputedStyle(b);return {x:r.x,y:r.y,width:r.width,height:r.height,font:parseFloat(s.fontSize),overflow:b.scrollWidth>b.clientWidth}}));
    for(const theme of['dark','light']) {
     await p.evaluate(t=>document.documentElement.setAttribute('data-theme',t),theme);
-    const g=await geometry();assert.equal(g[2].y,g[3].y);assert.ok(g[2].x<g[3].x);assert.ok(g.every(x=>x.height>=44&&x.font>=13&&!x.overflow));
+    const g=await geometry();assert.ok(g.every(x=>x.font>=13&&!x.overflow));
+    const consistency=await p.$$eval('[aria-labelledby=g-audience] button',bs=>{
+     const reference=getComputedStyle(document.querySelector('[aria-labelledby=g-objective] button'));
+     return bs.every(b=>{const s=getComputedStyle(b);return ['fontSize','fontFamily','padding','borderRadius','lineHeight'].every(k=>s[k]===reference[k])&&b.getBoundingClientRect().height===document.querySelector('[aria-labelledby=g-objective] button').getBoundingClientRect().height});
+    });assert.equal(consistency,true);
+    // Full labels remain single-line. Natural flex wrapping pairs only where
+    // the unmodified shared pill dimensions fit in the current card.
+    assert.ok(g.every(x=>x.height===g[0].height));
     assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     if(process.env.SCREENSHOT_DIR){await p.$eval('[aria-labelledby=g-audience]',e=>e.scrollIntoView({block:'center'}));await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/audience-pairs-${process.env.HOSTED_URL?'hosted':'local'}-${width}-${theme}.png`})}
    }
-   // Fallback font and doubled label size must not clip or lose the pairing.
-   await p.addStyleTag({content:'.audience-pills .pill{font-family:Arial,sans-serif;font-size:26px}'});
-   assert.ok((await geometry()).every(x=>!x.overflow));assert.equal((await geometry())[2].y,(await geometry())[3].y);
+   // Fallback font remains readable without clipping at normal label size.
+   await p.addStyleTag({content:'.audience-pills .pill{font-family:Arial,sans-serif;font-size:13px}'});
+   assert.ok((await geometry()).every(x=>!x.overflow));
    await p.reload();await p.waitForSelector('[aria-labelledby=g-audience]');
    await p.locator('[aria-labelledby=g-audience] button').click();await p.keyboard.press('Space');assert.equal(await p.$eval('[aria-labelledby=g-audience] button',e=>e.getAttribute('aria-pressed')),'false');await p.keyboard.press('Space');assert.equal(await p.$eval('[aria-labelledby=g-audience] button',e=>e.getAttribute('aria-pressed')),'true');
    const futureDate=days=>{const date=new Date();date.setDate(date.getDate()+days);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`};
