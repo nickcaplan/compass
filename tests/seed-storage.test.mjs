@@ -81,3 +81,20 @@ for (const raw of ['[null]', '[{"id":"incomplete"}]', '[{"id":"partial","savedAt
     assert.deepEqual(run(window,'plans','backup',validateBrief),{plansRecovered:false,plansLoadFailed:true});assert.equal(data.get('plans'),raw);
   });
 }
+
+const cleanup = stripTypeScriptTypes(source.slice(source.indexOf('function cleanDemoAudiences()'), source.indexOf('function SkeletonBlock()')));
+for (const fails of [false, true]) {
+  test(`retired demo audience cleanup is idempotent and preserves whole plans, storage failure=${fails}`, () => {
+    const plans = [
+      {id:'old', savedAt:'now', brief:{name:'Old', audiences:['R&D','Department Head']}},
+      {id:'mixed', savedAt:'then', brief:{name:'Mixed', audiences:['Scientist / Researcher','R&D']}},
+      {id:'current', savedAt:'later', brief:{name:'Current', audiences:['Procurement']}},
+    ];
+    let raw=JSON.stringify(plans),writes=0;
+    const window={localStorage:{getItem:()=>raw,setItem:(_,v)=>{if(fails)throw Error('quota');raw=v;writes++}}};
+    const run=new Function('window','PLANS_KEY','AUDIENCES',`let plansLoadFailed=false;${cleanup};cleanDemoAudiences();cleanDemoAudiences();return plansLoadFailed`);
+    assert.equal(run(window,'plans',['Procurement','Scientist / Researcher']),fails);
+    if(fails){assert.equal(raw,JSON.stringify(plans));assert.equal(writes,0)}
+    else{assert.equal(writes,1);assert.deepEqual(JSON.parse(raw),plans.map((p,i)=>({...p,brief:{...p.brief,audiences:[[],['Scientist / Researcher'],['Procurement']][i]}})))}
+  });
+}

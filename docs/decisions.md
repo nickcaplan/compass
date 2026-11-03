@@ -83,3 +83,21 @@ The native date-input picker indicator is invisible against the dark theme
 and varies by browser, so each date field gets its own always-visible
 calendar button that opens the native picker (showPicker, focus fallback).
 Dates stack vertically on small screens so the fields never clip.
+
+## 2026-11-03 - Fixed audiences and demo cleanup
+
+Nick initially requested Laboratory Technician and Scientist / Researcher side
+by side. After rejecting the equal-column multiline pills as inconsistent with
+other pills, Nick approved natural single-line pills on 3 November at16:09.
+They share the existing pill typography, padding and height. Choices pair only
+where they fit; narrow layouts stack rather than shrink, truncate or wrap labels.
+Keyboard multi-select semantics remain unchanged.
+
+Nick confirmed all saved plans are demo data and asked to remove invalid
+audiences directly, superseding legacy-choice preservation. On initialization,
+retired audiences are removed from persisted demo plans, without mapping them
+onto a new audience or deleting a plan. Current audiences and other plan fields
+stay unchanged. Empty audiences remain empty until a visitor chooses one before
+regenerating. Seed plans likewise no longer introduce retired audiences. A
+failed cleanup write uses the existing storage error state and does not pretend
+the stored cleanup succeeded.

@@ -158,7 +158,6 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
 import {
   AUDIENCES,
   EMPTY_BRIEF,
-  PRIMARY_AUDIENCES,
   OBJECTIVES,
   SENIORITY_LEVELS,
   answeredCount,
@@ -333,7 +332,7 @@ function seedPlans(): SavedPlan[] {
         name: 'Global Reagent Launch Consideration',
         objectives: ['consideration'],
         kpis: ['Content downloads', 'Article engagement'],
-        audiences: ['R&D', 'Department Head'],
+        audiences: [],
         seniority: ['Director / Executive'],
         budget: 60000,
         start: isoDaysFromNow(-120),
@@ -342,7 +341,7 @@ function seedPlans(): SavedPlan[] {
     },
     { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], seniority: ['Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
     { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], seniority: ['Technician / Practitioner'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
-    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: ['R&D'], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
   ];
 }
 
@@ -476,9 +475,29 @@ function loadPlans(): SavedPlan[] {
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
         isBrief(p.brief),
-    );
+    ).map(p => ({ ...p, brief: { ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) } }));
   } catch {
     return [];
+  }
+}
+
+// Remove retired choices from existing browser-local demo plans, without
+// replacing audiences or deleting plans. A failed write uses the storage error UI.
+function cleanDemoAudiences(): void {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    if (raw === null) return;
+    const plans: SavedPlan[] = JSON.parse(raw);
+    let changed = false;
+    const cleaned = plans.map(p => {
+      const audiences = p.brief.audiences.filter(a => AUDIENCES.includes(a));
+      if (audiences.length === p.brief.audiences.length) return p;
+      changed = true;
+      return { ...p, brief: { ...p.brief, audiences } };
+    });
+    if (changed) window.localStorage.setItem(PLANS_KEY, JSON.stringify(cleaned));
+  } catch {
+    plansLoadFailed = true;
   }
 }
 
@@ -578,14 +597,16 @@ export default function App() {
       return 'dark';
     }
   });
-  const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
     recoverCorruptPlans();
-    if (!plansLoadFailed) ensureSeedPlans();
+    if (!plansLoadFailed) {
+      ensureSeedPlans();
+      cleanDemoAudiences();
+    }
     return loadPlans();
   });
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
@@ -625,23 +646,13 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', refresh);
   }, []);
 
-  const count = answeredCount(brief);
+  const count = answeredCount({ ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) });
   const weeks = campaignWeeks(brief.start, brief.end);
   const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
-  const primaryAudiences = PRIMARY_AUDIENCES.map((label) =>
-    AUDIENCES.find((a) => a === label),
-  ).filter((a): a is (typeof AUDIENCES)[number] => a !== undefined);
-  const secondaryAudiences = AUDIENCES.filter((a) => !PRIMARY_AUDIENCES.includes(a));
-  const visibleAudiences = showAllAudiences
-    ? [...primaryAudiences, ...secondaryAudiences]
-    : [...primaryAudiences, ...secondaryAudiences.filter((a) => brief.audiences.includes(a))];
-  const hiddenAudienceCount = showAllAudiences
-    ? 0
-    : secondaryAudiences.filter((a) => !brief.audiences.includes(a)).length;
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
     .flatMap((o) => o.kpis)
     .filter((k, i, a) => a.indexOf(k) === i);
@@ -765,7 +776,6 @@ export default function App() {
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
     setSubmittedBrief(null);
     setStage('filling');
-    setShowAllAudiences(false);
     window.clearTimeout(cueTimer.current);
     if (answeredCount(d) >= 6) {
       setCueSeq((n) => n + 1);
@@ -815,7 +825,6 @@ export default function App() {
     setSubmittedBrief(null);
     setBudgetText('');
     setStage('empty');
-    setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
@@ -889,7 +898,8 @@ export default function App() {
 
   function editSavedPlan() {
     setJustSavedId(null);
-    setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
+    setBrief(b => ({ ...b, audiences: b.audiences.filter(a => AUDIENCES.includes(a)) }));
+    setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
   }
 
   function cancelEditSaved() {
@@ -1113,8 +1123,8 @@ export default function App() {
 
           <div className="field planning-step">
             <label id="g-audience">Audience</label>
-            <div className="pills" role="group" aria-labelledby="g-audience">
-              {visibleAudiences.map((a) => (
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience" aria-describedby={brief.audiences.length === 0 ? "audience-update" : undefined}>
+              {AUDIENCES.map((a) => (
                 <button
                   key={a}
                   type="button"
@@ -1125,17 +1135,10 @@ export default function App() {
                   {a}
                 </button>
               ))}
-              <button
-                type="button"
-                className="pill more"
-                aria-expanded={showAllAudiences}
-                onClick={() => setShowAllAudiences((v) => !v)}
-              >
-                {showAllAudiences
-                  ? 'Show fewer'
-                  : `Show ${hiddenAudienceCount} more`}
-              </button>
             </div>
+            {brief.audiences.length === 0 && (
+              <p id="audience-update" className="audience-update">Choose at least one audience.</p>
+            )}
           </div>
 
           <div className="field planning-step">
