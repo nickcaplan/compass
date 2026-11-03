@@ -47,8 +47,15 @@ export async function fixtureNavigation(page, url) {
   // Old recovery tests model a newly issued callback. The dedicated controller
   // tests separately exercise missing, used and superseded callback bindings.
   const callback='fixture-issued-link';
-  await seedSession(page,null,{callback,notify:false});
+  await seedSession(page,await readSession(page),{callback,notify:false});
   const parsed=new URL(url);parsed.searchParams.set('compassAuth',callback);url=parsed.toString();
  }
- return page.goto(url);
+ const response = await page.goto(url);
+ // Navigation can finish before the callback exchange. Tests that then reload
+ // model a completed callback, not a second use of its already-claimed link.
+ if (url.includes('access_token=') && url.includes('type=recovery')) {
+  await page.waitForFunction(() => !location.hash.includes('access_token=') && !new URL(location.href).searchParams.has('compassAuth'));
+  if (url.includes('type=recovery')) await page.waitForSelector('.cancel-recovery');
+ }
+ return response;
 }

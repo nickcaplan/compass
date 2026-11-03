@@ -822,6 +822,9 @@ export default function App() {
         latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
           savedEntry: null, budgetText: snap.budgetText, stage: restoredStage };
         anonymousBinding.current = null;
+        // Reset mode can reload before completion. Keep restored work bound to
+        // its verified account instead of consuming its only durable copy.
+        if (authController.recovering) stashAuthDraft({ accountId: user.id });
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
         if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
         break;
