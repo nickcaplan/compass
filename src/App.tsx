@@ -1061,7 +1061,7 @@ export default function App() {
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
           </>}
 
-          <div className="field">
+          <div className="field planning-step">
             <label htmlFor="f-name">Campaign name</label>
             <input
               id="f-name"
@@ -1073,7 +1073,7 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label id="g-objective">Objective</label>
             <div className="pills" role="group" aria-labelledby="g-objective">
               {OBJECTIVES.map((o) => (
@@ -1090,7 +1090,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label>KPI</label>
             {kpiOptions.length === 0 ? (
               <div className="hint">Select an objective first</div>
@@ -1111,7 +1111,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label id="g-audience">Audience</label>
             <div className="pills" role="group" aria-labelledby="g-audience">
               {visibleAudiences.map((a) => (
@@ -1138,7 +1138,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label id="g-seniority">Seniority</label>
             <div className="pills" role="group" aria-labelledby="g-seniority">
               {SENIORITY_LEVELS.map((s) => (
@@ -1155,7 +1155,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label htmlFor="f-budget">Budget</label>
             <input
               id="f-budget"
@@ -1168,7 +1168,7 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label>Campaign dates</label>
             <div className="daterow">
               <div className="datewrap">
