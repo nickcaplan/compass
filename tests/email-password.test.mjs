@@ -33,6 +33,7 @@ test('email signup, failed signin, successful signin, and recovery stay in the a
    await p.evaluate(d=>{localStorage.removeItem('sb-ctailpmcoyvaplwbwskf-auth-token');localStorage.setItem('compass-auth-draft',d)},resetDraft);
    await p.goto(url+'?demo=1#access_token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjQwMDAwMDAwMDB9.fake-signature&refresh_token=test-refresh&expires_in=3600&token_type=bearer&type=recovery');await p.reload();
    await p.waitForFunction(()=>document.querySelector('.email-heading')?.textContent==='Choose a new password');assert.equal(await p.$('.metrics'),null);assert.equal(await p.$('.ssolist'),null);
+   const cancelGap=await p.evaluate(()=>document.querySelector('.cancel-recovery').getBoundingClientRect().top-document.querySelector('form[aria-label="Email account"] .gen').getBoundingClientRect().bottom);assert.ok(cancelGap>=10,'Recovery cancel has at least 10px separation');
    // Cancelling recovery exits to the normal form without a reload.
    logoutOk=true;await p.locator('button.cancel-recovery').click();await p.waitForFunction(()=>document.querySelector('.email-heading')?.textContent==='Log in with email');assert.equal(await p.$('button.cancel-recovery'),null);assert.match(await p.$eval('.pagecard',e=>e.textContent),/reset cancelled/);logoutOk=false;
    // A mode switch alone preserves the cancel guidance; a new submission makes it obsolete.
