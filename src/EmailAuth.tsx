@@ -8,12 +8,15 @@ type AuthErrorLike = { code?: string; message?: string } | null;
 function authErrorMessage(err: AuthErrorLike, fallback: string): string {
   const msg = err?.message ?? '';
   const code = err?.code ?? '';
-  if (code === 'over_email_send_rate_limit' || /email rate limit/i.test(msg))
-    return 'Compass cannot send more emails right now - our email limit for this period is reached. This is on our side, not a problem with your details. Please try again later.';
-  // Server-provided per-recipient cooldown. Deliberately no pinned seconds: the message
-  // persists until the next interaction and a stale countdown would outlive the real wait.
+  // Server-provided per-recipient cooldown. Checked first: Supabase reuses
+  // over_email_send_rate_limit for both the project quota and this cooldown, so
+  // only the message tells them apart. Deliberately no pinned seconds: the
+  // message persists until the next interaction and a stale countdown would
+  // outlive the real wait.
   if (/after \d+ seconds?/i.test(msg))
     return 'You requested an email for this address a moment ago. For security, please wait a short while before requesting another.';
+  if (code === 'over_email_send_rate_limit' || /email rate limit/i.test(msg))
+    return 'Compass cannot send more emails right now - our email limit for this period is reached. This is on our side, not a problem with your details. Please try again later.';
   // IP throttle: no provider-guaranteed window is documented, so stay neutral.
   if (code === 'over_request_rate_limit' || /request rate limit/i.test(msg) || /too many requests/i.test(msg))
     return 'Too many attempts from this network. Please try again in a little while.';

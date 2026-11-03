@@ -22,19 +22,20 @@ test('email rate limits get distinct inline messages without an invented countdo
   });
   await p.goto(url+'?demo=1');await p.waitForSelector('#f-name');await p.locator('#f-name').fill('Rate limit draft');await p.locator('.signin').click();await p.waitForSelector('#f-signin-email');
   const submit=()=>p.locator('form[aria-label="Email account"] .gen').click();
-  const alertText=async()=>{await p.waitForSelector('form [role=alert]');return p.$eval('form [role=alert]',e=>e.textContent)};
+  // Wait until the alert shows the NEW message (a previous error can still be on screen at click time).
+  const alertText=async(re)=>{await p.waitForFunction(src=>{const e=document.querySelector('form [role=alert]');return e&&new RegExp(src).test(e.textContent)},{},re.source);return p.$eval('form [role=alert]',e=>e.textContent)};
   // 1. Project-wide email quota on reset: named as our limit, no invented countdown, email kept.
   await p.locator('.email-forgot').click();await p.locator('#f-signin-email').fill('quota@example.com');
   nextError={error_code:'over_email_send_rate_limit',code:'over_email_send_rate_limit',msg:'email rate limit exceeded'};await submit();
-  let msg=await alertText();assert.match(msg,/email limit/i);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
+  let msg=await alertText(/email limit/i);assert.match(msg,/email limit/i);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
   // 2. Per-recipient cooldown: never pins server seconds that would go stale on screen.
-  nextError={msg:'For security purposes, you can only request this after 37 seconds.'};await submit();
-  msg=await alertText();assert.match(msg,/wait a short while/);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
+  nextError={error_code:'over_email_send_rate_limit',code:'over_email_send_rate_limit',msg:'For security purposes, you can only request this after 37 seconds.'};await submit();
+  msg=await alertText(/wait a short while/);assert.match(msg,/wait a short while/);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
   // 3. IP throttle on signup: distinct network message.
   await p.evaluate(()=>[...document.querySelectorAll('.email-modes button')].find(e=>e.textContent==='Create account').click());
   await p.locator('#f-signin-email').fill('throttle@example.com');await p.locator('#f-signin-password').fill('example-test-only');
   nextError={error_code:'over_request_rate_limit',code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();
-  msg=await alertText();assert.match(msg,/Too many attempts from this network/);assert.doesNotMatch(msg,/\d+ (seconds|minutes)/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'throttle@example.com');
+  msg=await alertText(/Too many attempts from this network/);assert.match(msg,/Too many attempts from this network/);assert.doesNotMatch(msg,/\d+ (seconds|minutes)/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'throttle@example.com');
   await context.close();
  }finally{await browser?.close();server.kill()}
  // 4. Ordinary failures keep their existing copy (plain 400 on reset).
