@@ -134,6 +134,24 @@ regenerating. Seed plans likewise no longer introduce retired audiences. A
 failed cleanup write uses the existing storage error state and does not pretend
 the stored cleanup succeeded.
 
+## 2026-11-03 - Reclaim space for natural audience rows
+
+Follow-up research requested separately from 52: keep the existing full-size,
+single-line pills and reclaim nested form whitespace. Planning cards use 8px
+insets; below the existing 980px single-column breakpoint, the page gutter is
+12px and form horizontal inset 8px. This yields 330px for pills at 390px and 328px
+on the 400px desktop form, enough for the approximately 327px long pair. Natural
+flex fallback remains on narrower screens and with wider/enlarged text. No
+fixed columns, truncation, font shrinking or label changes are introduced.
+
+Nick requested removal of the "Choose at least one audience." helper on
+3 November. The helper and its description reference are removed; selection
+validation and invalid saved-audience cleanup remain unchanged.
+
+Nick requested a single desktop row for Objective options on 3 November.
+The desktop form column is 416px rather than 400px, keeping all three
+full-size objective pills together without a pill-specific style exception.
+The 980px single-column breakpoint and natural enlarged-text wrapping stay.
 Nick clarified demo fill is for testing and must include Market. Generated
 example briefs use UK as explicit illustrative test data, not inferred visitor
 geography; existing saved plans are not backfilled. The auto-generation flow

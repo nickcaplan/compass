@@ -1136,7 +1136,7 @@ export default function App() {
 
           <div className="field planning-step">
             <label id="g-audience">Audience</label>
-            <div className="pills audience-pills" role="group" aria-labelledby="g-audience" aria-describedby={brief.audiences.length === 0 ? "audience-update" : undefined}>
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
               {AUDIENCES.map((a) => (
                 <button
                   key={a}
@@ -1149,9 +1149,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-            {brief.audiences.length === 0 && (
-              <p id="audience-update" className="audience-update">Choose at least one audience.</p>
-            )}
           </div>
 
           <div className="field planning-step">
