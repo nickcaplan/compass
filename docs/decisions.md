@@ -111,15 +111,13 @@ the in-progress brief and generated plan. Starting either flow stashes a
 snapshot in localStorage, restored when the user lands back signed in. The
 snapshot expires after an hour and never leaves the device.
 
-## 2026-11-02 - Redirect URLs kept exact, per environment
+## 2026-11-03 - Redirect configuration verified live
 
-Supabase redirect URLs list only the production origin and localhost for
-development; each PR preview adds its own exact origin when its wiring
-preview exists. No wildcard preview entry. The Google OAuth consent screen
-stays in Testing (only Nick's account can sign in) until Nick chooses to
-publish; publishing needs no Google verification because the app uses only
-the pre-filled non-sensitive Sign-In scopes.
-
+The earlier exact-origin-only description was incorrect. The live Supabase
+allowlist has wildcard paths for production, localhost, preview26 and preview41.
+Preview41 therefore covers the demo query redirect. Preview51 is absent and is
+fixture-only evidence, not a validated real-auth return route. Real-auth checks
+use preview41. No provider settings were changed by this correction.
 
 ## 2026-11-02 - Current email and password implementation
 
@@ -153,9 +151,18 @@ proof into a composite or a grouped comment; Nick found that hard to read.
 Only an OAuth-shaped callback with a fresh
 provider token, no email/recovery type, Google provider metadata and the
 originating tab's pending one-time flow may restore a Google draft. Email
-callbacks invalidate a pending Google flow. Exact provider redirect URLs
+callbacks invalidate a pending Google flow. Provider redirect URLs
 are unchanged. An immediate Google-start failure keeps current work and
 removes only its failed flow snapshot. Successful email login consumes its
 matching snapshot even when current work stays in memory. Known expired
 unfinished snapshots are removed during draft access/startup; the saved
 plan store and unrecognized work are not touched.
+
+## 2026-11-03 - Profile metadata does not own auth-session persistence
+
+The SDK alone persists auth sessions. Profile saves use a captured bearer token,
+check the active principal before applying a result in memory, and never write
+captured session credentials to localStorage. Startup reads canonical metadata
+with a captured token, guarded by account epoch and profile revision. Late reads
+cannot undo a newer save or carry metadata into a replacement account. Lookup
+failure retains the profile gate rather than inferring completion.
