@@ -83,3 +83,20 @@ The native date-input picker indicator is invisible against the dark theme
 and varies by browser, so each date field gets its own always-visible
 calendar button that opens the native picker (showPicker, focus fallback).
 Dates stack vertically on small screens so the fields never clip.
+
+## 2026-11-03 - Market brief selection
+
+Nick's edited combined-feedback document places Market between Objective and
+KPI. His authenticated3November14:42/14:58 clarification selects North America,
+UK, France and Germany, excluding Europe, and allows multiple choices. Stable
+IDs keep the taxonomy extensible. Selection is stored with the brief and shown
+in generated and saved summaries. Existing plans have no inferred region and
+show Not specified. This standalone demo addition does not impose a new hidden
+generation gate. A market requirement and real regional inventory matching can
+be addressed with the inventory integration, not invented in this change.
+
+The current concept uses illustrative Publisher A/B/C forecasts, not the master
+workbook's real inventory. Market selection records intent only; the form says
+forecasts do not change by market. No UK/France/Germany inventory eligibility or
+regional cost/coverage is implied. No source document, provider setting or
+external account was changed.

@@ -77,9 +77,23 @@ export const SENIORITY_LEVELS: string[] = [
   'Director / Executive',
 ];
 
+// Broad market taxonomy approved for V1. Stable IDs leave room for finer
+// targeting later; the concept forecasts are not regional inventory claims.
+export const MARKETS = [
+  {id:'north-america',label:'North America'},
+  {id:'uk',label:'UK'},
+  {id:'france',label:'France'},
+  {id:'germany',label:'Germany'},
+] as const;
+export type MarketId = typeof MARKETS[number]['id'];
+export function marketLabels(markets: readonly MarketId[] = []): string {
+  return MARKETS.filter(m=>markets.includes(m.id)).map(m=>m.label).join(' + ');
+}
+
 export interface Brief {
   name: string;
   objectives: ObjectiveId[];
+  markets?: MarketId[];
   kpis: string[];
   audiences: string[];
   seniority: string[];

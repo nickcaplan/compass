@@ -158,6 +158,8 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
 import {
   AUDIENCES,
   EMPTY_BRIEF,
+  MARKETS,
+  marketLabels,
   PRIMARY_AUDIENCES,
   OBJECTIVES,
   SENIORITY_LEVELS,
@@ -256,6 +258,7 @@ function isBrief(value: unknown): value is Brief {
     typeof b.name === 'string' &&
     strArr(b.objectives) &&
     (b.objectives as string[]).every((id) => OBJECTIVES.some((o) => o.id === id)) &&
+    (b.markets === undefined || (strArr(b.markets) && (b.markets as string[]).every(id=>MARKETS.some(m=>m.id===id)))) &&
     strArr(b.kpis) &&
     strArr(b.audiences) &&
     strArr(b.seniority) &&
@@ -943,6 +946,7 @@ export default function App() {
 
   const chips: { label: string; soft?: boolean }[] = [];
   if (viewObjectiveLabels.length) chips.push({ label: `Objective: ${viewObjectiveLabels.join(' + ')}` });
+  if (viewBrief.markets?.length) chips.push({label:`Market: ${marketLabels(viewBrief.markets)}`});
   if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
   if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
   if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
@@ -1028,6 +1032,7 @@ export default function App() {
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
                 <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
+                <div><div className="k">Market</div><div className="v">{marketLabels(brief.markets) || 'Not specified'}</div></div>
                 <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
                 <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
                 <div><div className="k">Seniority</div><div className="v">{brief.seniority.join(' + ') || '-'}</div></div>
@@ -1088,6 +1093,14 @@ export default function App() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="field planning-step">
+            <label id="g-market">Market</label>
+            <div className="pills" role="group" aria-labelledby="g-market" aria-describedby="market-hint">
+              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
+            </div>
+            <p id="market-hint" className="market-hint">Choose one or more markets. Demo forecasts are illustrative and do not change by market.</p>
           </div>
 
           <div className="field planning-step">
@@ -1318,6 +1331,7 @@ export default function App() {
               <div className="chips">
                 <span className="chip">{viewObjectiveLabels.join(' + ')}</span>
                 <span className="chip">{viewBrief.kpis.join(' + ')}</span>
+                <span className="chip">Market: {marketLabels(viewBrief.markets) || 'Not specified'}</span>
                 <span className="chip">{viewBrief.audiences.join(' + ')}</span>
                 <span className="chip">{viewBrief.seniority.join(' + ')}</span>
                 <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
@@ -1524,6 +1538,7 @@ export default function App() {
                       </b>
                       <div className="chips">
                         {objLabels && <span className="chip">{objLabels}</span>}
+                        <span className="chip">Market: {marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
                         )}
