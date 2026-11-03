@@ -1,3 +1,4 @@
+import { installAuthFixture, fixtureNavigation } from './helpers/auth-fixtures.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import test from 'node:test';
@@ -14,7 +15,7 @@ test('email rate limits get distinct inline messages without an invented countdo
    if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();
    const headers={'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS','access-control-allow-headers':'*'};
    if(req.method()==='OPTIONS')return req.respond({status:204,headers});
-   let status=200,body={};
+   let status=200,body=req.url().includes('/user')&&req.method()==='GET'?{id:'rate-user',email:'rate@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Rate User',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'}:{};
    const isAuth=/\/(recover|signup|token)(\?|$)/.test(req.url()); if(isAuth) requestCount++;
    if((req.url().includes('/recover')||req.url().includes('/signup')||req.url().includes('/token')||(req.url().includes('/user')&&req.method()==='PUT'))&&nextError){
     status=429;body=nextError;nextError=null;
@@ -23,7 +24,7 @@ test('email rate limits get distinct inline messages without an invented countdo
    if(isAuth&&delayMs) return setTimeout(respond,delayMs);
    return respond();
   });
-  await p.goto(url+'?demo=1');await p.waitForSelector('#f-name');await p.locator('#f-name').fill('Rate limit draft');await p.locator('.signin').click();await p.waitForSelector('#f-signin-email');
+  await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1'));await p.waitForSelector('#f-name');await p.locator('#f-name').fill('Rate limit draft');await p.locator('.signin').click();await p.waitForSelector('#f-signin-email');
   const draftName='Rate limit draft';
   const submit=()=>p.locator('form[aria-label="Email account"] .gen').click();
   // Wait until the alert shows the NEW message (a previous error can still be on screen at click time).
@@ -59,7 +60,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:quota@example.com')).brief.name),draftName);
   // All mapper callers are covered, including sign-in and principal-pinned update.
   await p.evaluate(()=>document.querySelector('.email-modes button').click());await p.locator('#f-signin-password').fill('test-only-password');nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);
-  const recoveryUser={id:'rate-user',email:'rate@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Rate User',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'};const recoverySession={access_token:'rate-user-token',refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:recoveryUser};await p.evaluate(s=>localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify(s)),recoverySession);await p.goto(url+'?demo=1#type=recovery');await p.reload();await p.waitForSelector('.cancel-recovery');await p.locator('#f-signin-password').fill('rate-new-test-only');nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);
+  const recoveryUser={id:'rate-user',email:'rate@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Rate User',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'};const recoverySession={access_token:'rate-user-token',refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:recoveryUser};await p.evaluate(async s=>(await window.fixtureAuth.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify(s))),recoverySession);await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1#type=recovery'));await p.waitForSelector('.cancel-recovery');await p.locator('#f-signin-password').fill('rate-new-test-only');nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);
   await context.close();
  }finally{await browser?.close();server.kill()}
  // 4. Ordinary failures keep their existing copy (plain 400 on reset).
@@ -75,7 +76,7 @@ test('email rate limits get distinct inline messages without an invented countdo
    if(req.url().includes('/recover'))return req.respond({status:400,headers,contentType:'application/json',body:JSON.stringify({msg:'Invalid email address'})});
    return req.respond({status:200,headers,contentType:'application/json',body:'{}'});
   });
-  await p.goto(url+'?demo=1');await p.waitForSelector('#f-name');await p.locator('.signin').click();await p.waitForSelector('#f-signin-email');
+  await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1'));await p.waitForSelector('#f-name');await p.locator('.signin').click();await p.waitForSelector('#f-signin-email');
   await p.locator('.email-forgot').click();await p.locator('#f-signin-email').fill('plain@example.com');await p.locator('form[aria-label="Email account"] .gen').click();
   await p.waitForSelector('form [role=alert]');assert.match(await p.$eval('form [role=alert]',e=>e.textContent),/Could not request a reset email/);
  }finally{await browser2?.close();server2.kill()}

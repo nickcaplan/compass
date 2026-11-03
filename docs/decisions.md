@@ -166,3 +166,31 @@ captured session credentials to localStorage. Startup reads canonical metadata
 with a captured token, guarded by account epoch and profile revision. Late reads
 cannot undo a newer save or carry metadata into a replacement account. Lookup
 failure retains the profile gate rather than inferring completion.
+
+## 2026-11-03 - Preview-only canonical auth controller
+
+This branch is an unmerged follow-up to the held auth/rate-limit work, not a
+production rollout. Supabase remains the authentication service. Saved plans
+and draft records keep their existing stores; this change never migrates or
+clears them.
+
+Auth persistence uses a new `compass-auth-v2` IndexedDB store. A transaction
+advances the intent generation and every SDK storage adapter is permanently
+bound to the generation that created it. Stale reads return null, stale writes
+and removes reject inside the same transaction as their comparison. SDK events
+and cross-tab notifications are hints to reread canonical state, not authority
+to replace it. No SDK internals are patched. Callback links carry a one-use
+binding to the original generation; missing, used or superseded bindings are
+not adopted as fresh intent. Callback hydration publishes no intermediate UI
+state. Secure-storage failure stops authentication with inline feedback.
+
+Rollout, if separately approved, requires old Compass tabs to close/reload and
+visitors to log in again. Legacy SDK tokens are not imported. Links created
+before the rollout need reissuing. This branch does not change provider
+settings, accounts, email templates, billing, or real user credentials.
+
+Regression tests use only fixture credentials and intercepted provider
+responses. Helpers in `tests/helpers` translate old test fixtures into the new
+store, never production tokens. Inherited assertions on profile, drafts,
+recovery, saved-plan lifecycle and inline errors remain. New controller tests
+must not install that compatibility helper when proving legacy-token rejection.

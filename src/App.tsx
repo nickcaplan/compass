@@ -2,7 +2,7 @@ import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDr
 import type { DraftBinding } from './authDraft';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
+import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 import EmailAuth from './EmailAuth';
 
 import logoUrl from './assets/thh-logo.svg';
@@ -862,7 +862,9 @@ export default function App() {
     const startupEpoch = authEpoch.current;
     supabase.auth.getSession().then(({ data }) => {
       if (startupEpoch !== authEpoch.current && data.session?.user.id !== currentAccount.current?.id) return;
+      if (authController.error) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
       applyAuthUser(data.session?.user ?? null, false, true);
+      if (!authController.recovering) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
       initialSessionPending.current = false;
       // Only a tab loaded with a session may consume the shared snapshot.
       // A later cross-tab SIGNED_IN must leave it for the callback tab.
@@ -883,9 +885,11 @@ export default function App() {
           applyAuthUser(result.user);
         }).catch(() => { /* Keep the current profile gate; never infer completion on failure. */ });
       }
-    });
+    }).catch(error => { setAuthNotice(error instanceof Error ? error.message : 'Secure browser storage is unavailable. Log-in is paused.'); });
+    void authController.ready.then(() => { if (authController.error) { setAuthNotice(authController.error.message); recoveryPrincipal.current = null; setRecoveringPassword(false); } });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       applyAuthUser(session?.user ?? null, false, event === 'INITIAL_SESSION' || (event === 'TOKEN_REFRESHED' && initialSessionPending.current));
+      if (!authController.recovering) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
       // Auth events also arrive from other tabs: re-gate a visible plan when
       // the session is gone, and stop re-stashing the draft once signed in.
       // Draft restore stays on the getSession path so only the freshly loaded
@@ -1316,9 +1320,11 @@ export default function App() {
     if (!id) return;
     setProfileSaving(true);
     setProfileError(null);
+    let generation: number | null = null;
     try {
+      generation = await authController.capture();
       const { data, error } = await supabase.auth.getSession();
-      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id || !(await authController.isCurrent(generation))) return;
       if (error || data.session?.user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
       const token = data.session.access_token;
       const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
@@ -1326,11 +1332,11 @@ export default function App() {
         body: JSON.stringify({ data: { full_name: profileName.trim(), company: profileCompany.trim(), compass_profile_complete: true } }),
       });
       const user = await response.json() as User;
-      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id || !(await authController.isCurrent(generation))) return;
       if (!response.ok || user.id !== id) { setProfileError('Could not save your details. Please try again.'); return; }
       // Re-read the SDK session, but never persist captured credentials ourselves.
       const current = await supabase.auth.getSession();
-      if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
+      if (epoch !== authEpoch.current || currentAccount.current?.id !== id || !(await authController.isCurrent(generation))) return;
       if (current.error || current.data.session?.user.id !== id) {
         setProfileError('Your session changed. Please log in again.'); return;
       }
@@ -1338,7 +1344,7 @@ export default function App() {
       canonicalProfile.current = user;
       applyAuthUser(user, true);
     } catch {
-      if (epoch === authEpoch.current) setProfileError('Could not save your details. Please try again.');
+      if (epoch === authEpoch.current && (generation === null || await authController.isCurrent(generation))) setProfileError('Could not save your details. Please try again.');
     } finally {
       setProfileSaving(false);
     }
@@ -1404,6 +1410,8 @@ export default function App() {
     } catch {
       failed = true;
     }
+    const canonical = await supabase.auth.getSession().catch(() => null);
+    if (canonical?.data.session) return;
     mayRestoreAuthDraft.current = false;
     recoveryPrincipal.current = null;
     setRecoveringPassword(false);

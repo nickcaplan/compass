@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
+import { supabase, authController, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 
 const resetNotice = 'If an account exists for that email, check your inbox and spam folder for a reset link. If you requested one recently, please wait before trying again.';
 
@@ -59,10 +59,11 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
       } else if (activeMode === 'update') {
         // Capture A's token and check its principal before sending. updateUser()
         // otherwise looks up whichever session is active after its internal await.
+        const generation = await authController.capture();
         const id = recoveryUserId;
         if (!id || !isRecoveryCurrent(id)) return;
         const { data, error: sessionError } = await supabase.auth.getSession();
-        if (!isRecoveryCurrent(id)) return;
+        if (!isRecoveryCurrent(id) || !(await authController.isCurrent(generation))) return;
         if (sessionError) { setError('Could not update your password. Try again, or request a fresh reset link if this one has expired.'); return; }
         if (data.session?.user.id !== id) return;
         const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
@@ -71,7 +72,7 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
           body: JSON.stringify({ password }),
         });
         const body = await response.json();
-        if (!isRecoveryCurrent(id)) return;
+        if (!isRecoveryCurrent(id) || !(await authController.isCurrent(generation))) return;
         const result = { data: { user: response.ok ? body as User : null },
           error: response.ok ? null : { code: body.code ?? body.error_code, message: body.msg ?? body.message } };
         if (result.error || !result.data.user) {
