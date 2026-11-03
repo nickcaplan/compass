@@ -1,3 +1,4 @@
+import {stripVTControlCharacters} from 'node:util';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
@@ -35,8 +36,8 @@ test('example walkthrough generates automatically and respects interruptions', {
       server.once('error', error => { clearTimeout(timeout); reject(error); });
       server.once('exit', code => { clearTimeout(timeout); reject(new Error(`Preview exited early: ${code}`)); });
       server.stdout.on('data', chunk => {
-        output += chunk.toString().replace(/\x1b\[[0-9;]*m/g, '');
-        const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
+        output += chunk.toString();
+        const match = stripVTControlCharacters(output).match(/http:\/\/127\.0\.0\.1:\d+\//);
         if (match) { clearTimeout(timeout); resolve(match[0]); }
       });
     });
