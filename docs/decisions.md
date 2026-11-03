@@ -84,6 +84,27 @@ and varies by browser, so each date field gets its own always-visible
 calendar button that opens the native picker (showPicker, focus fallback).
 Dates stack vertically on small screens so the fields never clip.
 
+## 2026-11-03 - Market brief selection
+
+Nick's edited combined-feedback document places Market between Objective and
+KPI. His authenticated3November16:14:42/16:14:58 clarification selects North America,
+UK, France and Germany, excluding Europe, and allows multiple choices. Stable
+IDs keep the taxonomy extensible. Selection is stored with the brief and shown
+in generated and saved summaries. Existing plans have no inferred region and
+show Not specified. Nick made Market required on 3 November at 20:18. At least one market is
+needed to generate or regenerate, and progress counts seven required fields.
+Older plans without markets remain viewable as Not specified; editing them
+requires a market before regeneration. Real regional inventory matching is
+not invented in this change.
+
+The current concept uses illustrative Publisher A/B/C forecasts, not the master
+workbook's real inventory. Market selection records intent only;
+forecasts do not change by market. Nick requested removal of the inline market
+hint on 3 November; the form has no market hint text, while this forecast
+limitation remains documented here. No UK/France/Germany inventory eligibility or
+regional cost/coverage is implied. No source document, provider setting or
+external account was changed.
+
 ## 2026-11-03 - Specialist button opens Hybrid House contact
 
 Nick approved the shorter specialist prompt in54 and separately requested the
@@ -112,3 +133,8 @@ stay unchanged. Empty audiences remain empty until a visitor chooses one before
 regenerating. Seed plans likewise no longer introduce retired audiences. A
 failed cleanup write uses the existing storage error state and does not pretend
 the stored cleanup succeeded.
+
+Nick clarified demo fill is for testing and must include Market. Generated
+example briefs use UK as explicit illustrative test data, not inferred visitor
+geography; existing saved plans are not backfilled. The auto-generation flow
+continues with all seven required answers populated.
