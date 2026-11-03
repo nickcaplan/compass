@@ -43,10 +43,6 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 60000
     // The exception is a page that becomes shorter than the viewport can
     // scroll: the browser clamps the scroll position, so only a reduced
     // movement is asserted there.
-    // Leaving the saved state must clear the temporary bottom slack. The
-    // clamped combination depends on the filled example's height, so sweep
-    // every combination and verify cleanup on the first one with real slack.
-    let cleanupChecked = false;
     for (const vp of [{ name: 'phone', width: 390, height: 844 }, { name: 'desktop', width: 1280, height: 800 }]) {
       for (const frac of [0.2, 0.5, 0.8]) {
         const page = await browser.newPage();
@@ -66,18 +62,49 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 60000
         const shift = Math.abs(after - before);
         assert.ok(shift <= 60, `${vp.name} at ${Math.round(frac * 100)}% viewport: save row moved ${shift}px (was up to 330px without the pin)`);
         assert.ok(await page.$('.ghost.saved'), 'Saved state button shown');
-        const slack = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
-        if (slack > 0 && !cleanupChecked) {
-          await clickButton(page, 'Edit plan');
-          await page.waitForSelector('input', { timeout: 10000 });
-          const left = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
-          assert.equal(left, 0, `save spacer still ${left}px after Edit plan`);
-          cleanupChecked = true;
-        }
         await page.close();
       }
     }
-    assert.ok(cleanupChecked, 'no viewport and scroll combination produced save slack to clear');
+
+    // Leaving the saved state must clear the temporary bottom slack. Only a
+    // filled page tall enough to bottom-clamp after the save swap creates
+    // slack, and the demo picker is random, so re-pick (each pick excludes
+    // the current example) until a known clamping variant appears. Stubbing
+    // Math.random would also freeze plan generation and change the page
+    // height, defeating the setup.
+    {
+      const clamping = ['UK Laboratory Procurement Campaign', 'European R&D Awareness Drive'];
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1280, height: 800 });
+      await page.goto(`${previewUrl}?demo=1`, { waitUntil: 'networkidle0' });
+      const nameOf = () => page.evaluate(() => [...document.querySelectorAll('input')].map((i) => i.value)[0] || '');
+      await clickButton(page, 'Fill it in for me');
+      await page.waitForSelector('.planin', { timeout: 20000 });
+      let name = await nameOf();
+      for (let attempt = 0; attempt < 12 && !clamping.includes(name); attempt++) {
+        await clickButton(page, 'Try another example');
+        await page.waitForSelector('[role=alertdialog]', { timeout: 5000 });
+        await clickButton(page, 'Replace with example');
+        await page.waitForFunction((prev) => ([...document.querySelectorAll('input')].map((i) => i.value)[0] || '') !== prev, { timeout: 20000 }, name);
+        await page.waitForSelector('.planin', { timeout: 20000 });
+        name = await nameOf();
+      }
+      assert.ok(clamping.includes(name), `no clamping demo variant after 12 picks (last: ${name})`);
+      await page.evaluate(() => {
+        const el = document.querySelector('.secondary');
+        window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.5));
+      });
+      await new Promise((r) => setTimeout(r, 250));
+      await clickButton(page, 'Save plan');
+      await new Promise((r) => setTimeout(r, 400));
+      const slack = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
+      assert.ok(slack > 0, `expected temporary slack after saving the clamping variant, got ${slack}px`);
+      await clickButton(page, 'Edit plan');
+      await page.waitForSelector('input', { timeout: 10000 });
+      const left = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
+      assert.equal(left, 0, `save spacer still ${left}px after Edit plan`);
+      await page.close();
+    }
   } finally {
     browser?.close();
     server.kill();
