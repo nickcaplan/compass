@@ -27,7 +27,7 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         setNotice('If an account exists for that email, we have sent a reset link. Check your inbox and spam folder.');
       } else if (activeMode === 'signup') {
         const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') } });
-        if (result.error) { setError('Could not create your account. Try logging in if you already have one.'); return; }
+        if (result.error) { setError(result.error.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' : 'Could not create your account. Try logging in if you already have one.'); return; }
         setPassword('');
         if (result.data.session) onAuthenticated(result.data.session.user);
         else setNotice('Check your inbox to confirm your email, then return to log in. If you already have an account, log in instead.');
@@ -51,7 +51,7 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
           error: response.ok ? null : { code: body.code ?? body.error_code, message: body.msg ?? body.message } };
         if (result.error || !result.data.user) {
           setError(result.error?.code === 'same_password' ? 'Choose a different password from your current one.' :
-            result.error?.code === 'weak_password' ? 'Choose a stronger password with at least 8 characters.' :
+            result.error?.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' :
             'Could not update your password. Try again, or request a fresh reset link if this one has expired.');
           return;
         }
