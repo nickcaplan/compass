@@ -26,6 +26,18 @@
   --prog-track:rgba(255,255,255,.08);
   --shadow:0 12px 40px rgba(0,0,0,.5);
   --card-shadow:none;
+  /* Ben's feedback (2 Nov): Awareness, Consideration and Performance get
+     three related neutral shades - black, dark grey and light grey - and a
+     selected objective's KPIs inherit the same treatment. */
+  --obj-awareness:#000000;
+  --obj-awareness-ink:#F4F3EF;
+  --obj-awareness-line:rgba(255,255,255,.5);
+  --obj-consideration:#3A3A44;
+  --obj-consideration-ink:#F4F3EF;
+  --obj-consideration-line:#5D5B68;
+  --obj-performance:#C9C7D1;
+  --obj-performance-ink:#17171C;
+  --obj-performance-line:#8E8C96;
 }
 [data-theme="light"]{
   color-scheme:light;
@@ -51,6 +63,16 @@
   --prog-track:rgba(20,20,25,.1);
   --shadow:0 12px 40px rgba(20,20,30,.18);
   --card-shadow:0 10px 30px rgba(20,20,30,.07);
+
+  --obj-awareness:#17171C;
+  --obj-awareness-ink:#F5F4EF;
+  --obj-awareness-line:#3A3942;
+  --obj-consideration:#5D5B68;
+  --obj-consideration-ink:#FFFFFF;
+  --obj-consideration-line:#8B8894;
+  --obj-performance:#E6E5DE;
+  --obj-performance-ink:#17171C;
+  --obj-performance-line:#C3C2B8;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Roboto,system-ui,sans-serif;font-size:15px;line-height:1.55}
@@ -199,6 +221,12 @@ input.ctl{color:var(--text)}
 .pill.off{border-color:var(--line-mid);color:var(--muted)}
 .pill.more{border-color:var(--line-mid);color:var(--muted)}
 .pill.more:hover{border-color:var(--accent-ink);color:var(--accent-ink)}
+.pill.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
+.pill.obj-awareness.off{background:none;border-color:var(--obj-awareness-line);color:var(--muted)}
+.pill.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
+.pill.obj-consideration.off{background:none;border-color:var(--obj-consideration-line);color:var(--muted)}
+.pill.obj-performance{border-color:var(--obj-performance);background:var(--obj-performance);color:var(--obj-performance-ink)}
+.pill.obj-performance.off{background:none;border-color:var(--obj-performance-line);color:var(--muted)}
 .gen{background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent);box-shadow:0 8px 30px rgba(254,202,10,.22)}
 .planhead{border-bottom:1px solid var(--line)}
 .cap{color:var(--faint)}

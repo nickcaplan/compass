@@ -657,9 +657,11 @@ export default function App() {
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
+  // Each KPI belongs to exactly one objective, so it can inherit that
+  // objective's neutral shade even when several objectives are selected.
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
-    .flatMap((o) => o.kpis)
-    .filter((k, i, a) => a.indexOf(k) === i);
+    .flatMap((o) => o.kpis.map((k) => ({ label: k, objective: o.id })))
+    .filter((entry, i, a) => a.findIndex((e) => e.label === entry.label) === i);
   const now = new Date();
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
@@ -1095,7 +1097,7 @@ export default function App() {
                 <button
                   key={o.id}
                   type="button"
-                  className={`pill${brief.objectives.includes(o.id) ? '' : ' off'}`}
+                  className={`pill obj-${o.id}${brief.objectives.includes(o.id) ? '' : ' off'}`}
                   aria-pressed={brief.objectives.includes(o.id)}
                   onClick={() => toggleObjective(o.id)}
                 >
@@ -1113,20 +1115,20 @@ export default function App() {
           </div>
 
           <div className="field planning-step">
-            <label>KPI</label>
+            <label id="g-kpi">KPI</label>
             {kpiOptions.length === 0 ? (
               <div className="hint">Select an objective first</div>
             ) : (
-              <div className="pills">
-                {kpiOptions.map((k) => (
+              <div className="pills" role="group" aria-labelledby="g-kpi">
+                {kpiOptions.map((entry) => (
                   <button
-                    key={k}
+                    key={entry.label}
                     type="button"
-                    className={`pill${brief.kpis.includes(k) ? '' : ' off'}`}
-                    aria-pressed={brief.kpis.includes(k)}
-                    onClick={() => toggleKpi(k)}
+                    className={`pill obj-${entry.objective}${brief.kpis.includes(entry.label) ? '' : ' off'}`}
+                    aria-pressed={brief.kpis.includes(entry.label)}
+                    onClick={() => toggleKpi(entry.label)}
                   >
-                    {k}
+                    {entry.label}
                   </button>
                 ))}
               </div>
