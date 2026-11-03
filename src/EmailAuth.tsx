@@ -37,7 +37,9 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         const id = recoveryUserId;
         if (!id || !isRecoveryCurrent(id)) return;
         const { data, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || data.session?.user.id !== id || !isRecoveryCurrent(id)) return;
+        if (!isRecoveryCurrent(id)) return;
+        if (sessionError) { setError('Could not update your password. Try again, or request a fresh reset link if this one has expired.'); return; }
+        if (data.session?.user.id !== id) return;
         const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
           method: 'PUT',
           headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
