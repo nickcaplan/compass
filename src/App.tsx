@@ -2,7 +2,7 @@ import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDr
 import type { DraftBinding } from './authDraft';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase, arrivedFromAuthCallback } from './supabase';
+import { supabase, googleOAuthCallback, emailAuthCallback } from './supabase';
 import EmailAuth from './EmailAuth';
 
 import logoUrl from './assets/thh-logo.svg';
@@ -714,7 +714,20 @@ export default function App() {
     return 'accountId' in binding ? accountDraftKey(binding.accountId) :
       'email' in binding ? emailDraftKey(binding.email) : googleDraftKey(binding.googleFlow);
   }
+  function cleanupExpiredDrafts() {
+    try {
+      for (const key of Object.keys(window.localStorage)) {
+        if (key !== AUTH_DRAFT_KEY && !key.startsWith(AUTH_DRAFT_KEY + ':')) continue;
+        try {
+          const value: unknown = JSON.parse(window.localStorage.getItem(key) ?? 'null');
+          if (value && typeof value === 'object' && 'ts' in value && typeof value.ts === 'number' &&
+            Date.now() - value.ts > 60 * 60 * 1000) window.localStorage.removeItem(key);
+        } catch { /* Leave unknown or corrupted work alone. */ }
+      }
+    } catch { /* private mode */ }
+  }
   function stashAuthDraft(binding: DraftBinding | null = currentAccount.current ? { accountId: currentAccount.current.id } : anonymousBinding.current) {
+    cleanupExpiredDrafts();
     if (!binding || !hasPlannerWork()) return;
     try {
       const current = latestPlanner.current;
@@ -738,11 +751,13 @@ export default function App() {
   }
   const mayRestoreAuthDraft = useRef(false);
   function restoreAuthDraft(allowSignIn = false) {
+    cleanupExpiredDrafts();
     const user = currentAccount.current;
     if (!user || (!allowSignIn && (!mayRestoreAuthDraft.current || (pageFromUrl() !== 'planner' && !recoveringPassword)))) return;
     if (hasPlannerWork()) return;
     try {
-      const flow = arrivedFromAuthCallback ? activeGoogleFlow() : null;
+      const pendingFlow = activeGoogleFlow();
+      const flow = googleOAuthCallback && user.app_metadata.provider === 'google' ? pendingFlow : null;
       const keys = [accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
       const candidates = keys.flatMap(key => {
         try {
@@ -773,6 +788,8 @@ export default function App() {
   }
 
   useEffect(() => {
+    cleanupExpiredDrafts();
+    if (emailAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
     const callbackError = new URLSearchParams(window.location.hash.slice(1)).get('error_description');
     if (callbackError) {
       try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
@@ -1158,25 +1175,31 @@ export default function App() {
   }
 
   async function continueWithGoogle() {
+    const previousBinding = anonymousBinding.current;
+    let flow: string | null = null;
     if (currentAccount.current) stashAuthDraft();
     else {
       if (anonymousBinding.current) {
-        stashAuthDraft(); clearPlannerState();
+        stashAuthDraft();
+        if (!('googleFlow' in anonymousBinding.current)) clearPlannerState();
       }
-      const flow = crypto.randomUUID();
+      flow = crypto.randomUUID();
       anonymousBinding.current = { googleFlow: flow };
       try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { /* private mode */ }
       stashAuthDraft(anonymousBinding.current);
     }
+    const redirect = new URL(window.location.origin + '/');
+    if (demoMode) redirect.searchParams.set('demo', '1');
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') },
+      provider: 'google', options: { redirectTo: redirect.toString() },
     });
     if (error) {
       setAuthNotice('Google log-in failed - please try again');
-      try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
-      clearPlannerState();
-      anonymousBinding.current = null;
+      try {
+        window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+        if (flow) window.localStorage.removeItem(googleDraftKey(flow));
+      } catch { /* private mode */ }
+      anonymousBinding.current = previousBinding;
     }
   }
 
@@ -1238,7 +1261,10 @@ export default function App() {
           </button>
         </div>
         <div className="divider"><span>or</span></div></>}
-        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); setRecoveringPassword(false); setAuthNotice(null); go('planner'); }} />
+        <EmailAuth idPrefix={idPrefix} recovery={recoveringPassword} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true);
+          try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
+          anonymousBinding.current = null;
+          setRecoveringPassword(false); setAuthNotice(null); go('planner'); }} />
         {recoveringPassword && (
           <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
             Cancel password reset

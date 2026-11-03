@@ -147,3 +147,13 @@ browser-wide demo saved-plan list is unchanged and is not account storage.
 
 Post one readable screenshot per PR comment. Do not combine screenshot
 proof into a composite or a grouped comment; Nick found that hard to read.
+
+Auth lifecycle follow-up: only an OAuth-shaped callback with a fresh
+provider token, no email/recovery type, Google provider metadata and the
+originating tab's pending one-time flow may restore a Google draft. Email
+callbacks invalidate a pending Google flow. Exact provider redirect URLs
+are unchanged. An immediate Google-start failure keeps current work and
+removes only its failed flow snapshot. Successful email login consumes its
+matching snapshot even when current work stays in memory. Known expired
+unfinished snapshots are removed during draft access/startup; the saved
+plan store and unrecognized work are not touched.
