@@ -235,7 +235,6 @@ input.ctl{color:var(--text)}
   .toprow{gap:12px}
   .prod{font-size:15px}
   .navlinks{gap:12px;font-size:12.5px}
-  .navlinks>button.navsupport{display:none}
   .navlinks{justify-content:flex-end}
   .themebtn{margin-left:0}
   .signin{padding:7px 12px;font-size:12px}
