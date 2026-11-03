@@ -37,7 +37,7 @@ test('service reel settles in 2.6 seconds and never blocks interaction', { timeo
       });
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
-    for (const width of [390, 1440]) {
+    for (const width of [320, 390, 1440]) {
       const page = await browser.newPage();
       await page.setViewport({ width, height: 900 });
       await page.goto(previewUrl+'?demo=1');
@@ -53,7 +53,7 @@ test('service reel settles in 2.6 seconds and never blocks interaction', { timeo
       assert.equal(animation, 2600);
       for (let row=0; row<10; row++) {
         await page.$eval('.industry-reel-track', (e,index) => {e.style.animation='none'; e.style.transform=`translateY(${-index*1.8}em)`;},row);
-        assert.equal(await page.$eval('.industry-reel',e=>e.scrollWidth>e.clientWidth),false);
+        assert.equal(await page.$eval('.industry-reel',e=>[...e.querySelectorAll('.industry-reel-track > span')].every(row=>{const range=document.createRange();range.selectNodeContents(row);return range.getBoundingClientRect().width <= e.getBoundingClientRect().width;})),true);
       }
       await page.$eval('.industry-reel-track', e=>{e.style.animation='';e.style.transform='';e.getAnimations()[0].currentTime=650});
       await page.locator('#f-name').fill('Typing during the spin');
