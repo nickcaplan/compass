@@ -812,15 +812,16 @@ export default function App() {
       for (const { snap } of candidates) {
         for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
         const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
-        if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)) {
-          setSavedEntry({ id: entry.id, mode: entry.mode });
-        }
+        const restoredSavedEntry: { id: string; mode: 'view' | 'edit' } | null = entry && typeof entry.id === 'string' &&
+          (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)
+          ? { id: entry.id, mode: entry.mode } : null;
+        if (restoredSavedEntry) setSavedEntry(restoredSavedEntry);
         const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
         const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
         setBrief(snap.brief); setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
         setBudgetText(snap.budgetText); setStage(restoredStage);
         latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
-          savedEntry: null, budgetText: snap.budgetText, stage: restoredStage };
+          savedEntry: restoredSavedEntry, budgetText: snap.budgetText, stage: restoredStage };
         anonymousBinding.current = null;
         // Reset mode can reload before completion. Keep restored work bound to
         // its verified account instead of consuming its only durable copy.
