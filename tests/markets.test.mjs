@@ -26,7 +26,7 @@ test('market options preserve shared pill styling and multi-selection without re
   await p.reload();await p.waitForSelector('.themebtn');await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('.bsum');assert.match(await p.$eval('.bsum',e=>e.textContent),/North America \+ UK/);
   await click('Edit plan');await p.waitForSelector('[aria-labelledby=g-market]');assert.equal(await p.$eval('[aria-labelledby=g-market] button',b=>b.getAttribute('aria-pressed')),'true');
  }
- await p.$eval('[aria-labelledby=g-market]',e=>e.scrollIntoView({block:'center'}));await p.screenshot({path:`/downloads/markets-local-${width}.png`});await p.close();
+ await p.$eval('[aria-labelledby=g-market]',e=>e.scrollIntoView({block:'center'}));if(process.env.SCREENSHOT_DIR)await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/markets-local-${width}.png`});await p.close();
  }
  }finally{await browser?.close();server.kill()}
 });
