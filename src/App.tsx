@@ -664,6 +664,7 @@ export default function App() {
       // An unrelated login must not adopt an abandoned anonymous brief.
       clearPlannerState();
     }
+    if (user && !googleOAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
     currentAccount.current = user;
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
@@ -808,7 +809,8 @@ export default function App() {
     if (emailAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
     const callbackError = new URLSearchParams(window.location.hash.slice(1)).get('error_description');
     if (callbackError) {
-      try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
+      // An anonymous Google cancellation may retry its own per-tab draft.
+      // getSession below revokes this handle if any account is established.
       setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
     const startupEpoch = authEpoch.current;
     supabase.auth.getSession().then(({ data }) => {
@@ -819,6 +821,7 @@ export default function App() {
       // A later cross-tab SIGNED_IN must leave it for the callback tab.
       mayRestoreAuthDraft.current = Boolean(data.session);
       if (data.session) {
+        if (callbackError) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
         if (googleOAuthCallback && !googleCallbackPrincipal.current && authEpoch.current <= 1) googleCallbackPrincipal.current = data.session.user.id;
         restoreAuthDraft();
       }
@@ -1201,6 +1204,7 @@ export default function App() {
     const epoch = authEpoch.current;
     const previousBinding = anonymousBinding.current;
     const previousPlanner = latestPlanner.current;
+    const previousFlow = activeGoogleFlow();
     let flow: string | null = null;
     if (currentAccount.current) stashAuthDraft();
     else {
@@ -1208,7 +1212,16 @@ export default function App() {
         stashAuthDraft();
         if (!('googleFlow' in anonymousBinding.current)) clearPlannerState();
       }
-      flow = crypto.randomUUID();
+      let retryFlow: string | null = null;
+      if (previousFlow && !hasPlannerWork()) {
+        try {
+          const raw: unknown = JSON.parse(window.localStorage.getItem(googleDraftKey(previousFlow)) ?? 'null');
+          if (isAuthDraft(raw) && Date.now() - raw.ts <= 60 * 60 * 1000 &&
+            'binding' in raw && raw.binding && typeof raw.binding === 'object' &&
+            'googleFlow' in raw.binding && raw.binding.googleFlow === previousFlow) retryFlow = previousFlow;
+        } catch { /* Unknown work is never rebound. */ }
+      }
+      flow = retryFlow ?? crypto.randomUUID();
       anonymousBinding.current = { googleFlow: flow };
       try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { /* private mode */ }
       stashAuthDraft(anonymousBinding.current);
@@ -1226,8 +1239,9 @@ export default function App() {
       if (epoch !== authEpoch.current) return;
       setAuthNotice('Google log-in failed - please try again');
       try {
-        window.sessionStorage.removeItem(AUTH_FLOW_KEY);
-        if (flow) window.localStorage.removeItem(googleDraftKey(flow));
+        if (previousFlow) window.sessionStorage.setItem(AUTH_FLOW_KEY, previousFlow);
+        else window.sessionStorage.removeItem(AUTH_FLOW_KEY);
+        if (flow && flow !== previousFlow) window.localStorage.removeItem(googleDraftKey(flow));
       } catch { /* private mode */ }
       anonymousBinding.current = previousBinding;
       setBrief(previousPlanner.brief); setSubmittedBrief(previousPlanner.submittedBrief);
