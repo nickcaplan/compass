@@ -158,7 +158,6 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
 import {
   AUDIENCES,
   EMPTY_BRIEF,
-  PRIMARY_AUDIENCES,
   OBJECTIVES,
   SENIORITY_LEVELS,
   answeredCount,
@@ -578,7 +577,6 @@ export default function App() {
       return 'dark';
     }
   });
-  const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
@@ -632,16 +630,10 @@ export default function App() {
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
-  const primaryAudiences = PRIMARY_AUDIENCES.map((label) =>
-    AUDIENCES.find((a) => a === label),
-  ).filter((a): a is (typeof AUDIENCES)[number] => a !== undefined);
-  const secondaryAudiences = AUDIENCES.filter((a) => !PRIMARY_AUDIENCES.includes(a));
-  const visibleAudiences = showAllAudiences
-    ? [...primaryAudiences, ...secondaryAudiences]
-    : [...primaryAudiences, ...secondaryAudiences.filter((a) => brief.audiences.includes(a))];
-  const hiddenAudienceCount = showAllAudiences
-    ? 0
-    : secondaryAudiences.filter((a) => !brief.audiences.includes(a)).length;
+  // Keep legacy selections visible and removable when editing older plans,
+  // without making them choices for a new brief.
+  const legacyAudiences = brief.audiences.filter(a => !AUDIENCES.includes(a));
+  const visibleAudiences = [...AUDIENCES, ...legacyAudiences];
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
     .flatMap((o) => o.kpis)
     .filter((k, i, a) => a.indexOf(k) === i);
@@ -765,7 +757,6 @@ export default function App() {
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
     setSubmittedBrief(null);
     setStage('filling');
-    setShowAllAudiences(false);
     window.clearTimeout(cueTimer.current);
     if (answeredCount(d) >= 6) {
       setCueSeq((n) => n + 1);
@@ -815,7 +806,6 @@ export default function App() {
     setSubmittedBrief(null);
     setBudgetText('');
     setStage('empty');
-    setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
@@ -1122,19 +1112,10 @@ export default function App() {
                   aria-pressed={brief.audiences.includes(a)}
                   onClick={() => toggleAudience(a)}
                 >
-                  {a}
+                  {a}{legacyAudiences.includes(a) ? " (saved selection)" : ""}
                 </button>
               ))}
-              <button
-                type="button"
-                className="pill more"
-                aria-expanded={showAllAudiences}
-                onClick={() => setShowAllAudiences((v) => !v)}
-              >
-                {showAllAudiences
-                  ? 'Show fewer'
-                  : `Show ${hiddenAudienceCount} more`}
-              </button>
+
             </div>
           </div>
 

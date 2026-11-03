@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {stripVTControlCharacters} from 'node:util';
+import test from 'node:test';
+import puppeteer from 'puppeteer-core';
+const expected=['Procurement','Laboratory Manager','Laboratory Technician','Scientist / Researcher','Purchasing Manager','Quality / Compliance'];
+test('six fixed audiences preserve legacy saved selections without offering them on new plans',{timeout:60000},async()=>{
+ const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
+ try{const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('Preview not ready')),10000);server.once('error',reject);server.stdout.on('data',b=>{out+=b;const m=stripVTControlCharacters(out).match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
+ browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true});
+ for(const width of[390,1440]){const ctx=await browser.createBrowserContext(),p=await ctx.newPage();await p.setViewport({width,height:900});p.setDefaultTimeout(7000);await p.goto(url+'?demo=1');await p.waitForSelector('[aria-labelledby=g-audience]');
+ const labels=()=>p.$$eval('[aria-labelledby=g-audience] button',bs=>bs.map(b=>b.textContent.trim()));assert.deepEqual(await labels(),expected);assert.equal(await p.$('.pill.more'),null);await p.locator('[aria-labelledby=g-audience] button').click();assert.equal(await p.$eval('[aria-labelledby=g-audience] button',e=>e.getAttribute('aria-pressed')),'true');
+ const old={id:'legacy',savedAt:new Date().toISOString(),brief:{name:'Legacy R&D',objectives:['awareness'],kpis:['Reach'],audiences:['R&D','Department Head'],seniority:['Manager'],budget:10000,start:'2026-12-01',end:'2027-02-01'}};
+ await p.evaluate(plan=>localStorage.setItem('compass-saved-plans',JSON.stringify([plan])),old);await p.reload();await p.waitForSelector('.themebtn');const click=async text=>{const h=await p.evaluateHandle(t=>[...document.querySelectorAll('button')].find(e=>e.textContent.trim().replace(/\s*→$/,'')===t),text);assert.ok(h.asElement(),'Button not found: '+text);await h.asElement().click();await h.dispose()};await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('.metrics');assert.match(await p.$eval('.bsum',e=>e.textContent),/R&D/);await click('Edit plan');await p.waitForSelector('[aria-labelledby=g-audience]');assert.deepEqual(await labels(),[...expected,'R&D (saved selection)','Department Head (saved selection)']);const h=await p.evaluateHandle(()=>[...document.querySelectorAll('[aria-labelledby=g-audience] button')].find(e=>e.textContent.includes('R&D')));await h.asElement().click();await h.dispose();assert.ok(!(await labels()).includes('R&D (saved selection)'));assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.audiences[0]),'R&D');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await ctx.close();}
+ }finally{await browser?.close();server.kill()}
+});
