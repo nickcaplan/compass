@@ -31,18 +31,29 @@ test('objectives use three neutral shades and their KPIs inherit them',{timeout:
   await p.waitForSelector('[aria-labelledby=g-kpi] .pill');
   assert.ok(await p.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.length>=5));
   assert.ok(await p.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.every(b=>b.classList.contains('obj-awareness'))),'all Awareness KPIs inherit its shade');
+  // KPIs are shaded with their objective's colour from the outset, so the
+  // grouping is visible while choosing - not only after a KPI is picked.
+  assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness.off',b=>getComputedStyle(b).backgroundColor),awarenessFill,'unselected Awareness KPIs are not shaded');
   // A selected KPI fills with the same shade as its objective.
   await click(p,'Reach');
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).backgroundColor),awarenessFill);
+  // Selection is a separate, unmistakable state on top of the shade.
+  assert.ok(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b,'::before').content.includes('\u2713')),'selected KPI has no check marker');
+  assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).fontWeight),'700','selected KPI is not bold');
   // With Performance also selected, its KPIs keep their own light-grey shade
   // beside the awareness ones - the relationship stays unambiguous.
   await click(p,'Performance');
   const perfFill=theme==='dark'?'rgb(201, 199, 209)':'rgb(230, 229, 222)';
   const groups=await p.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.map(b=>[...b.classList].find(c=>c.startsWith('obj-'))));
   assert.ok(groups.includes('obj-awareness')&&groups.includes('obj-performance'),`expected both shade groups, got ${groups}`);
+  const offFills=await p.$$eval('[aria-labelledby=g-kpi] .pill.off',bs=>[...new Set(bs.map(b=>getComputedStyle(b).backgroundColor))]);
+  assert.ok(offFills.length>=2,`unselected KPI groups should read as different shades: ${offFills}`);
   await click(p,'Enquiries');
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-performance:not(.off)',b=>getComputedStyle(b).backgroundColor),perfFill);
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).backgroundColor),awarenessFill);
+  // Selection is a separate, unmistakable state on top of the shade.
+  assert.ok(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b,'::before').content.includes('\u2713')),'selected KPI has no check marker');
+  assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).fontWeight),'700','selected KPI is not bold');
   await p.close();
  }
  }finally{browser?.close();server?.kill()}
