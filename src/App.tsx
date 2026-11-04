@@ -158,7 +158,9 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
 import {
   AUDIENCES,
   EMPTY_BRIEF,
-  PRIMARY_AUDIENCES,
+  MARKETS,
+  marketLabels,
+
   OBJECTIVES,
   SENIORITY_LEVELS,
   answeredCount,
@@ -217,13 +219,15 @@ function ComingSoonButton() {
     <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
       <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
         {notice > 0 && (
-          <span className="cs-bubble" id={description} key={notice}>
+          <span id={description} key={notice}>
             Coming soon
           </span>
         )}
       </span>
       <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
-        <span className="cs-label"><IconDownload />Download PDF</span>
+        {/* The button itself becomes the status: its box never moves and the
+            message never covers it, so no space is reserved or created. */}
+        <span className="cs-label" key={notice}>{notice ? '✧ Coming soon' : <><IconDownload />Download PDF</>}</span>
       </button>
     </span>
   );
@@ -254,6 +258,7 @@ function isBrief(value: unknown): value is Brief {
     typeof b.name === 'string' &&
     strArr(b.objectives) &&
     (b.objectives as string[]).every((id) => OBJECTIVES.some((o) => o.id === id)) &&
+    (b.markets === undefined || (strArr(b.markets) && (b.markets as string[]).every(id=>MARKETS.some(m=>m.id===id)))) &&
     strArr(b.kpis) &&
     strArr(b.audiences) &&
     strArr(b.seniority) &&
@@ -261,6 +266,205 @@ function isBrief(value: unknown): value is Brief {
     typeof b.start === 'string' &&
     typeof b.end === 'string'
   );
+}
+
+// Demo seed plans: exactly two active and five past campaigns, hardcoded so a
+// first-time visitor can see a populated My plans. Dates are relative to
+// today so the seeds stay evergreen. Seeds merge once per device, keep stable
+// seed- ids, never overwrite or resurrect over the visitor's own plans, and
+// a deleted seed stays deleted. Bump SEED_VERSION and add entries to append
+// future seeds on top.
+const SEED_KEY = 'compass-seeded-plans';
+const SEED_VERSION = 2;
+
+function isoDaysFromNow(days: number): string {
+  // Local-time formatting: toISOString() is UTC and can land on the previous
+  // calendar date when local time is ahead of UTC.
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function seedPlans(): SavedPlan[] {
+  return [
+    {
+      id: 'seed-active-1',
+      savedAt: '',
+      brief: {
+        name: 'UK Laboratory Procurement Campaign',
+        objectives: ['performance'],
+        kpis: ['Lead generation', 'Cost per lead'],
+        audiences: ['Procurement', 'Laboratory Manager'],
+        seniority: ['Manager', 'Senior Manager / Head'],
+        budget: 100000,
+        start: isoDaysFromNow(-14),
+        end: isoDaysFromNow(56),
+      },
+    },
+    {
+      id: 'seed-active-2',
+      savedAt: '',
+      brief: {
+        name: 'European Lab Automation Awareness Push',
+        objectives: ['awareness'],
+        kpis: ['Reach', 'Impressions'],
+        audiences: ['Scientist / Researcher', 'Laboratory Technician'],
+        seniority: ['Technician / Practitioner'],
+        budget: 45000,
+        start: isoDaysFromNow(7),
+        end: isoDaysFromNow(70),
+      },
+    },
+    {
+      id: 'seed-past-1',
+      savedAt: '',
+      brief: {
+        name: 'Quality and Compliance Enquiry Push',
+        objectives: ['performance'],
+        kpis: ['Enquiries'],
+        audiences: ['Quality / Compliance'],
+        seniority: ['Manager'],
+        budget: 75000,
+        start: isoDaysFromNow(-90),
+        end: isoDaysFromNow(-20),
+      },
+    },
+    {
+      id: 'seed-past-2',
+      savedAt: '',
+      brief: {
+        name: 'Global Reagent Launch Consideration',
+        objectives: ['consideration'],
+        kpis: ['Content downloads', 'Article engagement'],
+        audiences: [],
+        seniority: ['Director / Executive'],
+        budget: 60000,
+        start: isoDaysFromNow(-120),
+        end: isoDaysFromNow(-60),
+      },
+    },
+    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], seniority: ['Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
+    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], seniority: ['Technician / Practitioner'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+  ];
+}
+
+function ensureSeedPlans(): void {
+  try {
+    let applied: string[] = [];
+    const rawMeta = window.localStorage.getItem(SEED_KEY);
+    if (rawMeta !== null) {
+      try {
+        const meta: unknown = JSON.parse(rawMeta);
+        if (meta !== null && typeof meta === 'object' && Array.isArray((meta as { applied?: unknown }).applied)) {
+          applied = ((meta as { applied: unknown[] }).applied).filter((x): x is string => typeof x === 'string');
+        }
+      } catch {
+        applied = [];
+      }
+    }
+    // Never interpret unreadable or partially valid storage as an empty list.
+    // Recovery belongs to the storage-repair flow; samples must not replace it.
+    const rawPlans = window.localStorage.getItem(PLANS_KEY);
+    const candidate: unknown = rawPlans === null ? [] : JSON.parse(rawPlans);
+    if (!Array.isArray(candidate) || candidate.some((p) =>
+      p === null || typeof p !== 'object' || typeof p.id !== 'string' ||
+      typeof p.savedAt !== 'string' || !isBrief(p.brief))) return;
+    const plans: SavedPlan[] = candidate;
+    const existing = new Set(plans.map((p) => p.id));
+    const fresh = seedPlans().filter((seed) => !applied.includes(seed.id) && !existing.has(seed.id));
+    const room = 20 - plans.length;
+    const toAdd = fresh.slice(0, Math.max(0, room));
+    if (toAdd.length === 0) return;
+    const now = new Date().toISOString();
+    const stamped = toAdd.map((seed) => ({ ...seed, savedAt: now }));
+    window.localStorage.setItem(
+      SEED_KEY,
+      JSON.stringify({ version: SEED_VERSION, applied: [...applied, ...toAdd.map((seed) => seed.id)] }),
+    );
+    try {
+      window.localStorage.setItem(PLANS_KEY, JSON.stringify([...plans, ...stamped]));
+    } catch (error) {
+      // A failed atomic setItem added no plans. Restore metadata so a later
+      // visit can retry, without ever re-adding a successfully deleted seed.
+      if (rawMeta === null) window.localStorage.removeItem(SEED_KEY);
+      else window.localStorage.setItem(SEED_KEY, rawMeta);
+      throw error;
+    }
+  } catch {
+    // Storage unavailable - metadata-first writes keep deleted seeds from returning.
+  }
+}
+
+const PLANS_CORRUPT_KEY = 'compass-saved-plans-corrupt';
+
+// True once per session when unreadable saved plans were moved aside.
+let plansRecovered = false;
+
+// True when saved plans exist but could not be read AND could not be backed
+// up: writes that could overwrite the unreadable original must stay blocked.
+let plansLoadFailed = false;
+
+// A saved-plans payload that cannot be read at all (invalid JSON or not an
+// array) used to silently show an empty My plans. Append the unreadable copy
+// to a backup list and keep any still-valid entries, so nothing is lost silently and
+// the visitor can keep saving normally. The main payload is only reset after
+// the backup write succeeds; if storage fails, everything is left untouched
+// and no recovery is presented.
+function recoverCorruptPlans(): void {
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(PLANS_KEY);
+  } catch {
+    // Storage itself cannot be read - block writes and tell the visitor.
+    plansLoadFailed = true;
+    return;
+  }
+  if (raw === null) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = undefined;
+  }
+  if (Array.isArray(parsed) && parsed.every((p) => p !== null && typeof p === 'object' && typeof p.id === 'string' && typeof p.savedAt === 'string' && isBrief(p.brief))) return;
+  try {
+    // Every unreadable payload is kept: append to the backup list so a newer
+    // unreadable payload is never silently discarded behind an older backup.
+    const existing = window.localStorage.getItem(PLANS_CORRUPT_KEY);
+    let backups: unknown[] = [];
+    if (existing !== null) {
+      try {
+        const b: unknown = JSON.parse(existing);
+        backups = Array.isArray(b) ? b : [existing];
+      } catch {
+        backups = [existing];
+      }
+    }
+    backups.push({ foundAt: new Date().toISOString(), payload: raw });
+    window.localStorage.setItem(PLANS_CORRUPT_KEY, JSON.stringify(backups));
+    // The original is only reset once the unreadable copy is safely stored.
+    // Entries that are still valid are kept: one unreadable entry must not
+    // hide good plans from My plans (the full original stays in the backup).
+    const valid = Array.isArray(parsed)
+      ? parsed.filter(
+          (p): p is SavedPlan =>
+            p !== null &&
+            typeof p === 'object' &&
+            typeof p.id === 'string' &&
+            typeof p.savedAt === 'string' &&
+            isBrief(p.brief),
+        )
+      : [];
+    if (valid.length > 0) window.localStorage.setItem(PLANS_KEY, JSON.stringify(valid));
+    else window.localStorage.removeItem(PLANS_KEY);
+    plansRecovered = true;
+  } catch {
+    // The backup could not be written - leave the original payload untouched,
+    // block writes that could overwrite it, and show an honest failure state.
+    plansLoadFailed = true;
+
+  }
 }
 
 function loadPlans(): SavedPlan[] {
@@ -275,9 +479,29 @@ function loadPlans(): SavedPlan[] {
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
         isBrief(p.brief),
-    );
+    ).map(p => ({ ...p, brief: { ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) } }));
   } catch {
     return [];
+  }
+}
+
+// Remove retired choices from existing browser-local demo plans, without
+// replacing audiences or deleting plans. A failed write uses the storage error UI.
+function cleanDemoAudiences(): void {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    if (raw === null) return;
+    const plans: SavedPlan[] = JSON.parse(raw);
+    let changed = false;
+    const cleaned = plans.map(p => {
+      const audiences = p.brief.audiences.filter(a => AUDIENCES.includes(a));
+      if (audiences.length === p.brief.audiences.length) return p;
+      changed = true;
+      return { ...p, brief: { ...p.brief, audiences } };
+    });
+    if (changed) window.localStorage.setItem(PLANS_KEY, JSON.stringify(cleaned));
+  } catch {
+    plansLoadFailed = true;
   }
 }
 
@@ -347,23 +571,24 @@ function DemoCap() {
   return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
 }
 
-const REEL_INDUSTRIES = ['Life sciences', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Life sciences'];
+const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
 
 function IndustryReel() {
   return (
     <div className="eyebrow industry-eyebrow">
-      <span className="industry-accessible">Life sciences media planning</span>
+      <span className="industry-accessible">Life Sciences Media Planning</span>
+      <span aria-hidden="true">Life Sciences</span>
       <span className="industry-reel" aria-hidden="true">
         <span className="industry-reel-track">
-          {REEL_INDUSTRIES.map((industry, index) => <span key={index}>{industry}</span>)}
+          {REEL_SERVICES.map((service, index) => <span key={index}>{service}</span>)}
         </span>
       </span>
-      <span aria-hidden="true">media planning</span>
     </div>
   );
 }
 
 export default function App() {
+  const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
   const [budgetText, setBudgetText] = useState('');
@@ -376,11 +601,20 @@ export default function App() {
       return 'dark';
     }
   });
-  const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>('planner');
-  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => loadPlans());
+  const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
+    recoverCorruptPlans();
+    if (!plansLoadFailed) {
+      ensureSeedPlans();
+      cleanDemoAudiences();
+    }
+    return loadPlans();
+  });
+  const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
+  const [storageFailed] = useState(() => plansLoadFailed);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -416,23 +650,13 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', refresh);
   }, []);
 
-  const count = answeredCount(brief);
+  const count = answeredCount({ ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) });
   const weeks = campaignWeeks(brief.start, brief.end);
   const viewBrief = (stage === 'generating' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
-  const primaryAudiences = PRIMARY_AUDIENCES.map((label) =>
-    AUDIENCES.find((a) => a === label),
-  ).filter((a): a is (typeof AUDIENCES)[number] => a !== undefined);
-  const secondaryAudiences = AUDIENCES.filter((a) => !PRIMARY_AUDIENCES.includes(a));
-  const visibleAudiences = showAllAudiences
-    ? [...primaryAudiences, ...secondaryAudiences]
-    : [...primaryAudiences, ...secondaryAudiences.filter((a) => brief.audiences.includes(a))];
-  const hiddenAudienceCount = showAllAudiences
-    ? 0
-    : secondaryAudiences.filter((a) => !brief.audiences.includes(a)).length;
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
     .flatMap((o) => o.kpis)
     .filter((k, i, a) => a.indexOf(k) === i);
@@ -543,7 +767,7 @@ export default function App() {
 
   // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
-    const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
+    const hasInput = count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
       clearCue();
       setConfirmFill(true);
@@ -556,9 +780,8 @@ export default function App() {
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
     setSubmittedBrief(null);
     setStage('filling');
-    setShowAllAudiences(false);
     window.clearTimeout(cueTimer.current);
-    if (answeredCount(d) >= 6) {
+    if (answeredCount(d) >= 7) {
       setCueSeq((n) => n + 1);
       setCueGen(true);
     }
@@ -593,7 +816,7 @@ export default function App() {
   }, [stage]);
 
   function generate() {
-    if (count < 6) return;
+    if (count < 7) return;
     clearCue();
     setSubmittedBrief(brief);
     setHasGenerated(true);
@@ -606,7 +829,6 @@ export default function App() {
     setSubmittedBrief(null);
     setBudgetText('');
     setStage('empty');
-    setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
@@ -619,6 +841,7 @@ export default function App() {
   }
 
   function persist(plans: SavedPlan[]): boolean {
+    if (plansLoadFailed) return false;
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
     } catch {
@@ -679,7 +902,8 @@ export default function App() {
 
   function editSavedPlan() {
     setJustSavedId(null);
-    setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
+    setBrief(b => ({ ...b, audiences: b.audiences.filter(a => AUDIENCES.includes(a)) }));
+    setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
   }
 
   function cancelEditSaved() {
@@ -702,7 +926,7 @@ export default function App() {
   function openPlan(entry: SavedPlan, force = false) {
     const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
     if (!force && !alreadyOpen) {
-      const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+      const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
       const unsavedPlan = stage === 'plan' && savedEntry === null;
       const unsavedEdit = savedEntry?.mode === 'edit';
       const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
@@ -733,12 +957,13 @@ export default function App() {
 
   const chips: { label: string; soft?: boolean }[] = [];
   if (viewObjectiveLabels.length) chips.push({ label: `Objective: ${viewObjectiveLabels.join(' + ')}` });
+  if (viewBrief.markets?.length) chips.push({label:`Market: ${marketLabels(viewBrief.markets)}`});
   if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
   if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
   if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
   if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
-  if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
+  if (stage === 'filling' && count < 7) chips.push({ label: 'choosing...', soft: true });
 
   return (
     <div className="wrap">
@@ -747,6 +972,7 @@ export default function App() {
           <div className="brand lockup">
             <span className="prod">
               <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
+                <svg className="mark" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)"><path className="mu" d="M32 4 L46 32 L18 32Z" /><path className="md" d="M32 60 L46 32 L18 32Z" /></g><circle className="mc" cx="32" cy="32" r="3.5" /></svg>
                 COMPASS
               </button>
             </span>
@@ -767,7 +993,6 @@ export default function App() {
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
-          <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button type="button" className="signin" onClick={() => go('signin')}>
             Sign in
           </button>
@@ -817,6 +1042,7 @@ export default function App() {
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
                 <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
+                <div><div className="k">Market</div><div className="v">{marketLabels(brief.markets) || 'Not specified'}</div></div>
                 <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
                 <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
                 <div><div className="k">Seniority</div><div className="v">{brief.seniority.join(' + ') || '-'}</div></div>
@@ -838,6 +1064,7 @@ export default function App() {
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
+          {demoMode && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
@@ -847,8 +1074,9 @@ export default function App() {
             {hasFilled ? 'Try another example' : 'Fill it in for me'}
           </button>
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
+          </>}
 
-          <div className="field">
+          <div className="field planning-step">
             <label htmlFor="f-name">Campaign name</label>
             <input
               id="f-name"
@@ -860,7 +1088,7 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label id="g-objective">Objective</label>
             <div className="pills" role="group" aria-labelledby="g-objective">
               {OBJECTIVES.map((o) => (
@@ -877,7 +1105,14 @@ export default function App() {
             </div>
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
+            <label id="g-market">Market</label>
+            <div className="pills" role="group" aria-labelledby="g-market">
+              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
+            </div>
+          </div>
+
+          <div className="field planning-step">
             <label>KPI</label>
             {kpiOptions.length === 0 ? (
               <div className="hint">Select an objective first</div>
@@ -898,10 +1133,10 @@ export default function App() {
             )}
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label id="g-audience">Audience</label>
-            <div className="pills" role="group" aria-labelledby="g-audience">
-              {visibleAudiences.map((a) => (
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
+              {AUDIENCES.map((a) => (
                 <button
                   key={a}
                   type="button"
@@ -912,20 +1147,10 @@ export default function App() {
                   {a}
                 </button>
               ))}
-              <button
-                type="button"
-                className="pill more"
-                aria-expanded={showAllAudiences}
-                onClick={() => setShowAllAudiences((v) => !v)}
-              >
-                {showAllAudiences
-                  ? 'Show fewer'
-                  : `Show ${hiddenAudienceCount} more`}
-              </button>
             </div>
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label id="g-seniority">Seniority</label>
             <div className="pills" role="group" aria-labelledby="g-seniority">
               {SENIORITY_LEVELS.map((s) => (
@@ -942,7 +1167,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label htmlFor="f-budget">Budget</label>
             <input
               id="f-budget"
@@ -955,7 +1180,7 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label>Campaign dates</label>
             <div className="daterow">
               <div className="datewrap">
@@ -1020,7 +1245,7 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 7 || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
             </>
@@ -1084,9 +1309,9 @@ export default function App() {
               </div>
               <div className="prog">
                 <div className="bar">
-                  <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />
+                  <div className="fill" style={{ width: `${(count / 7) * 100}%` }} />
                 </div>
-                <div className="t">{count} OF 6 ANSWERED</div>
+                <div className="t">{count} OF 7 ANSWERED</div>
               </div>
               <SkeletonBlock />
               <p className="keep">
@@ -1105,6 +1330,7 @@ export default function App() {
               <div className="chips">
                 <span className="chip">{viewObjectiveLabels.join(' + ')}</span>
                 <span className="chip">{viewBrief.kpis.join(' + ')}</span>
+                <span className="chip">Market: {marketLabels(viewBrief.markets) || 'Not specified'}</span>
                 <span className="chip">{viewBrief.audiences.join(' + ')}</span>
                 <span className="chip">{viewBrief.seniority.join(' + ')}</span>
                 <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
@@ -1180,18 +1406,12 @@ export default function App() {
               </div>
               <div className="cta">
                 <div>
-                  <b>Want us to validate or activate this plan?</b>
-                  <p>
-                A{' '}
-                <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
-                  Hybrid House
-                </a>{' '}
-                media specialist can pick it up from here.
-              </p>
+                  <b>A Hybrid House specialist can pick it up from here.</b>
+
                 </div>
-                <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                <a className="btn specialist-link" href="https://thehybridhouse.co.uk/contact/" target="_blank" rel="noreferrer">
                   Speak to a specialist
-                </button>
+                </a>
               </div>
               <div className="secondary">
                 {viewingSaved ? (
@@ -1259,6 +1479,24 @@ export default function App() {
           <p className="pagesub">
             Plans you save land here so you can pick up where you left off.
           </p>
+          {storageFailed ? (
+            <div className="notice" role="alert">
+              <p>
+                Your saved plans could not be loaded safely on this device, so they have been left
+                untouched. Saving and deleting are unavailable until this browser's storage works
+                again.
+              </p>
+            </div>
+          ) : (
+            <>
+          {storageRecovered && (
+            <div className="notice" role="status">
+              <p>Your previously saved plans could not be fully read on this device. Any readable plans were kept, and the unreadable data was backed up.</p>
+              <button type="button" className="ghost" onClick={() => setStorageRecovered(false)}>
+                Dismiss
+              </button>
+            </div>
+          )}
           {savedPlans.length === 0 ? (
             <div className="empty">
               <div className="glyph">
@@ -1273,23 +1511,33 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div className="planlist">
-              {savedPlans.map((sp) => {
+            <>
+              <div className="planfilters" role="group" aria-label="Filter plans">
+                {(['all', 'active', 'expired'] as const).map((filter) => {
+                  const count = savedPlans.filter((plan) => filter === 'all' || campaignEnded(plan.brief.end) === (filter === 'expired')).length;
+                  return <button type="button" key={filter} aria-pressed={planFilter === filter} onClick={() => setPlanFilter(filter)}>
+                    {filter === 'all' ? 'All' : filter === 'active' ? 'Active' : 'Expired'} <span>{count}</span>
+                  </button>;
+                })}
+              </div>
+              <div className="planlist">
+              {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).map((sp) => {
                 const wks = campaignWeeks(sp.brief.start, sp.brief.end);
                 const objLabels = sp.brief.objectives
                   .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
                   .filter((l) => l !== '')
                   .join(' + ');
                 return (
-                  <div className="plancard" key={sp.id}>
+                  <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
+                    {campaignEnded(sp.brief.end) && <span className="chip expired">Expired</span>}
                     <div className="pc-main">
                       <b>
                         {sp.brief.name || 'Untitled campaign'}
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
-                        {campaignEnded(sp.brief.end) && <span className="chip soft">Expired</span>}
                         {objLabels && <span className="chip">{objLabels}</span>}
+                        <span className="chip">Market: {marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
                         )}
@@ -1318,7 +1566,13 @@ export default function App() {
                   </div>
                 );
               })}
-            </div>
+              {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).length === 0 && (
+                <p className="filterempty" role="status">No {planFilter === 'expired' ? 'expired' : 'active'} plans. Your other plans are still available under All.</p>
+              )}
+              </div>
+            </>
+          )}
+            </>
           )}
         </section>
       )}
@@ -1419,7 +1673,7 @@ export default function App() {
         illustrative, adapted from the Compass brief
       </footer>
 
-      {confirmFill && (
+      {demoMode && confirmFill && (
         <ConfirmDialog
           title="Replace your answers?"
           body="Replace the answers you have already given with the example brief?"

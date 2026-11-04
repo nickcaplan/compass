@@ -46,30 +46,16 @@ export const OBJECTIVES: Objective[] = [
   },
 ];
 
-// Job-function taxonomy from the Compass brief (section 6).
+// Fixed V1 audiences from Ben's combined feedback, 2 November 2026.
 export const AUDIENCES: string[] = [
+  'Procurement',
+  'Laboratory Manager',
   'Laboratory Technician',
   'Scientist / Researcher',
-  'Laboratory Manager',
-  'Procurement',
   'Purchasing Manager',
-  'Purchasing Lead',
-  'Operations',
-  'Engineering',
   'Quality / Compliance',
-  'R&D',
-  'Department Head',
-  'Director',
 ];
 
-// Audiences shown first in the form. The brief (section 6) lists the
-// taxonomy without ranking it; this first-visible pair is a proposed default
-// grounded in the brief's worked example (Audience: Procurement) and the
-// prototype slice in the project notes (procurement and lab managers),
-// pending Nick's confirmation. Everything else sits under "Show more".
-export const PRIMARY_AUDIENCES: string[] = ['Procurement', 'Laboratory Manager'];
-
-// Seniority levels from the Compass brief (section 7). Multiple selections allowed.
 export const SENIORITY_LEVELS: string[] = [
   'Technician / Practitioner',
   'Manager',
@@ -77,9 +63,23 @@ export const SENIORITY_LEVELS: string[] = [
   'Director / Executive',
 ];
 
+// Broad market taxonomy approved for V1. Stable IDs leave room for finer
+// targeting later; the concept forecasts are not regional inventory claims.
+export const MARKETS = [
+  {id:'north-america',label:'North America'},
+  {id:'uk',label:'UK'},
+  {id:'france',label:'France'},
+  {id:'germany',label:'Germany'},
+] as const;
+export type MarketId = typeof MARKETS[number]['id'];
+export function marketLabels(markets: readonly MarketId[] = []): string {
+  return MARKETS.filter(m=>markets.includes(m.id)).map(m=>m.label).join(' + ');
+}
+
 export interface Brief {
   name: string;
   objectives: ObjectiveId[];
+  markets?: MarketId[];
   kpis: string[];
   audiences: string[];
   seniority: string[];
@@ -119,7 +119,7 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     name: 'European R&D Awareness Drive',
     objectives: ['awareness'],
     kpis: ['Reach', 'Impressions'],
-    audiences: ['Scientist / Researcher', 'R&D'],
+    audiences: ['Scientist / Researcher', 'Laboratory Technician'],
     seniority: ['Senior Manager / Head'],
     budget: 150000,
   },
@@ -143,7 +143,7 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     name: 'Operations Webinar Programme',
     objectives: ['consideration'],
     kpis: ['Webinar registrations'],
-    audiences: ['Operations', 'Engineering'],
+    audiences: ['Purchasing Manager', 'Quality / Compliance'],
     seniority: ['Director / Executive'],
     budget: 120000,
   },
@@ -161,11 +161,12 @@ export function demoBrief(excludeName?: string): Brief {
   end.setDate(end.getDate() + 83); // 12 weeks
   const iso = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return { ...pick, kpis: [...pick.kpis], audiences: [...pick.audiences], seniority: [...pick.seniority], objectives: [...pick.objectives], start: iso(start), end: iso(end) };
+  return { ...pick, markets: ['uk'], kpis: [...pick.kpis], audiences: [...pick.audiences], seniority: [...pick.seniority], objectives: [...pick.objectives], start: iso(start), end: iso(end) };
 }
 
 export function answeredCount(b: Brief): number {
   return [
+    (b.markets?.length ?? 0) > 0,
     b.objectives.length > 0,
     b.kpis.length > 0,
     b.audiences.length > 0,
