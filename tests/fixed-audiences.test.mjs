@@ -13,7 +13,7 @@ test('natural audience pills stay consistent and invalid saved choices require a
    server.once('error',reject);server.stdout.on('data',b=>{out+=b;const m=stripVTControlCharacters(out).match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}});
   });
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true});
-  for(const width of[320,390,768,1440]) {
+  for(const width of[320,375,390,414,768,980,981,1200,1440]) {
    const ctx=await browser.createBrowserContext(),p=await ctx.newPage();await p.setViewport({width,height:900});p.setDefaultTimeout(7000);
    await p.goto(url+'?demo=1');await p.waitForSelector('[aria-labelledby=g-audience]');await p.evaluate(()=>document.fonts.ready);
    const labels=()=>p.$$eval('[aria-labelledby=g-audience] button',bs=>bs.map(b=>b.textContent.trim()));assert.deepEqual(await labels(),expected);
@@ -28,6 +28,9 @@ test('natural audience pills stay consistent and invalid saved choices require a
     // Full labels remain single-line. Natural flex wrapping pairs only where
     // the unmodified shared pill dimensions fit in the current card.
     assert.ok(g.every(x=>x.height===g[0].height));
+    const available=await p.$eval('[aria-labelledby=g-audience]',e=>e.clientWidth);
+    if(g[2].width+g[3].width+8<=available)assert.equal(g[2].y,g[3].y);
+    else assert.ok(g[2].y<g[3].y);
     assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     if(process.env.SCREENSHOT_DIR){await p.$eval('[aria-labelledby=g-audience]',e=>e.scrollIntoView({block:'center'}));await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/audience-pairs-${process.env.HOSTED_URL?'hosted':'local'}-${width}-${theme}.png`})}
    }
@@ -42,7 +45,7 @@ test('natural audience pills stay consistent and invalid saved choices require a
    const click=async text=>{const h=await p.evaluateHandle(t=>[...document.querySelectorAll('button')].find(e=>e.textContent.trim().replace(/\s*→$/,'')===t),text);assert.ok(h.asElement(),'Button not found: '+text);await h.asElement().click();await h.dispose()};
    const stored=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans')));
    await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('.metrics');assert.doesNotMatch(await p.$eval('.bsum',e=>e.textContent),/Department Head/);
-   await click('Edit plan');await p.waitForSelector('[aria-labelledby=g-audience]');assert.deepEqual(await labels(),expected);assert.match(await p.$eval('#audience-update',e=>e.textContent),/Choose at least one/);assert.equal(await p.$eval('.gen',e=>e.disabled),true);assert.deepEqual((await stored())[0],{...old,brief:{...old.brief,audiences:[]}});
+   await click('Edit plan');await p.waitForSelector('[aria-labelledby=g-audience]');assert.deepEqual(await labels(),expected);assert.equal(await p.$('#audience-update'),null);assert.equal(await p.$eval('[aria-labelledby=g-audience]',e=>e.hasAttribute('aria-describedby')),false);assert.equal(await p.$eval('.gen',e=>e.disabled),true);assert.deepEqual((await stored())[0],{...old,brief:{...old.brief,audiences:[]}});
    await click('Cancel');await p.waitForSelector('.bsum');assert.doesNotMatch(await p.$eval('.bsum',e=>e.textContent),/Department Head/);assert.deepEqual((await stored())[0],{...old,brief:{...old.brief,audiences:[]}});
    await click('Edit plan');await p.waitForSelector('[aria-labelledby=g-audience]');await p.locator('[aria-labelledby=g-audience] button').click();assert.equal(await p.$eval('.gen',e=>e.disabled),false);assert.deepEqual((await stored())[0],{...old,brief:{...old.brief,audiences:[]}});
    await p.locator('.gen').click();await p.waitForSelector('.planin',{timeout:20000});await click('Save changes');await p.waitForSelector('.bsum');assert.deepEqual((await stored())[0].brief.audiences,['Procurement']);

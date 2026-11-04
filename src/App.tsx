@@ -1053,7 +1053,6 @@ export default function App() {
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
-          <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button type="button" className="signin" onClick={() => go('signin')}>
             Sign in
           </button>
@@ -1196,7 +1195,7 @@ export default function App() {
 
           <div className="field planning-step">
             <label id="g-audience">Audience</label>
-            <div className="pills audience-pills" role="group" aria-labelledby="g-audience" aria-describedby={brief.audiences.length === 0 ? "audience-update" : undefined}>
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
               {AUDIENCES.map((a) => (
                 <button
                   key={a}
@@ -1209,9 +1208,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-            {brief.audiences.length === 0 && (
-              <p id="audience-update" className="audience-update">Choose at least one audience.</p>
-            )}
           </div>
 
           <div className="field planning-step">
