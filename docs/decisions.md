@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-11-04 - Two 31 Oct entries are superseded
+
+"Repository is private" no longer holds: the repo has been public since
+1 November 2026. "Inert actions say so" no longer holds either: Save plan
+and My plans save to the visitor's browser, Speak to a specialist opens
+the Hybrid House contact page, and Support was removed from the navigation
+(3 November 2026). Both entries stay below as history.
+
 ## 2026-10-31 - Repository is private
 
 The repo touches a client's commercial project, so it is private under
