@@ -38,7 +38,7 @@ test('objectives use three neutral shades and their KPIs inherit them',{timeout:
   await click(p,'Reach');
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).backgroundColor),awarenessFill);
   // Selection is a separate, unmistakable state on top of the shade.
-  assert.ok(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b,'::before').content.includes('\u2713')),'selected KPI has no check marker');
+  assert.notEqual(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).boxShadow),'none','selected KPI has no ring');
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).fontWeight),'700','selected KPI is not bold');
   // With Performance also selected, its KPIs keep their own light-grey shade
   // beside the awareness ones - the relationship stays unambiguous.
@@ -52,7 +52,7 @@ test('objectives use three neutral shades and their KPIs inherit them',{timeout:
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-performance:not(.off)',b=>getComputedStyle(b).backgroundColor),perfFill);
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).backgroundColor),awarenessFill);
   // Selection is a separate, unmistakable state on top of the shade.
-  assert.ok(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b,'::before').content.includes('\u2713')),'selected KPI has no check marker');
+  assert.notEqual(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).boxShadow),'none','selected KPI has no ring');
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness:not(.off)',b=>getComputedStyle(b).fontWeight),'700','selected KPI is not bold');
   await p.close();
  }

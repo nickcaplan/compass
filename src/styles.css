@@ -228,12 +228,11 @@ input.ctl{color:var(--text)}
 .pill.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
 .pill.obj-performance.off{background:none;border-color:var(--obj-performance-line);color:var(--muted)}
 /* KPI pills carry their objective's shade from the outset, so the grouping is
-   visible while choosing; selection is a separate state: check, bold, ring. */
+   visible while choosing; selection is a separate state: bold, ring. */
 [aria-labelledby=g-kpi] .pill.obj-awareness.off{background:var(--obj-awareness);border-color:var(--obj-awareness-line);color:var(--obj-awareness-ink)}
 [aria-labelledby=g-kpi] .pill.obj-consideration.off{background:var(--obj-consideration);border-color:var(--obj-consideration-line);color:var(--obj-consideration-ink)}
 [aria-labelledby=g-kpi] .pill.obj-performance.off{background:var(--obj-performance);border-color:var(--obj-performance-line);color:var(--obj-performance-ink)}
 [aria-labelledby=g-kpi] .pill:not(.off){font-weight:700;box-shadow:0 0 0 1.5px currentColor}
-[aria-labelledby=g-kpi] .pill:not(.off)::before{content:'\2713 '}
 .gen{background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent);box-shadow:0 8px 30px rgba(254,202,10,.22)}
 .planhead{border-bottom:1px solid var(--line)}
 .cap{color:var(--faint)}
