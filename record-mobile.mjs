@@ -44,24 +44,12 @@ await sleep(900);
 await page.select('#f-audience', 'Laboratory Manager');
 await sleep(900);
 
-// 4. Seniority pills: click Manager and Senior Manager / Head
-await page.evaluate(() => {
-  const pills = Array.from(document.querySelectorAll('.pill'));
-  pills.find((p) => p.textContent === 'Manager')?.click();
-});
-await sleep(500);
-await page.evaluate(() => {
-  const pills = Array.from(document.querySelectorAll('.pill'));
-  pills.find((p) => p.textContent === 'Senior Manager / Head')?.click();
-});
-await sleep(700);
-
-// 5. Budget
+// 4. Budget
 await page.click('#f-budget');
 await page.type('#f-budget', '100000', { delay: 60 });
 await sleep(600);
 
-// 6. Dates via native setter + input event
+// 5. Dates via native setter + input event
 await page.evaluate(() => {
   const set = (el, v) => {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
@@ -74,13 +62,13 @@ await page.evaluate(() => {
 });
 await sleep(1200);
 
-// 7. Generate (scroll button into view first)
+// 6. Generate (scroll button into view first)
 await page.evaluate(() => document.querySelector('.gen')?.scrollIntoView({behavior:'smooth', block:'center'}));
 await sleep(900);
 await page.click('.gen');
 await sleep(4500); // generating ticks, then plan
 
-// 8. Plan on mobile: scroll down through the plan card
+// 7. Plan on mobile: scroll down through the plan card
 await sleep(800);
 await page.evaluate(() => document.querySelector('.card.plan')?.scrollIntoView({behavior:'smooth'}));
 await sleep(2000);
@@ -89,7 +77,7 @@ await sleep(1800);
 await page.evaluate(() => window.scrollBy({ top: 500, behavior: 'smooth' }));
 await sleep(1800);
 
-// 9. Toast on a full-product action (Export PPTX button)
+// 8. Toast on a full-product action (Export PPTX button)
 await page.evaluate(() => {
   const b = Array.from(document.querySelectorAll('button')).find((x) => /export|pptx|download/i.test(x.textContent));
   b?.click();
