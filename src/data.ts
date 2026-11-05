@@ -56,13 +56,6 @@ export const AUDIENCES: string[] = [
   'Quality / Compliance',
 ];
 
-export const SENIORITY_LEVELS: string[] = [
-  'Technician / Practitioner',
-  'Manager',
-  'Senior Manager / Head',
-  'Director / Executive',
-];
-
 // Broad market taxonomy approved for V1. Stable IDs leave room for finer
 // targeting later; the concept forecasts are not regional inventory claims.
 export const MARKETS = [
@@ -82,7 +75,6 @@ export interface Brief {
   markets?: MarketId[];
   kpis: string[];
   audiences: string[];
-  seniority: string[];
   budget: number | null;
   start: string; // ISO date or ''
   end: string; // ISO date or ''
@@ -93,7 +85,6 @@ export const EMPTY_BRIEF: Brief = {
   objectives: [],
   kpis: [],
   audiences: [],
-  seniority: [],
   budget: null,
   start: '',
   end: '',
@@ -104,7 +95,7 @@ export const EMPTY_BRIEF: Brief = {
 // is not user data and does not persist anything. Dates are computed
 // relative to today so the example never goes stale.
 // Example briefs for the guided demo fill. All demo-only: valid combinations
-// from the same objectives, KPIs, audiences and seniority lists the form
+// from the same objectives, KPIs, audiences the form
 // offers, with plausible illustrative budgets and 12-week flights.
 const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
   {
@@ -112,7 +103,6 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     objectives: ['performance'],
     kpis: ['Lead generation'],
     audiences: ['Procurement'],
-    seniority: ['Manager', 'Director / Executive'],
     budget: 100000,
   },
   {
@@ -120,7 +110,6 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     objectives: ['awareness'],
     kpis: ['Reach', 'Impressions'],
     audiences: ['Scientist / Researcher', 'Laboratory Technician'],
-    seniority: ['Senior Manager / Head'],
     budget: 150000,
   },
   {
@@ -128,7 +117,6 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     objectives: ['performance'],
     kpis: ['Enquiries', 'Form completions'],
     audiences: ['Quality / Compliance'],
-    seniority: ['Manager', 'Senior Manager / Head'],
     budget: 75000,
   },
   {
@@ -136,7 +124,6 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     objectives: ['consideration'],
     kpis: ['Content downloads', 'Article engagement'],
     audiences: ['Laboratory Manager'],
-    seniority: ['Manager'],
     budget: 60000,
   },
   {
@@ -144,7 +131,6 @@ const DEMO_VARIANTS: Omit<Brief, 'start' | 'end'>[] = [
     objectives: ['consideration'],
     kpis: ['Webinar registrations'],
     audiences: ['Purchasing Manager', 'Quality / Compliance'],
-    seniority: ['Director / Executive'],
     budget: 120000,
   },
 ];
@@ -161,7 +147,7 @@ export function demoBrief(excludeName?: string): Brief {
   end.setDate(end.getDate() + 83); // 12 weeks
   const iso = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return { ...pick, markets: ['uk'], kpis: [...pick.kpis], audiences: [...pick.audiences], seniority: [...pick.seniority], objectives: [...pick.objectives], start: iso(start), end: iso(end) };
+  return { ...pick, markets: ['uk'], kpis: [...pick.kpis], audiences: [...pick.audiences], objectives: [...pick.objectives], start: iso(start), end: iso(end) };
 }
 
 export function answeredCount(b: Brief): number {
@@ -170,7 +156,6 @@ export function answeredCount(b: Brief): number {
     b.objectives.length > 0,
     b.kpis.length > 0,
     b.audiences.length > 0,
-    b.seniority.length > 0,
     b.budget !== null && b.budget > 0,
     campaignWeeks(b.start, b.end) > 0 && !startNotFuture(b.start),
   ].filter(Boolean).length;
@@ -288,12 +273,6 @@ function audienceWord(b: Brief): string {
   return `${rest} and ${b.audiences[b.audiences.length - 1].toLowerCase()}`;
 }
 
-function seniorityWord(b: Brief): string {
-  if (b.seniority.length === 0) return 'senior';
-  return b.seniority.join(' + ').toLowerCase();
-}
-
-
 function spends(budget: number, shares: number[]): number[] {
   const exact = shares.map((s) => Math.max(0, budget * s));
   const out = exact.map((x) => Math.floor(x));
@@ -329,7 +308,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
           { k: 'Estimated leads', v: num(250 * f) },
           { k: 'Estimated CPL', v: gbp(80) },
         ],
-        why: `Webinars historically deliver strong lead generation among ${audienceWord(b)} audiences at ${seniorityWord(b)} level.`,
+        why: `Webinars historically deliver strong lead generation among ${audienceWord(b)} audiences.`,
       },
       {
         title: 'Publisher B - Sponsored Content',
@@ -429,7 +408,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
           { k: 'Estimated registrations', v: num(380 * f) },
           { k: 'Per registration', v: gbp(79) },
         ],
-        why: `Webinars hold attention longest among ${audienceWord(b)} audiences at ${seniorityWord(b)} level.`,
+        why: `Webinars hold attention longest among ${audienceWord(b)} audiences.`,
       },
       {
         title: 'Publisher B - Sponsored Content Hub',

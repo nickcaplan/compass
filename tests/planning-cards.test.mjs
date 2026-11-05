@@ -31,7 +31,7 @@ test('planning cards stay readable and inputs remain usable', { timeout: 60000 }
       await page.setViewport({ width, height: 900 });
       await page.goto(previewUrl+'?demo=1');
       await page.waitForSelector('.planning-step');
-      assert.deepEqual(await page.$$eval('.planning-step label',es=>es.map(e=>e.textContent)),['Campaign name','Objective','Market','KPI','Audience','Seniority','Budget','Campaign dates']);
+      assert.deepEqual(await page.$$eval('.planning-step label',es=>es.map(e=>e.textContent)),['Campaign name','Market','Objective','KPI','Audience','Budget','Campaign dates']);
       assert.equal(await page.$$eval('.planning-step',es=>es.every(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.left>=0&&r.right<=innerWidth})),true);
       await page.locator('#f-name').fill('Readable planning cards');
       await page.$eval('[aria-labelledby=g-objective] button', e=>e.click());

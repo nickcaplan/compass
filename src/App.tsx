@@ -162,7 +162,6 @@ import {
   marketLabels,
 
   OBJECTIVES,
-  SENIORITY_LEVELS,
   answeredCount,
   buildPlan,
   campaignWeeks,
@@ -261,7 +260,6 @@ function isBrief(value: unknown): value is Brief {
     (b.markets === undefined || (strArr(b.markets) && (b.markets as string[]).every(id=>MARKETS.some(m=>m.id===id)))) &&
     strArr(b.kpis) &&
     strArr(b.audiences) &&
-    strArr(b.seniority) &&
     (b.budget === null || typeof b.budget === 'number') &&
     typeof b.start === 'string' &&
     typeof b.end === 'string'
@@ -295,7 +293,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['performance'],
         kpis: ['Lead generation', 'Cost per lead'],
         audiences: ['Procurement', 'Laboratory Manager'],
-        seniority: ['Manager', 'Senior Manager / Head'],
         budget: 100000,
         start: isoDaysFromNow(-14),
         end: isoDaysFromNow(56),
@@ -309,7 +306,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['awareness'],
         kpis: ['Reach', 'Impressions'],
         audiences: ['Scientist / Researcher', 'Laboratory Technician'],
-        seniority: ['Technician / Practitioner'],
         budget: 45000,
         start: isoDaysFromNow(7),
         end: isoDaysFromNow(70),
@@ -323,7 +319,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['performance'],
         kpis: ['Enquiries'],
         audiences: ['Quality / Compliance'],
-        seniority: ['Manager'],
         budget: 75000,
         start: isoDaysFromNow(-90),
         end: isoDaysFromNow(-20),
@@ -337,15 +332,14 @@ function seedPlans(): SavedPlan[] {
         objectives: ['consideration'],
         kpis: ['Content downloads', 'Article engagement'],
         audiences: [],
-        seniority: ['Director / Executive'],
         budget: 60000,
         start: isoDaysFromNow(-120),
         end: isoDaysFromNow(-60),
       },
     },
-    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], seniority: ['Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
-    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], seniority: ['Technician / Practitioner'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
-    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
+    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
   ];
 }
 
@@ -657,9 +651,11 @@ export default function App() {
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
+  // Each KPI belongs to exactly one objective, so it can inherit that
+  // objective's neutral shade even when several objectives are selected.
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
-    .flatMap((o) => o.kpis)
-    .filter((k, i, a) => a.indexOf(k) === i);
+    .flatMap((o) => o.kpis.map((k) => ({ label: k, objective: o.id })))
+    .filter((entry, i, a) => a.findIndex((e) => e.label === entry.label) === i);
   const now = new Date();
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
@@ -755,16 +751,6 @@ export default function App() {
     patch({ budget: value });
   }
 
-  function toggleSeniority(level: string) {
-    clearCue();
-    setBrief((b) => ({
-      ...b,
-      seniority: b.seniority.includes(level)
-        ? b.seniority.filter((s) => s !== level)
-        : [...b.seniority, level],
-    }));
-  }
-
   // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
     const hasInput = count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
@@ -781,7 +767,7 @@ export default function App() {
     setSubmittedBrief(null);
     setStage('filling');
     window.clearTimeout(cueTimer.current);
-    if (answeredCount(d) >= 7) {
+    if (answeredCount(d) >= 6) {
       setCueSeq((n) => n + 1);
       setCueGen(true);
     }
@@ -816,7 +802,7 @@ export default function App() {
   }, [stage]);
 
   function generate() {
-    if (count < 7) return;
+    if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
     setHasGenerated(true);
@@ -960,10 +946,9 @@ export default function App() {
   if (viewBrief.markets?.length) chips.push({label:`Market: ${marketLabels(viewBrief.markets)}`});
   if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
   if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
-  if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
   if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
-  if (stage === 'filling' && count < 7) chips.push({ label: 'choosing...', soft: true });
+  if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
 
   return (
     <div className="wrap">
@@ -1045,7 +1030,6 @@ export default function App() {
                 <div><div className="k">Market</div><div className="v">{marketLabels(brief.markets) || 'Not specified'}</div></div>
                 <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
                 <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
-                <div><div className="k">Seniority</div><div className="v">{brief.seniority.join(' + ') || '-'}</div></div>
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
@@ -1089,13 +1073,20 @@ export default function App() {
           </div>
 
           <div className="field planning-step">
+            <label id="g-market">Market</label>
+            <div className="pills" role="group" aria-labelledby="g-market">
+              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
+            </div>
+          </div>
+
+          <div className="field planning-step">
             <label id="g-objective">Objective</label>
             <div className="pills" role="group" aria-labelledby="g-objective">
               {OBJECTIVES.map((o) => (
                 <button
                   key={o.id}
                   type="button"
-                  className={`pill${brief.objectives.includes(o.id) ? '' : ' off'}`}
+                  className={`pill obj-${o.id}${brief.objectives.includes(o.id) ? '' : ' off'}`}
                   aria-pressed={brief.objectives.includes(o.id)}
                   onClick={() => toggleObjective(o.id)}
                 >
@@ -1106,27 +1097,20 @@ export default function App() {
           </div>
 
           <div className="field planning-step">
-            <label id="g-market">Market</label>
-            <div className="pills" role="group" aria-labelledby="g-market">
-              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
-            </div>
-          </div>
-
-          <div className="field planning-step">
-            <label>KPI</label>
+            <label id="g-kpi">KPI</label>
             {kpiOptions.length === 0 ? (
               <div className="hint">Select an objective first</div>
             ) : (
-              <div className="pills">
-                {kpiOptions.map((k) => (
+              <div className="pills" role="group" aria-labelledby="g-kpi">
+                {kpiOptions.map((entry) => (
                   <button
-                    key={k}
+                    key={entry.label}
                     type="button"
-                    className={`pill${brief.kpis.includes(k) ? '' : ' off'}`}
-                    aria-pressed={brief.kpis.includes(k)}
-                    onClick={() => toggleKpi(k)}
+                    className={`pill obj-${entry.objective}${brief.kpis.includes(entry.label) ? '' : ' off'}`}
+                    aria-pressed={brief.kpis.includes(entry.label)}
+                    onClick={() => toggleKpi(entry.label)}
                   >
-                    {k}
+                    {entry.label}
                   </button>
                 ))}
               </div>
@@ -1145,23 +1129,6 @@ export default function App() {
                   onClick={() => toggleAudience(a)}
                 >
                   {a}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="field planning-step">
-            <label id="g-seniority">Seniority</label>
-            <div className="pills" role="group" aria-labelledby="g-seniority">
-              {SENIORITY_LEVELS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`pill${brief.seniority.includes(s) ? '' : ' off'}`}
-                  aria-pressed={brief.seniority.includes(s)}
-                  onClick={() => toggleSeniority(s)}
-                >
-                  {s}
                 </button>
               ))}
             </div>
@@ -1245,7 +1212,7 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 7 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
             </>
@@ -1309,9 +1276,9 @@ export default function App() {
               </div>
               <div className="prog">
                 <div className="bar">
-                  <div className="fill" style={{ width: `${(count / 7) * 100}%` }} />
+                  <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />
                 </div>
-                <div className="t">{count} OF 7 ANSWERED</div>
+                <div className="t">{count} OF 6 ANSWERED</div>
               </div>
               <SkeletonBlock />
               <p className="keep">
@@ -1332,7 +1299,6 @@ export default function App() {
                 <span className="chip">{viewBrief.kpis.join(' + ')}</span>
                 <span className="chip">Market: {marketLabels(viewBrief.markets) || 'Not specified'}</span>
                 <span className="chip">{viewBrief.audiences.join(' + ')}</span>
-                <span className="chip">{viewBrief.seniority.join(' + ')}</span>
                 <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
                 <span className="chip">{weeksLabel(viewWeeks)}</span>
               </div>
@@ -1633,7 +1599,7 @@ export default function App() {
             <div className="include">
               <div className="n">01</div>
               <b>Your brief, answered</b>
-              <span>Objective, audience, seniority, budget and dates - no media expertise needed.</span>
+              <span>Objective, audience, budget and dates - no media expertise needed.</span>
             </div>
             <div className="include">
               <div className="n">02</div>
