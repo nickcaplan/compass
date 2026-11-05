@@ -1276,9 +1276,9 @@ export default function App() {
               </div>
               <div className="prog">
                 <div className="bar">
-                  <div className="fill" style={{ width: `${(count / 7) * 100}%` }} />
+                  <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />
                 </div>
-                <div className="t">{count} OF 7 ANSWERED</div>
+                <div className="t">{count} OF 6 ANSWERED</div>
               </div>
               <SkeletonBlock />
               <p className="keep">
