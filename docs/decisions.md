@@ -9,6 +9,16 @@ no longer carry seniority; the 31 Oct four-level decision below is kept as
 history. Saved plans from before the removal may still hold a seniority
 field; it is ignored and preserved untouched in storage.
 
+## 2026-11-04 - Two 31 Oct entries are superseded
+
+"Repository is private" no longer holds: the repo has been public since
+1 November 2026. "Inert actions say so" now holds only in part: Save plan
+writes plans to the visitor's browser and My plans reads and displays them,
+and Speak to a specialist opens the Hybrid House contact page; Sign in
+still shows "Not available yet" and Download PDF still shows "Coming soon".
+Support was removed from the navigation (3 November 2026). Both entries
+stay below as history.
+
 ## 2026-10-31 - Repository is private
 
 The repo touches a client's commercial project, so it is private under

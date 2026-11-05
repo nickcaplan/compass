@@ -38,13 +38,13 @@ committed to.
 
 ## What it is not
 
-- Not connected to any backend, database or real data. No real publisher
-  rates, audience sizes or benchmarks appear anywhere.
-- Publishers are anonymised (Publisher A, B, C) and every figure is marked
+- No real publisher rates, audience sizes or benchmarks appear anywhere.
+  Publishers are anonymised (Publisher A, B, C) and every figure is marked
   illustrative on screen.
-- Save plan, Download PDF, Speak to a specialist, Sign in, My plans and
-  Support are visual affordances only; clicking them says they are part of
-  the full product.
+- Saved plans do persist, in the visitor's own browser. A Supabase
+  backend (sign-in and plan sync) is in progress on separate branches.
+- Speak to a specialist opens the Hybrid House contact page. Download PDF
+  shows a coming-soon note. Support is no longer in the navigation.
 
 ## Requirements
 
