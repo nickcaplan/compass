@@ -1,5 +1,14 @@
 # Decisions
 
+## 2026-11-05 - Seniority step removed
+
+Ben's combined feedback (2.2: "Too much going on for now") asked for the
+Seniority step to come out, and Nick approved the removal on 5 Nov 2026.
+The form, brief model, demo examples, rationale wording and plan summaries
+no longer carry seniority; the 31 Oct four-level decision below is kept as
+history. Saved plans from before the removal may still hold a seniority
+field; it is ignored and preserved untouched in storage.
+
 ## 2026-10-31 - Repository is private
 
 The repo touches a client's commercial project, so it is private under

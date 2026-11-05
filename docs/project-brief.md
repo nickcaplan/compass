@@ -21,7 +21,7 @@ committed to.
 ## What it is
 
 - A single-page front end: the user answers a short brief (objective, KPI,
-  audience, seniority, budget, campaign dates) and Compass shows a
+  audience, budget, campaign dates) and Compass shows a
   recommended media plan on the right.
 - Four states, matching the approved design: an explainer before anything is
   answered, "your brief so far" while answering, a generating state that
@@ -29,7 +29,7 @@ committed to.
 - The plan view shows summary metrics, per-activity spend, expected delivery
   and efficiency, a one-line rationale per choice, suggested timing, and the
   "speak to a Hybrid House specialist" call to action from the brief.
-- Objectives, KPIs, audiences and seniority levels come from the Compass
+- Objectives, KPIs and audiences come from the Compass
   brief's own taxonomy. KPI options follow the selected objective, as the
   brief requires.
 - Metrics shown adapt to the objective (awareness shows reach and
