@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import logoUrl from './assets/thh-logo.svg';
 
 const iconProps = {
@@ -620,6 +620,13 @@ export default function App() {
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
   const planRef = useRef<HTMLElement>(null);
+  // Viewport position of the save action row when Save is pressed, so it can
+  // be pinned in place while the tall form swaps to the compact saved brief.
+  const saveAnchorY = useRef<number | null>(null);
+  const saveRowRef = useRef<HTMLDivElement>(null);
+  // Temporary bottom slack that keeps the page scrollable to the pinned
+  // position when saving shortens it; cleared on the next navigation or edit.
+  const saveSpacerRef = useRef<HTMLDivElement>(null);
   const cueTimer = useRef<number | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -675,6 +682,38 @@ export default function App() {
   }, [count]);
 
   const genSteps = checklistFor(viewBrief).length;
+
+  // Saving swaps the tall form for a compact read-only brief, shortening the
+  // page. Without correction the plan visibly jumps; keep it pinned to its
+  // viewport position across the swap.
+  useLayoutEffect(() => {
+    if (justSavedId === null) return;
+    const anchor = saveAnchorY.current;
+    saveAnchorY.current = null;
+    const el = saveRowRef.current;
+    if (anchor === null || !el) return;
+    // The document may already have been bottom-clamped before this effect
+    // runs, so pin by viewport delta rather than document coordinates. When
+    // the shortened page could not scroll far enough, temporary bottom slack
+    // keeps the pinned position reachable instead of letting the page jump.
+    const delta = el.getBoundingClientRect().top - anchor;
+    const doc = document.documentElement;
+    const desired = window.scrollY + delta;
+    const maxScroll = doc.scrollHeight - window.innerHeight;
+    const spacer = saveSpacerRef.current;
+    if (desired > maxScroll && spacer) {
+      spacer.style.height = `${desired - maxScroll}px`;
+    }
+    if (delta !== 0) window.scrollBy(0, delta);
+    const frame = requestAnimationFrame(() => {
+      document.documentElement.style.overflowAnchor = '';
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      document.documentElement.style.overflowAnchor = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justSavedId]);
 
   useEffect(() => {
     if (stage !== 'generating') return;
@@ -809,8 +848,14 @@ export default function App() {
     setStage('generating');
   }
 
+  function clearSaveSpacer() {
+    const spacer = saveSpacerRef.current;
+    if (spacer) spacer.style.height = '0px';
+  }
+
   function clearPlannerState() {
     clearCue();
+    clearSaveSpacer();
     setBrief(EMPTY_BRIEF);
     setSubmittedBrief(null);
     setBudgetText('');
@@ -837,6 +882,16 @@ export default function App() {
     return true;
   }
 
+  // Captures the save row's viewport position and pauses browser scroll
+  // anchoring so it cannot double-count against the pin. Called only after
+  // persistence succeeds, so failed saves leave anchoring untouched.
+  function pinSaveRow() {
+    saveAnchorY.current = saveRowRef.current
+      ? saveRowRef.current.getBoundingClientRect().top
+      : null;
+    document.documentElement.style.overflowAnchor = 'none';
+  }
+
   function savePlan() {
     if (!submittedBrief) return;
     if (editingSaved && savedEntry) {
@@ -850,6 +905,7 @@ export default function App() {
         p.id === savedEntry.id ? { ...p, brief: submittedBrief, savedAt: new Date().toISOString() } : p,
       );
       if (persist(updated)) {
+        pinSaveRow();
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
       } else {
@@ -869,6 +925,7 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
+      pinSaveRow();
       setSavedEntry({ id: entry.id, mode: 'view' });
       setJustSavedId(entry.id);
     } else {
@@ -887,6 +944,7 @@ export default function App() {
   }
 
   function editSavedPlan() {
+    clearSaveSpacer();
     setJustSavedId(null);
     setBrief(b => ({ ...b, audiences: b.audiences.filter(a => AUDIENCES.includes(a)) }));
     setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
@@ -922,6 +980,7 @@ export default function App() {
       }
     }
     setOpenTarget(null);
+    clearSaveSpacer();
     setBrief(entry.brief);
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
@@ -935,6 +994,7 @@ export default function App() {
   }
 
   function go(p: Page) {
+    clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
     setPage(p);
@@ -1379,7 +1439,7 @@ export default function App() {
                   Speak to a specialist
                 </a>
               </div>
-              <div className="secondary">
+              <div className="secondary" ref={saveRowRef}>
                 {viewingSaved ? (
                   <>
                     {justSavedId === savedEntry?.id && (
@@ -1433,6 +1493,7 @@ export default function App() {
           )}
         </section>
       </div>
+      <div ref={saveSpacerRef} className="savespacer" aria-hidden="true" />
         </>
       )}
 
