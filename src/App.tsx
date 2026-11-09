@@ -1,5 +1,7 @@
 import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDraftKey, bindingMatches } from './authDraft';
 import type { DraftBinding } from './authDraft';
+import { readPlanRoute, routeHash, usePlanNavigation } from './planRoutes';
+import type { Page, PlanRoute } from './planRoutes';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
@@ -60,6 +62,26 @@ function IconCancel() {
     <svg {...iconProps}>
       <path d="M18 6 6 18" />
       <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
+function IconShare() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
+    </svg>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg {...iconProps}>
+      <path d="m16 3 5 5-12 12-6 1 1-6L16 3z" />
+      <path d="m14 5 5 5" />
     </svg>
   );
 }
@@ -186,7 +208,7 @@ import {
 
 type Stage = 'empty' | 'filling' | 'generating' | 'gate' | 'plan';
 
-function ComingSoonButton() {
+function ComingSoonButton({ compact = false }: { compact?: boolean }) {
   const [notice, setNotice] = useState(0);
   const wrap = useRef<HTMLSpanElement>(null);
   const description = `pdf-coming-soon-${useId()}`;
@@ -221,7 +243,7 @@ function ComingSoonButton() {
   }, [notice]);
 
   return (
-    <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
+    <span className={`cs-wrap${compact ? ' cs-compact' : ''}${notice ? ' cs-showing' : ''}`} ref={wrap}>
       <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
         {notice > 0 && (
           <span id={description} key={notice}>
@@ -232,8 +254,9 @@ function ComingSoonButton() {
       <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
         {/* The button itself becomes the status: its box never moves and the
             message never covers it, so no space is reserved or created. */}
-        <span className="cs-label" key={notice}>{notice ? '✧ Coming soon' : <><IconDownload />Download PDF</>}</span>
+        <span className="cs-label" key={notice}>{compact ? <IconDownload /> : notice ? '✧ Coming soon' : <><IconDownload />Download PDF</>}</span>
       </button>
+      {compact && notice > 0 && <span className="pdf-icon-notice" aria-hidden="true">Coming soon</span>}
     </span>
   );
 }
@@ -241,17 +264,7 @@ function ComingSoonButton() {
 
 
 
-type Page = 'planner' | 'plans' | 'signin' | 'pricing';
-const PAGE_ROUTES: Record<Page, string> = { planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing' };
-function pageFromUrl(): Page {
-  return (Object.keys(PAGE_ROUTES) as Page[]).find(page => PAGE_ROUTES[page] === window.location.hash) ?? 'planner';
-}
-function writePageUrl(page: Page, replace = false) {
-  const url = new URL(window.location.href);
-  url.hash = PAGE_ROUTES[page];
-  window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
-}
-
+function pageFromUrl(): Page { return readPlanRoute().page; }
 
 interface SavedPlan {
   id: string;
@@ -629,15 +642,12 @@ export default function App() {
   });
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
-  const [page, setPage] = useState<Page>(pageFromUrl);
-  useEffect(() => {
-    const syncPage = () => { setPage(pageFromUrl()); window.scrollTo(0, 0); };
-    window.addEventListener('popstate', syncPage);
-    window.addEventListener('hashchange', syncPage);
-    // Leave OAuth fragments intact for the auth client to consume.
-    if (!window.location.hash) writePageUrl(pageFromUrl(), true);
-    return () => { window.removeEventListener('popstate', syncPage); window.removeEventListener('hashchange', syncPage); };
-  }, []);
+  const [page, setPage] = useState<Page>(() => readPlanRoute().page);
+  const [unavailablePlan, setUnavailablePlan] = useState(false);
+  const [linkCopy, setLinkCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const planLinkRef = useRef<HTMLInputElement>(null);
+  const linkCopyTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(linkCopyTimer.current), []);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [profileName, setProfileName] = useState('');
@@ -714,7 +724,6 @@ export default function App() {
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavedPlan | null>(null);
-  const [openTarget, setOpenTarget] = useState<{ entry: SavedPlan; reason: 'draft' | 'unsaved' | 'edit' } | null>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -849,7 +858,7 @@ export default function App() {
           savedEntry: restoredEntry, budgetText: snap.budgetText, stage: restoredStage };
         anonymousBinding.current = null;
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
-        if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
+        if (!recoveringPassword) { setPage('planner'); writePageUrl('planner'); }
         break;
       }
     } catch { /* corrupted or unavailable storage */ }
@@ -882,7 +891,7 @@ export default function App() {
     if (callbackError) {
       // An anonymous Google cancellation may retry its own per-tab draft.
       // getSession below revokes this handle if any account is established.
-      setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
+      setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin'); }
     const onPageShow = (event: PageTransitionEvent) => { if (event.persisted) googlePending.current = false; };
     window.addEventListener('pageshow', onPageShow);
     const startupEpoch = authEpoch.current;
@@ -922,7 +931,7 @@ export default function App() {
         setStage((s) => (s === 'plan' ? 'gate' : s));
         setSavedEntry(null);
       }
-      if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
+      if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin'); }
     });
     return () => { subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
     // One subscription per mount; planner/account/flow state is read through refs.
@@ -943,7 +952,7 @@ export default function App() {
   }, [stage, canViewPlan]);
 
   useEffect(() => {
-    if (recoveringPassword && page !== 'signin') { setPage('signin'); writePageUrl('signin', true); }
+    if (recoveringPassword && page !== 'signin') { setPage('signin'); writePageUrl('signin'); }
   }, [recoveringPassword, page]);
 
   // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
@@ -1101,6 +1110,7 @@ export default function App() {
 
   // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
+    if (editingSaved) return;
     const hasInput = count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
       clearCue();
@@ -1175,7 +1185,7 @@ export default function App() {
     setJustSavedId(null);
     setConfirmFill(false);
     setDeleteTarget(null);
-    setOpenTarget(null);
+    navigation.cancel();
     latestPlanner.current = { brief: EMPTY_BRIEF, submittedBrief: null, savedEntry: null, budgetText: '', stage: 'empty' };
   }
 
@@ -1189,6 +1199,10 @@ export default function App() {
     } catch { /* private mode */ }
     anonymousBinding.current = null;
     clearPlannerState();
+    setUnavailablePlan(false);
+    window.clearTimeout(linkCopyTimer.current);
+    setLinkCopy('idle');
+    navigation.address({ page: 'planner' });
     window.scrollTo(0, 0);
   }
 
@@ -1229,6 +1243,7 @@ export default function App() {
         pinSaveRow();
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
+        navigation.address({ page: 'planner', planId: savedEntry.id });
       } else {
         showToast('Could not save - browser storage is unavailable');
       }
@@ -1249,6 +1264,7 @@ export default function App() {
       pinSaveRow();
       setSavedEntry({ id: entry.id, mode: 'view' });
       setJustSavedId(entry.id);
+      navigation.address({ page: 'planner', planId: entry.id });
     } else {
       showToast('Could not save - browser storage is unavailable');
     }
@@ -1261,6 +1277,7 @@ export default function App() {
     }
     if (savedEntry?.id === id) {
       clearPlannerState();
+      navigation.address({ page });
     }
   }
 
@@ -1288,30 +1305,43 @@ export default function App() {
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
-  function openPlan(entry: SavedPlan, force = false) {
-    const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
-    if (!force && !alreadyOpen) {
-      const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-      const unsavedPlan = stage === 'plan' && savedEntry === null;
-      const unsavedEdit = savedEntry?.mode === 'edit';
-      const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
-      if (reason !== null) {
-        setOpenTarget({ entry, reason });
-        return;
-      }
-    }
-    setOpenTarget(null);
+  function replacementReason() {
+    const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+    return savedEntry?.mode === 'edit' ? 'edit' : stage === 'plan' && savedEntry === null ? 'unsaved' : formDraft ? 'draft' : null;
+  }
+
+  const navigation = usePlanNavigation(applyRoute, route => {
+    if (route.planId === undefined || !loadPlans().some(p => p.id === route.planId)) return false;
+    const alreadyOpen = savedEntry?.id === route.planId && (savedEntry.mode === 'view' || !route.reload);
+    return !alreadyOpen && replacementReason() !== null;
+  }, emailAuthCallback || googleOAuthCallback);
+  function writePageUrl(page: Page) { navigation.address({ page }); }
+  const openTarget = navigation.pending ? { reason: replacementReason() } : null;
+
+  function applyRoute(route: PlanRoute) {
+    setUnavailablePlan(false);
+    window.clearTimeout(linkCopyTimer.current);
+    setLinkCopy('idle');
     clearSaveSpacer();
-    setBrief(entry.brief);
-    setSubmittedBrief(entry.brief);
-    setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
-    setStage(canViewPlan ? 'plan' : 'gate');
-    setSavedEntry({ id: entry.id, mode: 'view' });
-    setJustSavedId(null);
     window.clearTimeout(toastTimer.current);
     setToast(null);
-    setPage('planner');
-    writePageUrl('planner');
+    if (route.planId !== undefined) {
+      const latest = loadPlans();
+      const entry = latest.find(p => p.id === route.planId);
+      setSavedPlans(latest);
+      if (!entry || plansLoadFailed) {
+        setUnavailablePlan(true);
+      } else if (savedEntry?.id !== entry.id || route.reload) {
+        clearCue();
+        setBrief(entry.brief);
+        setSubmittedBrief(entry.brief);
+        setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
+        setStage(canViewPlan ? 'plan' : 'gate');
+        setSavedEntry({ id: entry.id, mode: 'view' });
+        setJustSavedId(null);
+      }
+    }
+    setPage(route.page);
     window.scrollTo(0, 0);
   }
 
@@ -1480,13 +1510,29 @@ export default function App() {
     setRecoveringPassword(false);
   }
 
+  function openPlan(entry: SavedPlan) {
+    navigation.navigate({ page: 'planner', planId: entry.id, reload: true });
+  }
+
   function go(p: Page) {
-    clearSaveSpacer();
-    window.clearTimeout(toastTimer.current);
-    setToast(null);
-    if (pageFromUrl() !== p || window.location.hash !== PAGE_ROUTES[p]) writePageUrl(p);
-    setPage(p);
-    window.scrollTo(0, 0);
+    navigation.navigate(p === 'planner' && savedEntry && loadPlans().some(entry => entry.id === savedEntry.id)
+      ? { page: p, planId: savedEntry.id } : { page: p });
+  }
+
+  async function copyPlanLink() {
+    if (!savedEntry) return;
+    window.clearTimeout(linkCopyTimer.current);
+    const url = new URL(window.location.href);
+    url.hash = routeHash({ page: 'planner', planId: savedEntry.id });
+    try {
+      await navigator.clipboard.writeText(url.href);
+      window.clearTimeout(linkCopyTimer.current);
+      setLinkCopy('copied');
+      linkCopyTimer.current = window.setTimeout(() => setLinkCopy('idle'), 3000);
+    } catch {
+      setLinkCopy('failed');
+      requestAnimationFrame(() => { planLinkRef.current?.focus(); planLinkRef.current?.select(); });
+    }
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
@@ -1560,26 +1606,41 @@ export default function App() {
         </div>
       </nav>
 
-      {page === 'planner' && (
+      {page === 'planner' && !unavailablePlan && (
         <>
-      <header className="hero">
-        <IndustryReel />
-        <h1>
-          Your media plan, <em>in minutes.</em>
-        </h1>
-        <p className="sub">
-          Answer a few questions. Compass recommends the publishers, formats and spend split - and
-          the results to expect, with the reasoning shown.
-        </p>
-      </header>
-
+      {viewingSaved ? (
+        <header className="saved-page-head">
+          <div className="saved-page-navigation">
+            <button type="button" className="saved-back" onClick={() => go('plans')}><IconBack />View all plans</button>
+            <button type="button" className="ghost saved-create" onClick={reset}><IconPlus />Create another</button>
+          </div>
+          <h1>{viewBrief.name || 'Untitled campaign'}</h1>
+        </header>
+      ) : (
+        <header className="hero">
+          <IndustryReel />
+          <h1>Your media plan, <em>in minutes.</em></h1>
+          <p className="sub">
+            Answer a few questions. Compass recommends the publishers, formats and spend split - and
+            the results to expect, with the reasoning shown.
+          </p>
+        </header>
+      )}
       <div className="layout">
         <section className="card form" aria-label={savedBriefReadOnly ? 'Saved plan brief' : 'Plan a campaign'}>
           {savedBriefReadOnly ? (
             <>
-              <div className="planhead">
-                <h2>Your brief</h2>
-                <div className="cap">SAVED PLAN - READ ONLY</div>
+              <div className="planhead saved-brief-head">
+                <div className="saved-brief-heading">
+                  <h2>Your brief</h2>
+                  <div className="cap">SAVED PLAN - READ ONLY</div>
+                </div>
+                <div className="saved-brief-tools" role="group" aria-label="Export and share plan">
+                  <ComingSoonButton compact />
+                <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-label={linkCopy === 'copied' ? 'Plan link copied - only works in this browser' : 'Copy plan link - only works in this browser'}>
+                  {linkCopy === 'copied' ? <IconCheck /> : <IconShare />}
+                </button>
+                </div>
               </div>
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
@@ -1590,15 +1651,14 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              {canViewPlan && <button type="button" className="gen" onClick={editSavedPlan}>
-                Edit plan <span>&rarr;</span>
-              </button>}
-              <div className="viewactions">
-                <button type="button" className="ghost" onClick={() => go('plans')}>
-                  <IconBack />
-                  View all plans
-                </button>
+              <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
+                {canViewPlan && <button type="button" className="btn saved-plan-edit" onClick={editSavedPlan}>
+                  <IconEdit />
+                  Edit plan
+                </button>}
               </div>
+              <span className="sr-only" role="status">{linkCopy === 'copied' ? 'Plan link copied.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
+              {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
             </>
           ) : (
             <>
@@ -1610,7 +1670,7 @@ export default function App() {
           </div>}
           <div className="hint">No media expertise needed.</div>
 
-          {demoMode && <>
+          {demoMode && !editingSaved && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
@@ -1902,7 +1962,7 @@ export default function App() {
             <div className="planin">
               <div className="planhead">
                 <h2>{viewingSaved
-                  ? `${viewBrief.name || 'Untitled campaign'}${monthsRangeLabel(viewBrief.start, viewBrief.end) ? ` · ${monthsRangeLabel(viewBrief.start, viewBrief.end)}` : ''}`
+                  ? 'Media plan'
                   : 'Recommended plan'}</h2>
                 {viewingSaved ? <div className="cap">SAVED PLAN - READ ONLY</div> : <DemoCap />}
               </div>
@@ -1965,15 +2025,6 @@ export default function App() {
                         Saved
                       </button>
                     )}
-                    <ComingSoonButton />
-                    <button type="button" className="ghost" onClick={reset}>
-                      <IconPlus />
-                      Create another scenario
-                    </button>
-                    <button type="button" className="ghost" onClick={() => go('plans')}>
-                      <IconBack />
-                      View all plans
-                    </button>
                   </>
                 ) : editingSaved ? (
                   <>
@@ -2001,7 +2052,7 @@ export default function App() {
                     <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
-                      Create another scenario
+                      Create another
                     </button>
                   </>
                 )}
@@ -2012,6 +2063,18 @@ export default function App() {
       </div>
       <div ref={saveSpacerRef} className="savespacer" aria-hidden="true" />
         </>
+      )}
+
+      {page === 'planner' && unavailablePlan && (
+        <section className="card pagecard" aria-label="Plan unavailable">
+          <div className="planhead"><h2>Plan unavailable in this browser</h2><DemoCap /></div>
+          <p className="pagesub">This link only opens a plan saved in the same browser. The plan may have been deleted, or this browser may not have it. It is not a shareable link.</p>
+          {plansLoadFailed && <p role="alert">Browser storage could not be read. Your saved data has been left untouched.</p>}
+          <div className="viewactions">
+            <button type="button" className="btn" onClick={() => go('plans')}>View all plans</button>
+            <button type="button" className="ghost" onClick={() => go('planner')}>Back to planner</button>
+          </div>
+        </section>
       )}
 
       {page === 'plans' && (
@@ -2073,6 +2136,9 @@ export default function App() {
                   .join(' + ');
                 return (
                   <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
+                    <button type="button" className="ghost pc-delete" aria-label={`Delete ${sp.brief.name || 'Untitled campaign'}`} title="Delete plan" onClick={() => setDeleteTarget(sp)}>
+                      <IconTrash />
+                    </button>
                     {campaignEnded(sp.brief.end) && <span className="chip expired">Expired</span>}
                     <div className="pc-main">
                       <b>
@@ -2102,10 +2168,7 @@ export default function App() {
                         Open plan
                         <IconOpen />
                       </button>
-                      <button type="button" className="ghost" onClick={() => setDeleteTarget(sp)}>
-                        <IconTrash />
-                        Delete
-                      </button>
+
                     </div>
                   </div>
                 );
@@ -2201,7 +2264,7 @@ export default function App() {
         illustrative, adapted from the Compass brief
       </footer>
 
-      {demoMode && confirmFill && (
+      {demoMode && !editingSaved && confirmFill && (
         <ConfirmDialog
           title="Replace your answers?"
           body="Replace the answers you have already given with the example brief?"
@@ -2238,12 +2301,12 @@ export default function App() {
           }
           confirmLabel="Open plan"
           cancelLabel={openTarget.reason === 'edit' ? 'Keep editing' : openTarget.reason === 'unsaved' ? 'Keep my plan' : 'Keep my draft'}
-          onConfirm={() => openPlan(openTarget.entry, true)}
-          onCancel={() => setOpenTarget(null)}
+          onConfirm={navigation.confirm}
+          onCancel={navigation.cancel}
         />
       )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-                              }
+          }
