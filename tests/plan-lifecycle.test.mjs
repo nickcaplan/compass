@@ -188,7 +188,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     });
 
     await t.test('draft replacement warns and Escape preserves answers', async () => {
-      await clickButton(page, 'Create another scenario');
+      await clickButton(page, 'Create another');
       await page.locator('#f-name').fill('Unfinished draft');
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
@@ -204,7 +204,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     });
 
     await t.test('an unsaved generated plan still requires confirmation', async () => {
-      await clickButton(page, 'Create another scenario');
+      await clickButton(page, 'Create another');
       await generateExample(page);
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
