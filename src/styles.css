@@ -526,4 +526,5 @@ input.ctl{color:var(--text)}
 .pc-delete:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .pc-actions{width:100%;display:flex}
 .pc-actions .btn{width:100%;min-height:46px;justify-content:center}
-.plancard>.chip.expired{align-self:flex-start;margin-right:48px}
+.plancard.is-expired{padding-top:18px}
+.plancard>.chip.expired{position:static;align-self:flex-start;margin:0 48px 0 0}
