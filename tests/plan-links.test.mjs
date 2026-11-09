@@ -30,7 +30,22 @@ test('same-browser plan URLs survive refresh, history, cancellation and unavaila
  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copiedPlanLink=text}}}));
  await click(page,'Copy plan link');await page.waitForFunction(()=>document.querySelector('.saved-plan-copy')?.getAttribute('aria-label').startsWith('Plan link copied'));assert.equal(await page.$eval('.saved-plan-copy',e=>e.innerText),'');assert.equal(await page.$$eval('.saved-plan-copy circle',es=>es.length),0);assert.equal(await page.evaluate(()=>window.copiedPlanLink),url+'?demo=1#/planner/campaign-one');
  await click(page,'Copy plan link');assert.equal(await page.$('.planlink-note'),null);
+ // A repeat copy restarts the three-second success state, without a layout shift.
+ const shareBox=await page.$eval('.saved-plan-copy',e=>({width:e.offsetWidth,height:e.offsetHeight}));
+ await new Promise(resolve=>setTimeout(resolve,1600));
+ await click(page,'Copy plan link');const copiedAt=await page.evaluate(()=>performance.now());
+ await new Promise(resolve=>setTimeout(resolve,1700));
+ assert.match(await page.$eval('.saved-plan-copy',e=>e.getAttribute('aria-label')),/^Plan link copied/);
+ await page.waitForFunction(()=>document.querySelector('.saved-plan-copy')?.getAttribute('aria-label').startsWith('Copy plan link'));
+ const elapsed=await page.evaluate(t=>performance.now()-t,copiedAt);assert.ok(elapsed>=2900&&elapsed<4500,`copy reset after ${elapsed}ms`);
+ assert.equal(await page.$$eval('.saved-plan-copy circle',es=>es.length),3);
+ assert.deepEqual(await page.$eval('.saved-plan-copy',e=>({width:e.offsetWidth,height:e.offsetHeight})),shareBox);
+
  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('denied')}}}));await click(page,'Copy plan link');await page.waitForSelector('.planlink-field');assert.equal(await page.$eval('.planlink-field',e=>e.value),url+'?demo=1#/planner/campaign-one');
+ if(width===390&&theme==='dark'){
+  await new Promise(resolve=>setTimeout(resolve,3200));assert.ok(await page.$('.planlink-field'));
+  assert.equal(await page.$eval('.planlink-field',e=>e===document.activeElement),true);
+ }
  await click(page,'Edit plan');await page.locator('#f-name').fill('Keep my unfinished edits');await click(page,'My plans');await click(page,'Open plan');await page.waitForSelector('[role="alertdialog"]');await page.keyboard.press('Escape');await page.waitForSelector('[role="alertdialog"]',{hidden:true});await click(page,'Planner');assert.equal(await page.$eval('#f-name',e=>e.value),'Keep my unfinished edits');
  await click(page,'Cancel');await page.waitForSelector('.bsum');
  // A second plan has an encoded, nonnumeric ID. A freshly opened URL is a bookmark.
