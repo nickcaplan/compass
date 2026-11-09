@@ -1136,17 +1136,19 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <div className="viewactions">
-                <button type="button" className="ghost" onClick={editSavedPlan}>
+              <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
+                <button type="button" className="btn saved-plan-edit" onClick={editSavedPlan}>
                   Edit plan <span>&rarr;</span>
                 </button>
-                <button type="button" className="ghost" onClick={() => go('plans')}>
-                  <IconBack />
-                  View all plans
-                </button>
+                <div className="saved-plan-utilities">
+                  <button type="button" className="ghost" onClick={() => go('plans')}>
+                    <IconBack />
+                    View all plans
+                  </button>
+                  <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-describedby="plan-link-note">Copy plan link</button>
+                </div>
               </div>
-              <div className="planlink-tools"><button type="button" className="ghost" onClick={copyPlanLink}>Copy plan link</button></div>
-              <p className="planlink-note" role="status">{linkCopy === 'copied' ? 'Link copied. It only works in this browser.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : 'This plan link only works in this browser, not on another device or for someone else.'}</p>
+              <p id="plan-link-note" className="planlink-note" role="status">{linkCopy === 'copied' ? 'Link copied. It only works in this browser.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : 'This plan link only works in this browser, not on another device or for someone else.'}</p>
               {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
             </>
           ) : (
@@ -1803,4 +1805,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-    }
+}
