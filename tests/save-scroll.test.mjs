@@ -1,3 +1,4 @@
+import { seedPlannerFixture, handleFixtureAuthRequest } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -18,8 +19,10 @@ const robotoFixtureCss = [400, 500, 700].map((weight) => `@font-face{font-family
 async function newTestPage(browser, viewport, previewUrl) {
   const page = await browser.newPage();
   await page.setViewport(viewport);
+  await seedPlannerFixture(page, false);
   await page.setRequestInterception(true);
   page.on('request', (request) => {
+    if (handleFixtureAuthRequest(request)) return;
     const host = new URL(request.url()).hostname;
     if (host === 'fonts.googleapis.com' || host === 'fonts.gstatic.com') void request.abort();
     else void request.continue();
@@ -115,4 +118,3 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 12000
     server.kill();
   }
 });
-
