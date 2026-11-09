@@ -1657,6 +1657,9 @@ export default function App() {
                   .join(' + ');
                 return (
                   <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
+                    <button type="button" className="ghost pc-delete" aria-label={`Delete ${sp.brief.name || 'Untitled campaign'}`} title="Delete plan" onClick={() => setDeleteTarget(sp)}>
+                      <IconTrash />
+                    </button>
                     {campaignEnded(sp.brief.end) && <span className="chip expired">Expired</span>}
                     <div className="pc-main">
                       <b>
@@ -1686,10 +1689,7 @@ export default function App() {
                         Open plan
                         <IconOpen />
                       </button>
-                      <button type="button" className="ghost" onClick={() => setDeleteTarget(sp)}>
-                        <IconTrash />
-                        Delete
-                      </button>
+
                     </div>
                   </div>
                 );
@@ -1857,4 +1857,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-              }
+}
