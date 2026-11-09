@@ -1,3 +1,4 @@
+import { seedPlannerFixture } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {stripVTControlCharacters} from 'node:util';
@@ -15,7 +16,7 @@ test('natural audience pills stay consistent and invalid saved choices require a
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true});
   for(const width of[320,375,390,414,768,980,981,1200,1440]) {
    const ctx=await browser.createBrowserContext(),p=await ctx.newPage();await p.setViewport({width,height:900});p.setDefaultTimeout(7000);
-   await p.goto(url+'?demo=1');await p.waitForSelector('[aria-labelledby=g-audience]');await p.evaluate(()=>document.fonts.ready);
+   await seedPlannerFixture(p);await p.goto(url+'?demo=1');await p.waitForSelector('[aria-labelledby=g-audience]');await p.evaluate(()=>document.fonts.ready);
    const labels=()=>p.$$eval('[aria-labelledby=g-audience] button',bs=>bs.map(b=>b.textContent.trim()));assert.deepEqual(await labels(),expected);
    const geometry=()=>p.$$eval('[aria-labelledby=g-audience] button',bs=>bs.map(b=>{const r=b.getBoundingClientRect(),s=getComputedStyle(b);return {x:r.x,y:r.y,width:r.width,height:r.height,font:parseFloat(s.fontSize),overflow:b.scrollWidth>b.clientWidth}}));
    for(const theme of['dark','light']) {
