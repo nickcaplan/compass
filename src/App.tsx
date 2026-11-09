@@ -646,7 +646,6 @@ export default function App() {
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
   const planRef = useRef<HTMLElement>(null);
-  const briefRef = useRef<HTMLElement>(null);
   // Viewport position of the save action row when Save is pressed, so it can
   // be pinned in place while the tall form swaps to the compact saved brief.
   const saveAnchorY = useRef<number | null>(null);
@@ -980,7 +979,7 @@ export default function App() {
 
   useLayoutEffect(() => {
     if (!editingSaved) return;
-    briefRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    document.querySelector('.saved-page-head')?.scrollIntoView({ behavior: 'instant', block: 'start' });
     document.getElementById('f-name')?.focus({ preventScroll: true });
   }, [editingSaved]);
 
@@ -1155,7 +1154,7 @@ export default function App() {
         </header>
       )}
       <div className="layout">
-        <section ref={briefRef} className="card form" aria-label={viewingSaved ? 'Saved plan brief' : editingSaved ? 'Edit saved plan brief' : 'Plan a campaign'}>
+        <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : editingSaved ? 'Edit saved plan brief' : 'Plan a campaign'}>
           {viewingSaved ? (
             <>
               <div className="planhead saved-brief-head">
@@ -1833,4 +1832,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-                      }
+          }
