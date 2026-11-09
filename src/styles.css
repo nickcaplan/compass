@@ -150,7 +150,7 @@ input[type="date"].ctl::-webkit-calendar-picker-indicator{display:none}
 .act .num{text-align:right;min-width:0}
 .act .num .v{font-family:Poppins,sans-serif;font-size:16.5px;font-weight:700;overflow-wrap:break-word;color:var(--text)}
 .act .num .k{font-family:Roboto,system-ui,sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
-.why{font-size:12.5px;line-height:1.5}
+.why{grid-column:1/-1;font-size:12.5px;line-height:1.5}
 .why b{display:block;font-family:Roboto,system-ui,sans-serif;font-size:10px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;margin-bottom:4px}
 .timing{border-radius:14px;padding:16px 18px;margin-top:18px}
 .timing .k{font-family:Roboto,system-ui,sans-serif;font-size:10px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;margin-bottom:12px;opacity:.7}
