@@ -476,3 +476,5 @@ input.ctl{color:var(--text)}
 .planlink-field:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 
 .planlink-tools{margin-top:10px}
+.pagecard[aria-label="Plan unavailable"] .viewactions{flex-wrap:wrap}
+.pagecard[aria-label="Plan unavailable"] .viewactions .ghost{flex:0 1 auto}
