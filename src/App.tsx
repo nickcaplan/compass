@@ -60,6 +60,24 @@ function IconCancel() {
   );
 }
 
+function IconShare() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 16V3m-4 4 4-4 4 4" />
+      <path d="M5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9" />
+    </svg>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg {...iconProps}>
+      <path d="m16 3 5 5-12 12-6 1 1-6L16 3z" />
+      <path d="m14 5 5 5" />
+    </svg>
+  );
+}
+
 function IconBack() {
   return (
     <svg {...iconProps}>
@@ -1123,9 +1141,15 @@ export default function App() {
         <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
           {viewingSaved ? (
             <>
-              <div className="planhead">
-                <h2>Your brief</h2>
-                <div className="cap">SAVED PLAN - READ ONLY</div>
+              <div className="planhead saved-brief-head">
+                <div className="saved-brief-heading">
+                  <h2>Your brief</h2>
+                  <div className="cap">SAVED PLAN - READ ONLY</div>
+                </div>
+                <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-label="Copy plan link" title="Copy plan link" aria-describedby="plan-link-note">
+                  <IconShare />
+                  <span className="share-tooltip" aria-hidden="true">Copy plan link</span>
+                </button>
               </div>
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
@@ -1138,14 +1162,14 @@ export default function App() {
               </div>
               <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
                 <button type="button" className="btn saved-plan-edit" onClick={editSavedPlan}>
-                  Edit plan <span>&rarr;</span>
+                  <IconEdit />
+                  Edit plan
                 </button>
                 <div className="saved-plan-utilities">
                   <button type="button" className="ghost" onClick={() => go('plans')}>
                     <IconBack />
                     View all plans
                   </button>
-                  <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-describedby="plan-link-note">Copy plan link</button>
                 </div>
               </div>
               <p id="plan-link-note" className="planlink-note" role="status">{linkCopy === 'copied' ? 'Link copied. It only works in this browser.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : 'This plan link only works in this browser, not on another device or for someone else.'}</p>
@@ -1805,4 +1829,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+                         }
