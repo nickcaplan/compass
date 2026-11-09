@@ -73,12 +73,14 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
     await page.goto('http://127.0.0.1:4173/?demo=1');
+    // Initial router setup clears any pending walkthrough. Wait before clicking.
+    await page.waitForFunction(() => location.hash === '#/planner');
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
     await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
     await page.waitForSelector('.bsum');
-    assert.match(await page.$eval('.viewactions', (actions) => actions.textContent), /View all plans/);
+    assert.equal(await page.$eval('.saved-page-head .saved-back', e => e.textContent), 'View all plans');
 
     await t.test('saved new plan still warns after its form is edited', async () => {
       await clickButton(page, 'Edit plan');
@@ -188,7 +190,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     });
 
     await t.test('draft replacement warns and Escape preserves answers', async () => {
-      await clickButton(page, 'Create another scenario');
+      await clickButton(page, 'Create another');
       await page.locator('#f-name').fill('Unfinished draft');
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
@@ -204,7 +206,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     });
 
     await t.test('an unsaved generated plan still requires confirmation', async () => {
-      await clickButton(page, 'Create another scenario');
+      await clickButton(page, 'Create another');
       await generateExample(page);
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
