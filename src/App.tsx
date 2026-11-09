@@ -1132,7 +1132,7 @@ export default function App() {
         <header className="saved-page-head">
           <div className="saved-page-navigation">
             <button type="button" className="saved-back" onClick={() => go('plans')}><IconBack />View all plans</button>
-            <button type="button" className="ghost saved-create" onClick={reset}><IconPlus />Create another scenario</button>
+            <button type="button" className="ghost saved-create" onClick={reset}><IconPlus />Create another</button>
           </div>
           <h1>{viewBrief.name || 'Untitled campaign'}</h1>
         </header>
@@ -1550,7 +1550,7 @@ export default function App() {
                     <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
-                      Create another scenario
+                      Create another
                     </button>
                   </>
                 )}
@@ -1823,4 +1823,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-    }
+              }
