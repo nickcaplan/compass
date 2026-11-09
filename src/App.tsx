@@ -1,3 +1,5 @@
+import { readPlanRoute, routeHash, usePlanNavigation } from './planRoutes';
+import type { Page, PlanRoute } from './planRoutes';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import logoUrl from './assets/thh-logo.svg';
 
@@ -236,7 +238,6 @@ function ComingSoonButton() {
 
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
-type Page = 'planner' | 'plans' | 'signin' | 'pricing';
 
 interface SavedPlan {
   id: string;
@@ -597,7 +598,10 @@ export default function App() {
   });
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
-  const [page, setPage] = useState<Page>('planner');
+  const [page, setPage] = useState<Page>(() => readPlanRoute().page);
+  const [unavailablePlan, setUnavailablePlan] = useState(false);
+  const [linkCopy, setLinkCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const planLinkRef = useRef<HTMLInputElement>(null);
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
     recoverCorruptPlans();
@@ -615,7 +619,6 @@ export default function App() {
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavedPlan | null>(null);
-  const [openTarget, setOpenTarget] = useState<{ entry: SavedPlan; reason: 'draft' | 'unsaved' | 'edit' } | null>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
@@ -868,6 +871,9 @@ export default function App() {
 
   function reset() {
     clearPlannerState();
+    setUnavailablePlan(false);
+    setLinkCopy('idle');
+    navigation.address({ page: 'planner' });
     window.scrollTo(0, 0);
   }
 
@@ -908,6 +914,7 @@ export default function App() {
         pinSaveRow();
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
+        navigation.address({ page: 'planner', planId: savedEntry.id });
       } else {
         showToast('Could not save - browser storage is unavailable');
       }
@@ -928,6 +935,7 @@ export default function App() {
       pinSaveRow();
       setSavedEntry({ id: entry.id, mode: 'view' });
       setJustSavedId(entry.id);
+      navigation.address({ page: 'planner', planId: entry.id });
     } else {
       showToast('Could not save - browser storage is unavailable');
     }
@@ -940,6 +948,7 @@ export default function App() {
     }
     if (savedEntry?.id === id) {
       clearPlannerState();
+      navigation.address({ page });
     }
   }
 
@@ -967,38 +976,64 @@ export default function App() {
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
-  function openPlan(entry: SavedPlan, force = false) {
-    const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
-    if (!force && !alreadyOpen) {
-      const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-      const unsavedPlan = stage === 'plan' && savedEntry === null;
-      const unsavedEdit = savedEntry?.mode === 'edit';
-      const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
-      if (reason !== null) {
-        setOpenTarget({ entry, reason });
-        return;
-      }
-    }
-    setOpenTarget(null);
+  function replacementReason() {
+    const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+    return savedEntry?.mode === 'edit' ? 'edit' : stage === 'plan' && savedEntry === null ? 'unsaved' : formDraft ? 'draft' : null;
+  }
+
+  const navigation = usePlanNavigation(applyRoute, route => {
+    if (route.planId === undefined || !loadPlans().some(p => p.id === route.planId)) return false;
+    const alreadyOpen = savedEntry?.id === route.planId && (savedEntry.mode === 'view' || !route.reload);
+    return !alreadyOpen && replacementReason() !== null;
+  });
+  const openTarget = navigation.pending ? { reason: replacementReason() } : null;
+
+  function applyRoute(route: PlanRoute) {
+    setUnavailablePlan(false);
+    setLinkCopy('idle');
     clearSaveSpacer();
-    setBrief(entry.brief);
-    setSubmittedBrief(entry.brief);
-    setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
-    setStage('plan');
-    setSavedEntry({ id: entry.id, mode: 'view' });
-    setJustSavedId(null);
     window.clearTimeout(toastTimer.current);
     setToast(null);
-    setPage('planner');
+    if (route.planId !== undefined) {
+      const latest = loadPlans();
+      const entry = latest.find(p => p.id === route.planId);
+      setSavedPlans(latest);
+      if (!entry || plansLoadFailed) {
+        setUnavailablePlan(true);
+      } else if (savedEntry?.id !== entry.id || route.reload) {
+        clearCue();
+        setBrief(entry.brief);
+        setSubmittedBrief(entry.brief);
+        setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
+        setStage('plan');
+        setSavedEntry({ id: entry.id, mode: 'view' });
+        setJustSavedId(null);
+      }
+    }
+    setPage(route.page);
     window.scrollTo(0, 0);
   }
 
+  function openPlan(entry: SavedPlan) {
+    navigation.navigate({ page: 'planner', planId: entry.id, reload: true });
+  }
+
   function go(p: Page) {
-    clearSaveSpacer();
-    window.clearTimeout(toastTimer.current);
-    setToast(null);
-    setPage(p);
-    window.scrollTo(0, 0);
+    navigation.navigate(p === 'planner' && savedEntry && loadPlans().some(entry => entry.id === savedEntry.id)
+      ? { page: p, planId: savedEntry.id } : { page: p });
+  }
+
+  async function copyPlanLink() {
+    if (!savedEntry) return;
+    const url = new URL(window.location.href);
+    url.hash = routeHash({ page: 'planner', planId: savedEntry.id });
+    try {
+      await navigator.clipboard.writeText(url.href);
+      setLinkCopy('copied');
+    } catch {
+      setLinkCopy('failed');
+      requestAnimationFrame(() => { planLinkRef.current?.focus(); planLinkRef.current?.select(); });
+    }
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
@@ -1063,7 +1098,7 @@ export default function App() {
         </div>
       </nav>
 
-      {page === 'planner' && (
+      {page === 'planner' && !unavailablePlan && (
         <>
       <header className="hero">
         <IndustryReel />
@@ -1110,6 +1145,9 @@ export default function App() {
                   View all plans
                 </button>
               </div>
+              <div className="planlink-tools"><button type="button" className="ghost" onClick={copyPlanLink}>Copy plan link</button></div>
+              <p className="planlink-note" role="status">{linkCopy === 'copied' ? 'Link copied. It only works in this browser.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : 'This plan link only works in this browser, not on another device or for someone else.'}</p>
+              {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
             </>
           ) : (
             <>
@@ -1505,6 +1543,18 @@ export default function App() {
         </>
       )}
 
+      {page === 'planner' && unavailablePlan && (
+        <section className="card pagecard" aria-label="Plan unavailable">
+          <div className="planhead"><h2>Plan unavailable in this browser</h2><DemoCap /></div>
+          <p className="pagesub">This link only opens a plan saved in the same browser. The plan may have been deleted, or this browser may not have it. It is not a shareable link.</p>
+          {plansLoadFailed && <p role="alert">Browser storage could not be read. Your saved data has been left untouched.</p>}
+          <div className="viewactions">
+            <button type="button" className="btn" onClick={() => go('plans')}>View all plans</button>
+            <button type="button" className="ghost" onClick={() => go('planner')}>Back to planner</button>
+          </div>
+        </section>
+      )}
+
       {page === 'plans' && (
         <section className="card pagecard" aria-label="My plans">
           <div className="planhead">
@@ -1745,12 +1795,12 @@ export default function App() {
           }
           confirmLabel="Open plan"
           cancelLabel={openTarget.reason === 'edit' ? 'Keep editing' : openTarget.reason === 'unsaved' ? 'Keep my plan' : 'Keep my draft'}
-          onConfirm={() => openPlan(openTarget.entry, true)}
-          onCancel={() => setOpenTarget(null)}
+          onConfirm={navigation.confirm}
+          onCancel={navigation.cancel}
         />
       )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+    }
