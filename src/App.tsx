@@ -640,6 +640,7 @@ export default function App() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavedPlan | null>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
@@ -893,6 +894,12 @@ export default function App() {
   }
 
   function reset() {
+    if (replacementReason() !== null) { setConfirmReset(true); return; }
+    startFresh();
+  }
+
+  function startFresh() {
+    setConfirmReset(false);
     clearPlannerState();
     setUnavailablePlan(false);
     window.clearTimeout(linkCopyTimer.current);
@@ -1019,6 +1026,9 @@ export default function App() {
     clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
+    if (route.page === 'planner' && route.planId === undefined && viewingSaved) {
+      clearPlannerState();
+    }
     if (route.planId !== undefined) {
       const latest = loadPlans();
       const entry = latest.find(p => p.id === route.planId);
@@ -1041,6 +1051,16 @@ export default function App() {
 
   function openPlan(entry: SavedPlan) {
     navigation.navigate({ page: 'planner', planId: entry.id, reload: true });
+  }
+
+  function openPlannerWorkspace() {
+    // Reading a saved plan is complete; drafts, unsaved results and edits resume.
+    if (viewingSaved) {
+      clearPlannerState();
+      navigation.navigate({ page: 'planner' });
+      return;
+    }
+    go('planner');
   }
 
   function go(p: Page) {
@@ -1079,7 +1099,7 @@ export default function App() {
         <div className="toprow">
           <div className="brand lockup">
             <span className="prod">
-              <button type="button" className="prodhome" onClick={() => go('planner')} aria-label="Compass - go to Planner">
+              <button type="button" className="prodhome" onClick={openPlannerWorkspace} aria-label="Compass - go to Planner">
                 <svg className="mark" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)"><path className="mu" d="M32 4 L46 32 L18 32Z" /><path className="md" d="M32 60 L46 32 L18 32Z" /></g><circle className="mc" cx="32" cy="32" r="3.5" /></svg>
                 COMPASS
               </button>
@@ -1098,7 +1118,7 @@ export default function App() {
             </span>
           </div>
           <div className="navlinks">
-          <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
+          <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={openPlannerWorkspace}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
           <button type="button" className="signin" onClick={() => go('signin')}>
@@ -1789,6 +1809,17 @@ export default function App() {
         />
       )}
 
+      {confirmReset && (
+        <ConfirmDialog
+          title="Start a new scenario?"
+          body="Your current work has not been saved. Starting another scenario will discard it."
+          confirmLabel="Create another"
+          cancelLabel="Keep my work"
+          onConfirm={startFresh}
+          onCancel={() => setConfirmReset(false)}
+        />
+      )}
+
       {deleteTarget && (
         <ConfirmDialog
           title="Delete this saved plan?"
@@ -1823,4 +1854,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-              }
+            }
