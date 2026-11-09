@@ -28,7 +28,8 @@ async function openSavedPlan(page) {
 
 async function generateExample(page) {
   await clickButton(page, 'Fill it in for me');
-  await page.waitForSelector('.planin .metrics');
+  await page.waitForSelector('.planin .metrics', { timeout: 20000 });
+  assert.equal(await page.$eval('.cta b', e => e.textContent), 'A Hybrid House specialist can pick it up from here.');
 }
 
 // Plants a stored Supabase session so the app loads as signed in, the way it
