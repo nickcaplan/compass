@@ -646,6 +646,7 @@ export default function App() {
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
   const planRef = useRef<HTMLElement>(null);
+  const briefRef = useRef<HTMLElement>(null);
   // Viewport position of the save action row when Save is pressed, so it can
   // be pinned in place while the tall form swaps to the compact saved brief.
   const saveAnchorY = useRef<number | null>(null);
@@ -977,6 +978,12 @@ export default function App() {
     }
   }
 
+  useLayoutEffect(() => {
+    if (!editingSaved) return;
+    briefRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    document.getElementById('f-name')?.focus({ preventScroll: true });
+  }, [editingSaved]);
+
   function editSavedPlan() {
     clearSaveSpacer();
     setJustSavedId(null);
@@ -1129,7 +1136,7 @@ export default function App() {
 
       {page === 'planner' && !unavailablePlan && (
         <>
-      {viewingSaved ? (
+      {viewingSaved || editingSaved ? (
         <header className="saved-page-head">
           <div className="saved-page-navigation">
             <button type="button" className="saved-back" onClick={() => go('plans')}><IconBack />View all plans</button>
@@ -1148,7 +1155,7 @@ export default function App() {
         </header>
       )}
       <div className="layout">
-        <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
+        <section ref={briefRef} className="card form" aria-label={viewingSaved ? 'Saved plan brief' : editingSaved ? 'Edit saved plan brief' : 'Plan a campaign'}>
           {viewingSaved ? (
             <>
               <div className="planhead saved-brief-head">
@@ -1183,8 +1190,8 @@ export default function App() {
             </>
           ) : (
             <>
-          <h2>Plan a campaign</h2>
-          <div className="hint">No media expertise needed.</div>
+          <h2>{editingSaved ? 'Edit your brief' : 'Plan a campaign'}</h2>
+          <div className="hint">{editingSaved ? 'Changes update this saved plan when you save.' : 'No media expertise needed.'}</div>
 
           {demoMode && !editingSaved && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
@@ -1462,10 +1469,10 @@ export default function App() {
           {stage === 'plan' && plan && (
             <div className="planin">
               <div className="planhead">
-                <h2>{viewingSaved
+                <h2>{viewingSaved || editingSaved
                   ? 'Media plan'
                   : 'Recommended plan'}</h2>
-                {viewingSaved ? <div className="cap">SAVED PLAN - READ ONLY</div> : <DemoCap />}
+                {viewingSaved || editingSaved ? <div className="cap">{editingSaved ? 'SAVED PLAN - EDITING BRIEF' : 'SAVED PLAN - READ ONLY'}</div> : <DemoCap />}
               </div>
               <div className="metrics">
                 {plan.metrics.map((m) => (
@@ -1826,4 +1833,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+                      }
