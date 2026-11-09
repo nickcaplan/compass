@@ -65,7 +65,8 @@ export async function downloadPlanPdf(brief: Brief, plan: Plan): Promise<void> {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${(brief.name || 'Compass plan').replace(/[<>:"/\\|?*\x00-\x1f]/g, '-').slice(0, 100)}.pdf`;
+  const name = brief.name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 _-]/g, '-').replace(/[- ]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90);
+  link.download = `Compass-${name || 'plan'}.pdf`;
   document.body.append(link);
   link.click();
   link.remove();
