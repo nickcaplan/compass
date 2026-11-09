@@ -7,7 +7,7 @@ import puppeteer from 'puppeteer-core';
 const brief = {name:'European R&D Awareness Drive',objectives:['awareness'],markets:['uk'],kpis:['Reach','Impressions'],audiences:['Scientist / Researcher','Laboratory Technician'],budget:150000,start:'2026-12-09',end:'2027-03-02'};
 const entries = ['campaign-one','campaign two/é'].map((id,i)=>({id,savedAt:'2026-11-09T14:00:00Z',brief:{...brief,name:i?'Second campaign':brief.name}}));
 async function click(page,label){
- const handle=await page.evaluateHandle(label=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim().replace(/\s*→$/,'')===label),label);
+ const handle=await page.evaluateHandle(label=>[...document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||b.textContent.trim().replace(/\s*→$/,''))===label),label);
  assert.ok(handle.asElement(),`button ${label}`);await handle.asElement().click();await handle.dispose();
 }
 async function hash(page,value){await page.waitForFunction(value=>location.hash===value,{},value)}
@@ -23,10 +23,9 @@ test('same-browser plan URLs survive refresh, history, cancellation and unavaila
  await page.evaluate(t=>{localStorage.setItem('compass-theme',t)},theme);await page.reload();
  await click(page,'My plans');await hash(page,'#/my-plans');await page.reload();await page.waitForSelector('.plancard');
  await click(page,'Open plan');await hash(page,'#/planner/campaign-one');await page.waitForSelector('.bsum');await page.reload();await page.waitForSelector('.bsum');assert.match(await page.$eval('.bsum',e=>e.textContent),/European R&D/);
- const actions=await page.$eval('.saved-plan-actions',group=>({width:group.getBoundingClientRect().width,buttons:[...group.querySelectorAll('button')].map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height,top:e.getBoundingClientRect().top}))}));
- assert.equal(actions.buttons.length,3,'all saved-plan actions preserved');assert.ok(Math.abs(actions.buttons[0].width-actions.width)<1,'Edit plan fills the primary row');assert.ok(actions.buttons.every(b=>b.height>=44),'44px action targets');assert.equal(actions.buttons[1].top,actions.buttons[2].top,'navigation and copy align');assert.equal(actions.buttons[1].width,actions.buttons[2].width,'balanced utility widths');
- const utilityStyles=await page.$$eval('.saved-plan-utilities button',es=>es.map(e=>{const s=getComputedStyle(e);return [s.border,s.borderRadius,s.backgroundColor,s.color,s.height]}));assert.deepEqual(utilityStyles[0],utilityStyles[1],'Copy matches the outlined secondary button');
- await page.focus('.saved-plan-edit');await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.textContent.trim()),'View all plans');await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.textContent.trim()),'Copy plan link');assert.equal(await page.$eval('.saved-plan-copy',e=>e.getAttribute('aria-describedby')),'plan-link-note');
+ const actions=await page.$eval('.saved-plan-actions',group=>({width:group.getBoundingClientRect().width,buttons:[...group.querySelectorAll('button')].map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))}));
+ assert.equal(actions.buttons.length,2);assert.ok(actions.buttons.every(b=>b.height>=44));assert.equal(actions.buttons[0].width,actions.buttons[1].width);
+ const share=await page.$eval('.saved-brief-head .saved-plan-copy',e=>({label:e.getAttribute('aria-label'),title:e.title,width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}));assert.equal(share.label,'Copy plan link');assert.equal(share.title,'Copy plan link');assert.ok(share.width>=44&&share.height>=44);assert.equal(await page.$eval('.saved-plan-copy',e=>e.getAttribute('aria-describedby')),'plan-link-note');assert.equal(await page.$eval('.saved-plan-edit svg',e=>e.getAttribute('aria-hidden')),'true');
  await page.evaluate(()=>{window.history.back()});await hash(page,'#/my-plans');await page.waitForSelector('.plancard');await page.evaluate(()=>window.history.forward());await hash(page,'#/planner/campaign-one');await page.waitForSelector('.bsum');
  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copiedPlanLink=text}}}));
  await click(page,'Copy plan link');await page.waitForFunction(()=>document.querySelector('.planlink-note')?.textContent.startsWith('Link copied'));assert.equal(await page.evaluate(()=>window.copiedPlanLink),url+'?demo=1#/planner/campaign-one');
