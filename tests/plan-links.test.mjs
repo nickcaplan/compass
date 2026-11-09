@@ -7,8 +7,10 @@ import puppeteer from 'puppeteer-core';
 const brief = {name:'European R&D Awareness Drive',objectives:['awareness'],markets:['uk'],kpis:['Reach','Impressions'],audiences:['Scientist / Researcher','Laboratory Technician'],budget:150000,start:'2026-12-09',end:'2027-03-02'};
 const entries = ['campaign-one','campaign two/é'].map((id,i)=>({id,savedAt:'2026-11-09T14:00:00Z',brief:{...brief,name:i?'Second campaign':brief.name}}));
 async function click(page,label){
+ // Font completion and locator actionability keep CI clicks on the intended control.
+ await page.evaluate(()=>document.fonts.ready);
  const handle=await page.evaluateHandle(label=>[...document.querySelectorAll('button')].find(b=>(label==='Copy plan link' ? b.classList.contains('saved-plan-copy') : (b.getAttribute('aria-label')||b.textContent.trim().replace(/\s*→$/,''))===label)),label);
- assert.ok(handle.asElement(),`button ${label}`);await handle.asElement().click();await handle.dispose();
+ assert.ok(handle.asElement(),`button ${label}`);await handle.asElement().asLocator().click();await handle.dispose();
 }
 async function hash(page,value){await page.waitForFunction(value=>location.hash===value,{},value)}
 
