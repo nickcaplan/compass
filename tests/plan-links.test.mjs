@@ -20,7 +20,8 @@ test('same-browser plan URLs survive refresh, history, cancellation and unavaila
  for(const width of [390,1440])for(const theme of ['light','dark']){
  const context=await browser.createBrowserContext();const page=await context.newPage();page.setDefaultTimeout(8000);await page.setViewport({width,height:900});
  await page.goto(url+'?demo=1');await page.evaluate((entries)=>{localStorage.setItem('compass-saved-plans',JSON.stringify(entries));localStorage.setItem('compass-demo-seeded-v2','1')},entries);await page.reload();
- await page.evaluate(t=>{localStorage.setItem('compass-theme',t)},theme);await page.reload();
+ // Start without a hash so the router's initial replaceState is an explicit readiness signal.
+ await page.evaluate(t=>{localStorage.setItem('compass-theme',t);history.replaceState(null,'',location.pathname+location.search)},theme);await page.reload();await hash(page,'#/planner');
  await click(page,'My plans');await hash(page,'#/my-plans');await page.reload();await page.waitForSelector('.plancard');
  await click(page,'Open plan');await hash(page,'#/planner/campaign-one');await page.waitForSelector('.bsum');await page.reload();await page.waitForSelector('.bsum');assert.match(await page.$eval('.bsum',e=>e.textContent),/European R&D/);assert.equal(await page.$eval('h1',e=>e.textContent),brief.name);assert.equal(await page.$('.hero'),null);assert.equal(await page.$('.planneractions'),null);
  const actions=await page.$eval('.saved-plan-actions',group=>({width:group.getBoundingClientRect().width,buttons:[...group.querySelectorAll('button')].map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))}));
