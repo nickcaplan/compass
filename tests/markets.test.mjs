@@ -1,3 +1,4 @@
+import { seedPlannerFixture } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {spawn} from 'node:child_process';
@@ -9,7 +10,7 @@ test('market options preserve shared pill styling and multi-selection without re
  const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let out='';const timeout=setTimeout(()=>reject(Error('server timeout')),10000);server.stdout.on('data',b=>{out+=stripVTControlCharacters(b.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timeout);resolve(m[0])}})});
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true});
  for(const width of[320,390,768,1440]){
- const p=await browser.newPage();await p.setViewport({width,height:900});await p.goto(url);await p.waitForSelector('[aria-labelledby=g-market]');
+ const p=await browser.newPage();await p.setViewport({width,height:900});await seedPlannerFixture(p);await p.goto(url);await p.waitForSelector('[aria-labelledby=g-market]');
  assert.deepEqual(await p.$$eval('[aria-labelledby=g-market] button',bs=>bs.map(b=>b.textContent)),['North America','UK','France','Germany']);
  assert.equal(await p.$$eval('.planning-step label',es=>es.map(e=>e.textContent).slice(1,4).join(',')),'Market,Objective,KPI');
  await p.locator('[aria-labelledby=g-market] button').click();await p.focus('[aria-labelledby=g-market] button:nth-child(2)');await p.keyboard.press('Space');
