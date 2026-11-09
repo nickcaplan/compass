@@ -78,7 +78,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await clickButton(page, 'Save plan');
     await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
     await page.waitForSelector('.bsum');
-    assert.match(await page.$eval('.viewactions', (actions) => actions.textContent), /View all plans/);
+    assert.match(await page.$eval('.saved-plan-actions', (actions) => actions.textContent), /View all plans/);
 
     await t.test('saved new plan still warns after its form is edited', async () => {
       await clickButton(page, 'Edit plan');
