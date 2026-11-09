@@ -4,7 +4,7 @@ import {stripVTControlCharacters} from 'node:util';
 import test from 'node:test';
 import puppeteer from 'puppeteer-core';
 const brief={name:'Existing campaign',objectives:['awareness'],markets:['uk'],kpis:['Reach','Impressions'],audiences:['Scientist / Researcher'],budget:150000,start:'2026-12-09',end:'2027-03-02'};
-async function click(p,label){await p.waitForSelector('.toast',{hidden:true});const h=await p.evaluateHandle(label=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim().replace(/\s*→$/,'')===label),label);assert.ok(h.asElement(),label);await h.asElement().click();await h.dispose()}
+async function click(p,label){await p.waitForSelector('.toast',{hidden:true});await p.waitForFunction(label=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim().replace(/\s*→$/,'')===label),{},label);const h=await p.evaluateHandle(label=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim().replace(/\s*→$/,'')===label),label);assert.ok(h.asElement(),label);await h.asElement().click();await h.dispose()}
 test('example fill remains for new plans, never while editing saved plans',{timeout:90000},async()=>{
  const s=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let b;
  try{const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let o='';const timer=setTimeout(()=>reject(Error('preview timeout')),10000);s.stdout.on('data',c=>{o+=stripVTControlCharacters(c.toString());const m=o.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
