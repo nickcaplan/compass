@@ -813,6 +813,7 @@ export default function App() {
 
   // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
+    if (editingSaved) return;
     const hasInput = count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
       clearCue();
@@ -1180,7 +1181,7 @@ export default function App() {
           <h2>Plan a campaign</h2>
           <div className="hint">No media expertise needed.</div>
 
-          {demoMode && <>
+          {demoMode && !editingSaved && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
@@ -1784,7 +1785,7 @@ export default function App() {
         illustrative, adapted from the Compass brief
       </footer>
 
-      {demoMode && confirmFill && (
+      {demoMode && !editingSaved && confirmFill && (
         <ConfirmDialog
           title="Replace your answers?"
           body="Replace the answers you have already given with the example brief?"
@@ -1829,4 +1830,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-                         }
+                }
