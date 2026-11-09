@@ -202,7 +202,7 @@ import {
 
 type Stage = 'empty' | 'filling' | 'generating' | 'plan';
 
-function ComingSoonButton() {
+function ComingSoonButton({ compact = false }: { compact?: boolean }) {
   const [notice, setNotice] = useState(0);
   const wrap = useRef<HTMLSpanElement>(null);
   const description = `pdf-coming-soon-${useId()}`;
@@ -237,7 +237,7 @@ function ComingSoonButton() {
   }, [notice]);
 
   return (
-    <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
+    <span className={`cs-wrap${compact ? ' cs-compact' : ''}${notice ? ' cs-showing' : ''}`} ref={wrap}>
       <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
         {notice > 0 && (
           <span id={description} key={notice}>
@@ -248,8 +248,9 @@ function ComingSoonButton() {
       <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
         {/* The button itself becomes the status: its box never moves and the
             message never covers it, so no space is reserved or created. */}
-        <span className="cs-label" key={notice}>{notice ? '✧ Coming soon' : <><IconDownload />Download PDF</>}</span>
+        <span className="cs-label" key={notice}>{compact ? <IconDownload /> : notice ? '✧ Coming soon' : <><IconDownload />Download PDF</>}</span>
       </button>
+      {compact && notice > 0 && <span className="pdf-icon-notice" aria-hidden="true">Coming soon</span>}
     </span>
   );
 }
@@ -1155,9 +1156,12 @@ export default function App() {
                   <h2>Your brief</h2>
                   <div className="cap">SAVED PLAN - READ ONLY</div>
                 </div>
+                <div className="saved-brief-tools" role="group" aria-label="Export and share plan">
+                  <ComingSoonButton compact />
                 <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-label={linkCopy === 'copied' ? 'Plan link copied - only works in this browser' : 'Copy plan link - only works in this browser'}>
                   {linkCopy === 'copied' ? <IconCheck /> : <IconShare />}
                 </button>
+                </div>
               </div>
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
@@ -1173,7 +1177,6 @@ export default function App() {
                   <IconEdit />
                   Edit plan
                 </button>
-                <ComingSoonButton />
               </div>
               <span className="sr-only" role="status">{linkCopy === 'copied' ? 'Plan link copied.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
               {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
