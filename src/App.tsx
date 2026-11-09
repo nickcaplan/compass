@@ -164,9 +164,10 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
 import {
   AUDIENCES,
   EMPTY_BRIEF,
-  PRIMARY_AUDIENCES,
+  MARKETS,
+  marketLabels,
+
   OBJECTIVES,
-  SENIORITY_LEVELS,
   answeredCount,
   buildPlan,
   campaignWeeks,
@@ -289,9 +290,9 @@ function isBrief(value: unknown): value is Brief {
     typeof b.name === 'string' &&
     strArr(b.objectives) &&
     (b.objectives as string[]).every((id) => OBJECTIVES.some((o) => o.id === id)) &&
+    (b.markets === undefined || (strArr(b.markets) && (b.markets as string[]).every(id=>MARKETS.some(m=>m.id===id)))) &&
     strArr(b.kpis) &&
     strArr(b.audiences) &&
-    strArr(b.seniority) &&
     (b.budget === null || typeof b.budget === 'number') &&
     typeof b.start === 'string' &&
     typeof b.end === 'string'
@@ -325,7 +326,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['performance'],
         kpis: ['Lead generation', 'Cost per lead'],
         audiences: ['Procurement', 'Laboratory Manager'],
-        seniority: ['Manager', 'Senior Manager / Head'],
         budget: 100000,
         start: isoDaysFromNow(-14),
         end: isoDaysFromNow(56),
@@ -339,7 +339,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['awareness'],
         kpis: ['Reach', 'Impressions'],
         audiences: ['Scientist / Researcher', 'Laboratory Technician'],
-        seniority: ['Technician / Practitioner'],
         budget: 45000,
         start: isoDaysFromNow(7),
         end: isoDaysFromNow(70),
@@ -353,7 +352,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['performance'],
         kpis: ['Enquiries'],
         audiences: ['Quality / Compliance'],
-        seniority: ['Manager'],
         budget: 75000,
         start: isoDaysFromNow(-90),
         end: isoDaysFromNow(-20),
@@ -366,16 +364,15 @@ function seedPlans(): SavedPlan[] {
         name: 'Global Reagent Launch Consideration',
         objectives: ['consideration'],
         kpis: ['Content downloads', 'Article engagement'],
-        audiences: ['R&D', 'Department Head'],
-        seniority: ['Director / Executive'],
+        audiences: [],
         budget: 60000,
         start: isoDaysFromNow(-120),
         end: isoDaysFromNow(-60),
       },
     },
-    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], seniority: ['Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
-    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], seniority: ['Technician / Practitioner'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
-    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: ['R&D'], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
+    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
   ];
 }
 
@@ -509,9 +506,29 @@ function loadPlans(): SavedPlan[] {
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
         isBrief(p.brief),
-    );
+    ).map(p => ({ ...p, brief: { ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) } }));
   } catch {
     return [];
+  }
+}
+
+// Remove retired choices from existing browser-local demo plans, without
+// replacing audiences or deleting plans. A failed write uses the storage error UI.
+function cleanDemoAudiences(): void {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    if (raw === null) return;
+    const plans: SavedPlan[] = JSON.parse(raw);
+    let changed = false;
+    const cleaned = plans.map(p => {
+      const audiences = p.brief.audiences.filter(a => AUDIENCES.includes(a));
+      if (audiences.length === p.brief.audiences.length) return p;
+      changed = true;
+      return { ...p, brief: { ...p.brief, audiences } };
+    });
+    if (changed) window.localStorage.setItem(PLANS_KEY, JSON.stringify(cleaned));
+  } catch {
+    plansLoadFailed = true;
   }
 }
 
@@ -581,18 +598,18 @@ function DemoCap() {
   return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
 }
 
-const REEL_INDUSTRIES = ['Life sciences', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Life sciences'];
+const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
 
 function IndustryReel() {
   return (
     <div className="eyebrow industry-eyebrow">
-      <span className="industry-accessible">Life sciences media planning</span>
+      <span className="industry-accessible">Life Sciences Media Planning</span>
+      <span aria-hidden="true">Life Sciences</span>
       <span className="industry-reel" aria-hidden="true">
         <span className="industry-reel-track">
-          {REEL_INDUSTRIES.map((industry, index) => <span key={index}>{industry}</span>)}
+          {REEL_SERVICES.map((service, index) => <span key={index}>{service}</span>)}
         </span>
       </span>
-      <span aria-hidden="true">media planning</span>
     </div>
   );
 }
@@ -611,7 +628,6 @@ export default function App() {
       return 'dark';
     }
   });
-  const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>(pageFromUrl);
@@ -685,7 +701,10 @@ export default function App() {
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
     recoverCorruptPlans();
-    if (!plansLoadFailed) ensureSeedPlans();
+    if (!plansLoadFailed) {
+      ensureSeedPlans();
+      cleanDemoAudiences();
+    }
     return loadPlans();
   });
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
@@ -701,6 +720,13 @@ export default function App() {
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
   const planRef = useRef<HTMLElement>(null);
+  // Viewport position of the save action row when Save is pressed, so it can
+  // be pinned in place while the tall form swaps to the compact saved brief.
+  const saveAnchorY = useRef<number | null>(null);
+  const saveRowRef = useRef<HTMLDivElement>(null);
+  // Temporary bottom slack that keeps the page scrollable to the pinned
+  // position when saving shortens it; cleared on the next navigation or edit.
+  const saveSpacerRef = useRef<HTMLDivElement>(null);
   const cueTimer = useRef<number | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -931,26 +957,18 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', refresh);
   }, []);
 
-  const count = answeredCount(brief);
+  const count = answeredCount({ ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) });
   const weeks = campaignWeeks(brief.start, brief.end);
   const viewBrief = (stage === 'generating' || stage === 'gate' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
-  const primaryAudiences = PRIMARY_AUDIENCES.map((label) =>
-    AUDIENCES.find((a) => a === label),
-  ).filter((a): a is (typeof AUDIENCES)[number] => a !== undefined);
-  const secondaryAudiences = AUDIENCES.filter((a) => !PRIMARY_AUDIENCES.includes(a));
-  const visibleAudiences = showAllAudiences
-    ? [...primaryAudiences, ...secondaryAudiences]
-    : [...primaryAudiences, ...secondaryAudiences.filter((a) => brief.audiences.includes(a))];
-  const hiddenAudienceCount = showAllAudiences
-    ? 0
-    : secondaryAudiences.filter((a) => !brief.audiences.includes(a)).length;
+  // Each KPI belongs to exactly one objective, so it can inherit that
+  // objective's neutral shade even when several objectives are selected.
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
-    .flatMap((o) => o.kpis)
-    .filter((k, i, a) => a.indexOf(k) === i);
+    .flatMap((o) => o.kpis.map((k) => ({ label: k, objective: o.id })))
+    .filter((entry, i, a) => a.findIndex((e) => e.label === entry.label) === i);
   const now = new Date();
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
@@ -971,6 +989,38 @@ export default function App() {
   }, [count]);
 
   const genSteps = checklistFor(viewBrief).length;
+
+  // Saving swaps the tall form for a compact read-only brief, shortening the
+  // page. Without correction the plan visibly jumps; keep it pinned to its
+  // viewport position across the swap.
+  useLayoutEffect(() => {
+    if (justSavedId === null) return;
+    const anchor = saveAnchorY.current;
+    saveAnchorY.current = null;
+    const el = saveRowRef.current;
+    if (anchor === null || !el) return;
+    // The document may already have been bottom-clamped before this effect
+    // runs, so pin by viewport delta rather than document coordinates. When
+    // the shortened page could not scroll far enough, temporary bottom slack
+    // keeps the pinned position reachable instead of letting the page jump.
+    const delta = el.getBoundingClientRect().top - anchor;
+    const doc = document.documentElement;
+    const desired = window.scrollY + delta;
+    const maxScroll = doc.scrollHeight - window.innerHeight;
+    const spacer = saveSpacerRef.current;
+    if (desired > maxScroll && spacer) {
+      spacer.style.height = `${desired - maxScroll}px`;
+    }
+    if (delta !== 0) window.scrollBy(0, delta);
+    const frame = requestAnimationFrame(() => {
+      document.documentElement.style.overflowAnchor = '';
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      document.documentElement.style.overflowAnchor = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justSavedId]);
 
   useEffect(() => {
     if (stage !== 'generating') return;
@@ -1049,19 +1099,9 @@ export default function App() {
     patch({ budget: value });
   }
 
-  function toggleSeniority(level: string) {
-    clearCue();
-    setBrief((b) => ({
-      ...b,
-      seniority: b.seniority.includes(level)
-        ? b.seniority.filter((s) => s !== level)
-        : [...b.seniority, level],
-    }));
-  }
-
   // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
-    const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
+    const hasInput = count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
       clearCue();
       setConfirmFill(true);
@@ -1074,7 +1114,6 @@ export default function App() {
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
     setSubmittedBrief(null);
     setStage('filling');
-    setShowAllAudiences(false);
     window.clearTimeout(cueTimer.current);
     if (answeredCount(d) >= 6) {
       setCueSeq((n) => n + 1);
@@ -1118,13 +1157,18 @@ export default function App() {
     setStage('generating');
   }
 
+  function clearSaveSpacer() {
+    const spacer = saveSpacerRef.current;
+    if (spacer) spacer.style.height = '0px';
+  }
+
   function clearPlannerState() {
     clearCue();
+    clearSaveSpacer();
     setBrief(EMPTY_BRIEF);
     setSubmittedBrief(null);
     setBudgetText('');
     setStage('empty');
-    setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
@@ -1159,6 +1203,16 @@ export default function App() {
     return true;
   }
 
+  // Captures the save row's viewport position and pauses browser scroll
+  // anchoring so it cannot double-count against the pin. Called only after
+  // persistence succeeds, so failed saves leave anchoring untouched.
+  function pinSaveRow() {
+    saveAnchorY.current = saveRowRef.current
+      ? saveRowRef.current.getBoundingClientRect().top
+      : null;
+    document.documentElement.style.overflowAnchor = 'none';
+  }
+
   function savePlan() {
     if (!submittedBrief) return;
     if (editingSaved && savedEntry) {
@@ -1172,6 +1226,7 @@ export default function App() {
         p.id === savedEntry.id ? { ...p, brief: submittedBrief, savedAt: new Date().toISOString() } : p,
       );
       if (persist(updated)) {
+        pinSaveRow();
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
       } else {
@@ -1191,6 +1246,7 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
+      pinSaveRow();
       setSavedEntry({ id: entry.id, mode: 'view' });
       setJustSavedId(entry.id);
     } else {
@@ -1209,8 +1265,10 @@ export default function App() {
   }
 
   function editSavedPlan() {
+    clearSaveSpacer();
     setJustSavedId(null);
-    setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
+    setBrief(b => ({ ...b, audiences: b.audiences.filter(a => AUDIENCES.includes(a)) }));
+    setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
   }
 
   function cancelEditSaved() {
@@ -1233,7 +1291,7 @@ export default function App() {
   function openPlan(entry: SavedPlan, force = false) {
     const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
     if (!force && !alreadyOpen) {
-      const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+      const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
       const unsavedPlan = stage === 'plan' && savedEntry === null;
       const unsavedEdit = savedEntry?.mode === 'edit';
       const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
@@ -1243,6 +1301,7 @@ export default function App() {
       }
     }
     setOpenTarget(null);
+    clearSaveSpacer();
     setBrief(entry.brief);
     setSubmittedBrief(entry.brief);
     setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
@@ -1422,6 +1481,7 @@ export default function App() {
   }
 
   function go(p: Page) {
+    clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
     if (pageFromUrl() !== p || window.location.hash !== PAGE_ROUTES[p]) writePageUrl(p);
@@ -1431,9 +1491,9 @@ export default function App() {
 
   const chips: { label: string; soft?: boolean }[] = [];
   if (viewObjectiveLabels.length) chips.push({ label: `Objective: ${viewObjectiveLabels.join(' + ')}` });
+  if (viewBrief.markets?.length) chips.push({label:`Market: ${marketLabels(viewBrief.markets)}`});
   if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
   if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
-  if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
   if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
   if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
@@ -1525,9 +1585,9 @@ export default function App() {
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
                 <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
+                <div><div className="k">Market</div><div className="v">{marketLabels(brief.markets) || 'Not specified'}</div></div>
                 <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
                 <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
-                <div><div className="k">Seniority</div><div className="v">{brief.seniority.join(' + ') || '-'}</div></div>
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
@@ -1563,7 +1623,7 @@ export default function App() {
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
           </>}
 
-          <div className="field">
+          <div className="field planning-step">
             <label htmlFor="f-name">Campaign name</label>
             <input
               id="f-name"
@@ -1575,14 +1635,21 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
+            <label id="g-market">Market</label>
+            <div className="pills" role="group" aria-labelledby="g-market">
+              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
+            </div>
+          </div>
+
+          <div className="field planning-step">
             <label id="g-objective">Objective</label>
             <div className="pills" role="group" aria-labelledby="g-objective">
               {OBJECTIVES.map((o) => (
                 <button
                   key={o.id}
                   type="button"
-                  className={`pill${brief.objectives.includes(o.id) ? '' : ' off'}`}
+                  className={`pill obj-${o.id}${brief.objectives.includes(o.id) ? '' : ' off'}`}
                   aria-pressed={brief.objectives.includes(o.id)}
                   onClick={() => toggleObjective(o.id)}
                 >
@@ -1592,31 +1659,31 @@ export default function App() {
             </div>
           </div>
 
-          <div className="field">
-            <label>KPI</label>
+          <div className="field planning-step">
+            <label id="g-kpi">KPI</label>
             {kpiOptions.length === 0 ? (
               <div className="hint">Select an objective first</div>
             ) : (
-              <div className="pills">
-                {kpiOptions.map((k) => (
+              <div className="pills" role="group" aria-labelledby="g-kpi">
+                {kpiOptions.map((entry) => (
                   <button
-                    key={k}
+                    key={entry.label}
                     type="button"
-                    className={`pill${brief.kpis.includes(k) ? '' : ' off'}`}
-                    aria-pressed={brief.kpis.includes(k)}
-                    onClick={() => toggleKpi(k)}
+                    className={`pill obj-${entry.objective}${brief.kpis.includes(entry.label) ? '' : ' off'}`}
+                    aria-pressed={brief.kpis.includes(entry.label)}
+                    onClick={() => toggleKpi(entry.label)}
                   >
-                    {k}
+                    {entry.label}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label id="g-audience">Audience</label>
-            <div className="pills" role="group" aria-labelledby="g-audience">
-              {visibleAudiences.map((a) => (
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
+              {AUDIENCES.map((a) => (
                 <button
                   key={a}
                   type="button"
@@ -1627,37 +1694,10 @@ export default function App() {
                   {a}
                 </button>
               ))}
-              <button
-                type="button"
-                className="pill more"
-                aria-expanded={showAllAudiences}
-                onClick={() => setShowAllAudiences((v) => !v)}
-              >
-                {showAllAudiences
-                  ? 'Show fewer'
-                  : `Show ${hiddenAudienceCount} more`}
-              </button>
             </div>
           </div>
 
-          <div className="field">
-            <label id="g-seniority">Seniority</label>
-            <div className="pills" role="group" aria-labelledby="g-seniority">
-              {SENIORITY_LEVELS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`pill${brief.seniority.includes(s) ? '' : ' off'}`}
-                  aria-pressed={brief.seniority.includes(s)}
-                  onClick={() => toggleSeniority(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="field">
+          <div className="field planning-step">
             <label htmlFor="f-budget">Budget</label>
             <input
               id="f-budget"
@@ -1670,7 +1710,7 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label>Campaign dates</label>
             <div className="daterow">
               <div className="datewrap">
@@ -1820,8 +1860,8 @@ export default function App() {
               <div className="chips">
                 <span className="chip">{viewObjectiveLabels.join(' + ')}</span>
                 <span className="chip">{viewBrief.kpis.join(' + ')}</span>
+                <span className="chip">Market: {marketLabels(viewBrief.markets) || 'Not specified'}</span>
                 <span className="chip">{viewBrief.audiences.join(' + ')}</span>
-                <span className="chip">{viewBrief.seniority.join(' + ')}</span>
                 <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
                 <span className="chip">{weeksLabel(viewWeeks)}</span>
               </div>
@@ -1910,20 +1950,14 @@ export default function App() {
               </div>
               <div className="cta">
                 <div>
-                  <b>Want us to validate or activate this plan?</b>
-                  <p>
-                A{' '}
-                <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
-                  Hybrid House
-                </a>{' '}
-                media specialist can pick it up from here.
-              </p>
+                  <b>A Hybrid House specialist can pick it up from here.</b>
+
                 </div>
-                <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                <a className="btn specialist-link" href="https://thehybridhouse.co.uk/contact/" target="_blank" rel="noreferrer">
                   Speak to a specialist
-                </button>
+                </a>
               </div>
-              <div className="secondary">
+              <div className="secondary" ref={saveRowRef}>
                 {viewingSaved ? (
                   <>
                     {justSavedId === savedEntry?.id && (
@@ -1977,6 +2011,7 @@ export default function App() {
           )}
         </section>
       </div>
+      <div ref={saveSpacerRef} className="savespacer" aria-hidden="true" />
         </>
       )}
 
@@ -2047,6 +2082,7 @@ export default function App() {
                       </b>
                       <div className="chips">
                         {objLabels && <span className="chip">{objLabels}</span>}
+                        <span className="chip">Market: {marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
                         )}
@@ -2126,7 +2162,7 @@ export default function App() {
             <div className="include">
               <div className="n">01</div>
               <b>Your brief, answered</b>
-              <span>Objective, audience, seniority, budget and dates - no media expertise needed.</span>
+              <span>Objective, audience, budget and dates - no media expertise needed.</span>
             </div>
             <div className="include">
               <div className="n">02</div>

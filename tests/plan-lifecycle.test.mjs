@@ -148,6 +148,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       // Four950ms checklist ticks follow the1s walkthrough pause. Busy CI
   // must wait for completion rather than treating runner speed as app failure.
   await page.waitForSelector('.planin', { timeout: 20000 });
+  assert.equal(await page.$eval('.cta b',e=>e.textContent), 'A Hybrid House specialist can pick it up from here.');
       await clickButton(page, 'Save changes');
       await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
       await page.waitForSelector('.bsum');
