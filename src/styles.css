@@ -528,3 +528,6 @@ input.ctl{color:var(--text)}
 .pc-actions .btn{width:100%;min-height:46px;justify-content:center}
 .plancard.is-expired{padding-top:18px}
 .plancard>.chip.expired{position:static;align-self:flex-start;margin:0 48px 0 0}
+
+/* Anchor saved-plan edits at the first field without a page transition. */
+.card.form{scroll-margin-top:24px}
