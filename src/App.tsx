@@ -240,7 +240,6 @@ function ComingSoonButton() {
 
 
 
-const FULL_PRODUCT_NOTE = 'Not available yet';
 
 type Page = 'planner' | 'plans' | 'signin' | 'pricing';
 const PAGE_ROUTES: Record<Page, string> = { planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing' };
@@ -838,15 +837,16 @@ export default function App() {
       for (const { snap } of candidates) {
         for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
         const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
-        if (entry && typeof entry.id === 'string' && (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)) {
-          setSavedEntry({ id: entry.id, mode: entry.mode });
-        }
+        const restoredEntry: { id: string; mode: 'view' | 'edit' } | null = entry && typeof entry.id === 'string' &&
+          (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)
+          ? { id: entry.id, mode: entry.mode } : null;
+        setSavedEntry(restoredEntry);
         const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
         const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
         setBrief(snap.brief); setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
         setBudgetText(snap.budgetText); setStage(restoredStage);
         latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
-          savedEntry: null, budgetText: snap.budgetText, stage: restoredStage };
+          savedEntry: restoredEntry, budgetText: snap.budgetText, stage: restoredStage };
         anonymousBinding.current = null;
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
         if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
@@ -1526,7 +1526,6 @@ export default function App() {
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
-          <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button
             type="button"
             className="themebtn"
@@ -1549,12 +1548,12 @@ export default function App() {
             type="button"
             className="signin"
             onClick={() => go('signin')}
-            aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Log in'}
+            aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Sign in'}
           >
             {authEmail ? (
               <span className="avatar" aria-hidden="true">{authEmail.charAt(0).toUpperCase()}</span>
             ) : (
-              'Log in'
+              'Sign in'
             )}
           </button>
           </div>
@@ -2123,7 +2122,7 @@ export default function App() {
       )}
 
       {page === 'signin' && (
-        <section className="card pagecard signincard" aria-label={authEmail ? 'Account' : 'Log in'}>
+        <section className="card pagecard signincard" aria-label={authEmail ? 'Account' : 'Sign in'}>
           <div className="planhead">
             <h2>{recoveringPassword ? 'Reset your password' : authEmail && !profileComplete ? 'Complete your profile' : authEmail ? 'Your account' : 'Log in to Compass'}</h2>
             <DemoCap />
@@ -2247,4 +2246,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+                              }
