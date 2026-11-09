@@ -480,8 +480,6 @@ input.ctl{color:var(--text)}
 .saved-plan-actions .saved-plan-edit{width:100%;min-height:46px}
 .saved-plan-utilities{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .saved-plan-utilities .ghost{min-width:0;min-height:44px;padding:10px 8px;color:var(--text);font-size:13px}
-.saved-plan-utilities .saved-plan-copy{background:transparent;border-color:transparent;color:var(--muted)}
-.saved-plan-utilities .saved-plan-copy:hover{background:var(--inset);border-color:var(--line-mid);color:var(--accent-ink)}
 @media(max-width:360px){.saved-plan-utilities{grid-template-columns:1fr}.saved-plan-utilities .ghost{width:100%}}
 .pagecard[aria-label="Plan unavailable"] .viewactions{flex-wrap:wrap}
 .pagecard[aria-label="Plan unavailable"] .viewactions .ghost{flex:0 1 auto}
