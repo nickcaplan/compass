@@ -517,3 +517,13 @@ input.ctl{color:var(--text)}
 .saved-brief-tools .cs-label{color:inherit}
 .pdf-icon-notice{position:absolute;right:0;top:calc(100% + 7px);padding:6px 9px;border:1px solid var(--line-mid);border-radius:8px;background:var(--card);color:var(--text);white-space:nowrap;font-size:12px;z-index:4;box-shadow:0 3px 10px #0002}
 .saved-plan-actions .saved-plan-edit{width:100%}
+
+/* Keep card deletion away from the full-width primary action. */
+.plancard{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:14px}
+.plancard .pc-main{padding-right:48px}
+.pc-delete{position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:12px}
+.pc-delete svg{width:16px;height:16px}
+.pc-delete:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.pc-actions{width:100%;display:flex}
+.pc-actions .btn{width:100%;min-height:46px;justify-content:center}
+.plancard>.chip.expired{align-self:flex-start;margin-right:48px}
