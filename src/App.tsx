@@ -1,5 +1,7 @@
 import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDraftKey, bindingMatches } from './authDraft';
 import type { DraftBinding } from './authDraft';
+import { readPlanRoute, routeHash, usePlanNavigation } from './planRoutes';
+import type { Page, PlanRoute } from './planRoutes';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
@@ -60,6 +62,26 @@ function IconCancel() {
     <svg {...iconProps}>
       <path d="M18 6 6 18" />
       <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
+function IconShare() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
+    </svg>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg {...iconProps}>
+      <path d="m16 3 5 5-12 12-6 1 1-6L16 3z" />
+      <path d="m14 5 5 5" />
     </svg>
   );
 }
@@ -164,9 +186,10 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
 import {
   AUDIENCES,
   EMPTY_BRIEF,
-  PRIMARY_AUDIENCES,
+  MARKETS,
+  marketLabels,
+
   OBJECTIVES,
-  SENIORITY_LEVELS,
   answeredCount,
   buildPlan,
   campaignWeeks,
@@ -185,7 +208,7 @@ import {
 
 type Stage = 'empty' | 'filling' | 'generating' | 'gate' | 'plan';
 
-function ComingSoonButton() {
+function ComingSoonButton({ compact = false }: { compact?: boolean }) {
   const [notice, setNotice] = useState(0);
   const wrap = useRef<HTMLSpanElement>(null);
   const description = `pdf-coming-soon-${useId()}`;
@@ -220,7 +243,7 @@ function ComingSoonButton() {
   }, [notice]);
 
   return (
-    <span className={`cs-wrap${notice ? ' cs-showing' : ''}`} ref={wrap}>
+    <span className={`cs-wrap${compact ? ' cs-compact' : ''}${notice ? ' cs-showing' : ''}`} ref={wrap}>
       <span className="cs-status" role="status" aria-live="polite" aria-atomic="true">
         {notice > 0 && (
           <span id={description} key={notice}>
@@ -231,27 +254,17 @@ function ComingSoonButton() {
       <button type="button" className="ghost" aria-label="Download PDF" aria-describedby={notice ? description : undefined} onClick={() => setNotice((value) => value + 1)}>
         {/* The button itself becomes the status: its box never moves and the
             message never covers it, so no space is reserved or created. */}
-        <span className="cs-label" key={notice}>{notice ? '✧ Coming soon' : <><IconDownload />Download PDF</>}</span>
+        <span className="cs-label" key={notice}>{compact ? <IconDownload /> : notice ? '✧ Coming soon' : <><IconDownload />Download PDF</>}</span>
       </button>
+      {compact && notice > 0 && <span className="pdf-icon-notice" aria-hidden="true">Coming soon</span>}
     </span>
   );
 }
 
 
 
-const FULL_PRODUCT_NOTE = 'Not available yet';
 
-type Page = 'planner' | 'plans' | 'signin' | 'pricing';
-const PAGE_ROUTES: Record<Page, string> = { planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing' };
-function pageFromUrl(): Page {
-  return (Object.keys(PAGE_ROUTES) as Page[]).find(page => PAGE_ROUTES[page] === window.location.hash) ?? 'planner';
-}
-function writePageUrl(page: Page, replace = false) {
-  const url = new URL(window.location.href);
-  url.hash = PAGE_ROUTES[page];
-  window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
-}
-
+function pageFromUrl(): Page { return readPlanRoute().page; }
 
 interface SavedPlan {
   id: string;
@@ -289,9 +302,9 @@ function isBrief(value: unknown): value is Brief {
     typeof b.name === 'string' &&
     strArr(b.objectives) &&
     (b.objectives as string[]).every((id) => OBJECTIVES.some((o) => o.id === id)) &&
+    (b.markets === undefined || (strArr(b.markets) && (b.markets as string[]).every(id=>MARKETS.some(m=>m.id===id)))) &&
     strArr(b.kpis) &&
     strArr(b.audiences) &&
-    strArr(b.seniority) &&
     (b.budget === null || typeof b.budget === 'number') &&
     typeof b.start === 'string' &&
     typeof b.end === 'string'
@@ -325,7 +338,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['performance'],
         kpis: ['Lead generation', 'Cost per lead'],
         audiences: ['Procurement', 'Laboratory Manager'],
-        seniority: ['Manager', 'Senior Manager / Head'],
         budget: 100000,
         start: isoDaysFromNow(-14),
         end: isoDaysFromNow(56),
@@ -339,7 +351,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['awareness'],
         kpis: ['Reach', 'Impressions'],
         audiences: ['Scientist / Researcher', 'Laboratory Technician'],
-        seniority: ['Technician / Practitioner'],
         budget: 45000,
         start: isoDaysFromNow(7),
         end: isoDaysFromNow(70),
@@ -353,7 +364,6 @@ function seedPlans(): SavedPlan[] {
         objectives: ['performance'],
         kpis: ['Enquiries'],
         audiences: ['Quality / Compliance'],
-        seniority: ['Manager'],
         budget: 75000,
         start: isoDaysFromNow(-90),
         end: isoDaysFromNow(-20),
@@ -366,16 +376,15 @@ function seedPlans(): SavedPlan[] {
         name: 'Global Reagent Launch Consideration',
         objectives: ['consideration'],
         kpis: ['Content downloads', 'Article engagement'],
-        audiences: ['R&D', 'Department Head'],
-        seniority: ['Director / Executive'],
+        audiences: [],
         budget: 60000,
         start: isoDaysFromNow(-120),
         end: isoDaysFromNow(-60),
       },
     },
-    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], seniority: ['Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
-    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], seniority: ['Technician / Practitioner'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
-    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: ['R&D'], seniority: ['Director / Executive'], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
+    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
   ];
 }
 
@@ -509,9 +518,29 @@ function loadPlans(): SavedPlan[] {
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
         isBrief(p.brief),
-    );
+    ).map(p => ({ ...p, brief: { ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) } }));
   } catch {
     return [];
+  }
+}
+
+// Remove retired choices from existing browser-local demo plans, without
+// replacing audiences or deleting plans. A failed write uses the storage error UI.
+function cleanDemoAudiences(): void {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    if (raw === null) return;
+    const plans: SavedPlan[] = JSON.parse(raw);
+    let changed = false;
+    const cleaned = plans.map(p => {
+      const audiences = p.brief.audiences.filter(a => AUDIENCES.includes(a));
+      if (audiences.length === p.brief.audiences.length) return p;
+      changed = true;
+      return { ...p, brief: { ...p.brief, audiences } };
+    });
+    if (changed) window.localStorage.setItem(PLANS_KEY, JSON.stringify(cleaned));
+  } catch {
+    plansLoadFailed = true;
   }
 }
 
@@ -581,18 +610,18 @@ function DemoCap() {
   return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
 }
 
-const REEL_INDUSTRIES = ['Life sciences', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Finance', 'Healthcare', 'Energy', 'Technology', 'Retail', 'Life sciences'];
+const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
 
 function IndustryReel() {
   return (
     <div className="eyebrow industry-eyebrow">
-      <span className="industry-accessible">Life sciences media planning</span>
+      <span className="industry-accessible">Life Sciences Media Planning</span>
+      <span aria-hidden="true">Life Sciences</span>
       <span className="industry-reel" aria-hidden="true">
         <span className="industry-reel-track">
-          {REEL_INDUSTRIES.map((industry, index) => <span key={index}>{industry}</span>)}
+          {REEL_SERVICES.map((service, index) => <span key={index}>{service}</span>)}
         </span>
       </span>
-      <span aria-hidden="true">media planning</span>
     </div>
   );
 }
@@ -611,18 +640,14 @@ export default function App() {
       return 'dark';
     }
   });
-  const [showAllAudiences, setShowAllAudiences] = useState(false);
   const [cueGen, setCueGen] = useState(false);
   const [cueSeq, setCueSeq] = useState(0);
-  const [page, setPage] = useState<Page>(pageFromUrl);
-  useEffect(() => {
-    const syncPage = () => { setPage(pageFromUrl()); window.scrollTo(0, 0); };
-    window.addEventListener('popstate', syncPage);
-    window.addEventListener('hashchange', syncPage);
-    // Leave OAuth fragments intact for the auth client to consume.
-    if (!window.location.hash) writePageUrl(pageFromUrl(), true);
-    return () => { window.removeEventListener('popstate', syncPage); window.removeEventListener('hashchange', syncPage); };
-  }, []);
+  const [page, setPage] = useState<Page>(() => readPlanRoute().page);
+  const [unavailablePlan, setUnavailablePlan] = useState(false);
+  const [linkCopy, setLinkCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const planLinkRef = useRef<HTMLInputElement>(null);
+  const linkCopyTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(linkCopyTimer.current), []);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [profileName, setProfileName] = useState('');
@@ -685,7 +710,10 @@ export default function App() {
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
     recoverCorruptPlans();
-    if (!plansLoadFailed) ensureSeedPlans();
+    if (!plansLoadFailed) {
+      ensureSeedPlans();
+      cleanDemoAudiences();
+    }
     return loadPlans();
   });
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
@@ -696,11 +724,17 @@ export default function App() {
   const [hasFilled, setHasFilled] = useState(false);
   const [confirmFill, setConfirmFill] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavedPlan | null>(null);
-  const [openTarget, setOpenTarget] = useState<{ entry: SavedPlan; reason: 'draft' | 'unsaved' | 'edit' } | null>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const genRef = useRef<HTMLButtonElement>(null);
   const planRef = useRef<HTMLElement>(null);
+  // Viewport position of the save action row when Save is pressed, so it can
+  // be pinned in place while the tall form swaps to the compact saved brief.
+  const saveAnchorY = useRef<number | null>(null);
+  const saveRowRef = useRef<HTMLDivElement>(null);
+  // Temporary bottom slack that keeps the page scrollable to the pinned
+  // position when saving shortens it; cleared on the next navigation or edit.
+  const saveSpacerRef = useRef<HTMLDivElement>(null);
   const cueTimer = useRef<number | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -812,22 +846,22 @@ export default function App() {
       for (const { snap } of candidates) {
         for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
         const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
-        const restoredSavedEntry: { id: string; mode: 'view' | 'edit' } | null = entry && typeof entry.id === 'string' &&
+        const restoredEntry: { id: string; mode: 'view' | 'edit' } | null = entry && typeof entry.id === 'string' &&
           (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)
           ? { id: entry.id, mode: entry.mode } : null;
-        if (restoredSavedEntry) setSavedEntry(restoredSavedEntry);
+        setSavedEntry(restoredEntry);
         const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
         const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
         setBrief(snap.brief); setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
         setBudgetText(snap.budgetText); setStage(restoredStage);
         latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
-          savedEntry: restoredSavedEntry, budgetText: snap.budgetText, stage: restoredStage };
+          savedEntry: restoredEntry, budgetText: snap.budgetText, stage: restoredStage };
         anonymousBinding.current = null;
         // Reset mode can reload before completion. Keep restored work bound to
         // its verified account instead of consuming its only durable copy.
         if (authController.recovering) stashAuthDraft({ accountId: user.id });
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
-        if (!recoveringPassword) { setPage('planner'); writePageUrl('planner', true); }
+        if (!recoveringPassword) { setPage('planner'); writePageUrl('planner'); }
         break;
       }
     } catch { /* corrupted or unavailable storage */ }
@@ -860,7 +894,7 @@ export default function App() {
     if (callbackError) {
       // An anonymous Google cancellation may retry its own per-tab draft.
       // getSession below revokes this handle if any account is established.
-      setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin', true); }
+      setRecoveringPassword(false); setAuthNotice('This log-in or reset link is invalid or has expired. Log in or request a fresh password reset.'); setPage('signin'); writePageUrl('signin'); }
     const onPageShow = (event: PageTransitionEvent) => { if (event.persisted) googlePending.current = false; };
     window.addEventListener('pageshow', onPageShow);
     const startupEpoch = authEpoch.current;
@@ -904,7 +938,7 @@ export default function App() {
         setStage((s) => (s === 'plan' ? 'gate' : s));
         setSavedEntry(null);
       }
-      if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin', true); }
+      if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin'); }
     });
     const stopErrors = authController.onError(error => setAuthNotice(error.message));
     return () => { stopErrors(); subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
@@ -926,7 +960,7 @@ export default function App() {
   }, [stage, canViewPlan]);
 
   useEffect(() => {
-    if (recoveringPassword && page !== 'signin') { setPage('signin'); writePageUrl('signin', true); }
+    if (recoveringPassword && page !== 'signin') { setPage('signin'); writePageUrl('signin'); }
   }, [recoveringPassword, page]);
 
   // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
@@ -940,26 +974,18 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', refresh);
   }, []);
 
-  const count = answeredCount(brief);
+  const count = answeredCount({ ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) });
   const weeks = campaignWeeks(brief.start, brief.end);
   const viewBrief = (stage === 'generating' || stage === 'gate' || stage === 'plan') && submittedBrief ? submittedBrief : brief;
   const viewWeeks = campaignWeeks(viewBrief.start, viewBrief.end);
   const viewObjectiveLabels = viewBrief.objectives
     .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
     .filter((l) => l !== '');
-  const primaryAudiences = PRIMARY_AUDIENCES.map((label) =>
-    AUDIENCES.find((a) => a === label),
-  ).filter((a): a is (typeof AUDIENCES)[number] => a !== undefined);
-  const secondaryAudiences = AUDIENCES.filter((a) => !PRIMARY_AUDIENCES.includes(a));
-  const visibleAudiences = showAllAudiences
-    ? [...primaryAudiences, ...secondaryAudiences]
-    : [...primaryAudiences, ...secondaryAudiences.filter((a) => brief.audiences.includes(a))];
-  const hiddenAudienceCount = showAllAudiences
-    ? 0
-    : secondaryAudiences.filter((a) => !brief.audiences.includes(a)).length;
+  // Each KPI belongs to exactly one objective, so it can inherit that
+  // objective's neutral shade even when several objectives are selected.
   const kpiOptions = OBJECTIVES.filter((o) => brief.objectives.includes(o.id))
-    .flatMap((o) => o.kpis)
-    .filter((k, i, a) => a.indexOf(k) === i);
+    .flatMap((o) => o.kpis.map((k) => ({ label: k, objective: o.id })))
+    .filter((entry, i, a) => a.findIndex((e) => e.label === entry.label) === i);
   const now = new Date();
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
@@ -980,6 +1006,38 @@ export default function App() {
   }, [count]);
 
   const genSteps = checklistFor(viewBrief).length;
+
+  // Saving swaps the tall form for a compact read-only brief, shortening the
+  // page. Without correction the plan visibly jumps; keep it pinned to its
+  // viewport position across the swap.
+  useLayoutEffect(() => {
+    if (justSavedId === null) return;
+    const anchor = saveAnchorY.current;
+    saveAnchorY.current = null;
+    const el = saveRowRef.current;
+    if (anchor === null || !el) return;
+    // The document may already have been bottom-clamped before this effect
+    // runs, so pin by viewport delta rather than document coordinates. When
+    // the shortened page could not scroll far enough, temporary bottom slack
+    // keeps the pinned position reachable instead of letting the page jump.
+    const delta = el.getBoundingClientRect().top - anchor;
+    const doc = document.documentElement;
+    const desired = window.scrollY + delta;
+    const maxScroll = doc.scrollHeight - window.innerHeight;
+    const spacer = saveSpacerRef.current;
+    if (desired > maxScroll && spacer) {
+      spacer.style.height = `${desired - maxScroll}px`;
+    }
+    if (delta !== 0) window.scrollBy(0, delta);
+    const frame = requestAnimationFrame(() => {
+      document.documentElement.style.overflowAnchor = '';
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      document.documentElement.style.overflowAnchor = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justSavedId]);
 
   useEffect(() => {
     if (stage !== 'generating') return;
@@ -1058,19 +1116,10 @@ export default function App() {
     patch({ budget: value });
   }
 
-  function toggleSeniority(level: string) {
-    clearCue();
-    setBrief((b) => ({
-      ...b,
-      seniority: b.seniority.includes(level)
-        ? b.seniority.filter((s) => s !== level)
-        : [...b.seniority, level],
-    }));
-  }
-
   // One tap fills an example, briefly shows the answers, then generates it.
   function fillDemo(force = false) {
-    const hasInput = count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
+    if (editingSaved) return;
+    const hasInput = count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '';
     if (hasInput && !force) {
       clearCue();
       setConfirmFill(true);
@@ -1083,7 +1132,6 @@ export default function App() {
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
     setSubmittedBrief(null);
     setStage('filling');
-    setShowAllAudiences(false);
     window.clearTimeout(cueTimer.current);
     if (answeredCount(d) >= 6) {
       setCueSeq((n) => n + 1);
@@ -1127,20 +1175,25 @@ export default function App() {
     setStage('generating');
   }
 
+  function clearSaveSpacer() {
+    const spacer = saveSpacerRef.current;
+    if (spacer) spacer.style.height = '0px';
+  }
+
   function clearPlannerState() {
     clearCue();
+    clearSaveSpacer();
     setBrief(EMPTY_BRIEF);
     setSubmittedBrief(null);
     setBudgetText('');
     setStage('empty');
-    setShowAllAudiences(false);
     setHasGenerated(false);
     setHasFilled(false);
     setSavedEntry(null);
     setJustSavedId(null);
     setConfirmFill(false);
     setDeleteTarget(null);
-    setOpenTarget(null);
+    navigation.cancel();
     latestPlanner.current = { brief: EMPTY_BRIEF, submittedBrief: null, savedEntry: null, budgetText: '', stage: 'empty' };
   }
 
@@ -1154,6 +1207,10 @@ export default function App() {
     } catch { /* private mode */ }
     anonymousBinding.current = null;
     clearPlannerState();
+    setUnavailablePlan(false);
+    window.clearTimeout(linkCopyTimer.current);
+    setLinkCopy('idle');
+    navigation.address({ page: 'planner' });
     window.scrollTo(0, 0);
   }
 
@@ -1166,6 +1223,16 @@ export default function App() {
     }
     setSavedPlans(plans);
     return true;
+  }
+
+  // Captures the save row's viewport position and pauses browser scroll
+  // anchoring so it cannot double-count against the pin. Called only after
+  // persistence succeeds, so failed saves leave anchoring untouched.
+  function pinSaveRow() {
+    saveAnchorY.current = saveRowRef.current
+      ? saveRowRef.current.getBoundingClientRect().top
+      : null;
+    document.documentElement.style.overflowAnchor = 'none';
   }
 
   function savePlan() {
@@ -1181,8 +1248,10 @@ export default function App() {
         p.id === savedEntry.id ? { ...p, brief: submittedBrief, savedAt: new Date().toISOString() } : p,
       );
       if (persist(updated)) {
+        pinSaveRow();
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
+        navigation.address({ page: 'planner', planId: savedEntry.id });
       } else {
         showToast('Could not save - browser storage is unavailable');
       }
@@ -1200,8 +1269,10 @@ export default function App() {
       return;
     }
     if (persist([entry, ...latest])) {
+      pinSaveRow();
       setSavedEntry({ id: entry.id, mode: 'view' });
       setJustSavedId(entry.id);
+      navigation.address({ page: 'planner', planId: entry.id });
     } else {
       showToast('Could not save - browser storage is unavailable');
     }
@@ -1214,12 +1285,15 @@ export default function App() {
     }
     if (savedEntry?.id === id) {
       clearPlannerState();
+      navigation.address({ page });
     }
   }
 
   function editSavedPlan() {
+    clearSaveSpacer();
     setJustSavedId(null);
-    setSavedEntry((s) => (s ? { ...s, mode: 'edit' } : s));
+    setBrief(b => ({ ...b, audiences: b.audiences.filter(a => AUDIENCES.includes(a)) }));
+    setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
   }
 
   function cancelEditSaved() {
@@ -1239,29 +1313,43 @@ export default function App() {
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
-  function openPlan(entry: SavedPlan, force = false) {
-    const alreadyOpen = savedEntry?.mode === 'view' && savedEntry.id === entry.id;
-    if (!force && !alreadyOpen) {
-      const formDraft = stage !== 'plan' && (count > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-      const unsavedPlan = stage === 'plan' && savedEntry === null;
-      const unsavedEdit = savedEntry?.mode === 'edit';
-      const reason = unsavedEdit ? 'edit' : unsavedPlan ? 'unsaved' : formDraft ? 'draft' : null;
-      if (reason !== null) {
-        setOpenTarget({ entry, reason });
-        return;
-      }
-    }
-    setOpenTarget(null);
-    setBrief(entry.brief);
-    setSubmittedBrief(entry.brief);
-    setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
-    setStage(canViewPlan ? 'plan' : 'gate');
-    setSavedEntry({ id: entry.id, mode: 'view' });
-    setJustSavedId(null);
+  function replacementReason() {
+    const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
+    return savedEntry?.mode === 'edit' ? 'edit' : stage === 'plan' && savedEntry === null ? 'unsaved' : formDraft ? 'draft' : null;
+  }
+
+  const navigation = usePlanNavigation(applyRoute, route => {
+    if (route.planId === undefined || !loadPlans().some(p => p.id === route.planId)) return false;
+    const alreadyOpen = savedEntry?.id === route.planId && (savedEntry.mode === 'view' || !route.reload);
+    return !alreadyOpen && replacementReason() !== null;
+  }, emailAuthCallback || googleOAuthCallback);
+  function writePageUrl(page: Page) { navigation.address({ page }); }
+  const openTarget = navigation.pending ? { reason: replacementReason() } : null;
+
+  function applyRoute(route: PlanRoute) {
+    setUnavailablePlan(false);
+    window.clearTimeout(linkCopyTimer.current);
+    setLinkCopy('idle');
+    clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
-    setPage('planner');
-    writePageUrl('planner');
+    if (route.planId !== undefined) {
+      const latest = loadPlans();
+      const entry = latest.find(p => p.id === route.planId);
+      setSavedPlans(latest);
+      if (!entry || plansLoadFailed) {
+        setUnavailablePlan(true);
+      } else if (savedEntry?.id !== entry.id || route.reload) {
+        clearCue();
+        setBrief(entry.brief);
+        setSubmittedBrief(entry.brief);
+        setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
+        setStage(canViewPlan ? 'plan' : 'gate');
+        setSavedEntry({ id: entry.id, mode: 'view' });
+        setJustSavedId(null);
+      }
+    }
+    setPage(route.page);
     window.scrollTo(0, 0);
   }
 
@@ -1437,19 +1525,36 @@ export default function App() {
     setRecoveringPassword(false);
   }
 
+  function openPlan(entry: SavedPlan) {
+    navigation.navigate({ page: 'planner', planId: entry.id, reload: true });
+  }
+
   function go(p: Page) {
-    window.clearTimeout(toastTimer.current);
-    setToast(null);
-    if (pageFromUrl() !== p || window.location.hash !== PAGE_ROUTES[p]) writePageUrl(p);
-    setPage(p);
-    window.scrollTo(0, 0);
+    navigation.navigate(p === 'planner' && savedEntry && loadPlans().some(entry => entry.id === savedEntry.id)
+      ? { page: p, planId: savedEntry.id } : { page: p });
+  }
+
+  async function copyPlanLink() {
+    if (!savedEntry) return;
+    window.clearTimeout(linkCopyTimer.current);
+    const url = new URL(window.location.href);
+    url.hash = routeHash({ page: 'planner', planId: savedEntry.id });
+    try {
+      await navigator.clipboard.writeText(url.href);
+      window.clearTimeout(linkCopyTimer.current);
+      setLinkCopy('copied');
+      linkCopyTimer.current = window.setTimeout(() => setLinkCopy('idle'), 3000);
+    } catch {
+      setLinkCopy('failed');
+      requestAnimationFrame(() => { planLinkRef.current?.focus(); planLinkRef.current?.select(); });
+    }
   }
 
   const chips: { label: string; soft?: boolean }[] = [];
   if (viewObjectiveLabels.length) chips.push({ label: `Objective: ${viewObjectiveLabels.join(' + ')}` });
+  if (viewBrief.markets?.length) chips.push({label:`Market: ${marketLabels(viewBrief.markets)}`});
   if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
   if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
-  if (viewBrief.seniority.length) chips.push({ label: `Seniority: ${viewBrief.seniority.join(' + ')}` });
   if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
   if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
@@ -1482,7 +1587,6 @@ export default function App() {
           <button type="button" className={page === 'planner' ? 'navon' : ''} onClick={() => go('planner')}>Planner</button>
           <button type="button" className={page === 'plans' ? 'navon' : ''} onClick={() => go('plans')}>My plans</button>
           {/* Pricing page parked pending pricing information - nav link removed; page code kept below for later */}
-          <button type="button" className="navsupport" onClick={() => showToast(FULL_PRODUCT_NOTE)}>Support</button>
           <button
             type="button"
             className="themebtn"
@@ -1505,57 +1609,71 @@ export default function App() {
             type="button"
             className="signin"
             onClick={() => go('signin')}
-            aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Log in'}
+            aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Sign in'}
           >
             {authEmail ? (
               <span className="avatar" aria-hidden="true">{authEmail.charAt(0).toUpperCase()}</span>
             ) : (
-              'Log in'
+              'Sign in'
             )}
           </button>
           </div>
         </div>
       </nav>
 
-      {page === 'planner' && (
+      {page === 'planner' && !unavailablePlan && (
         <>
-      <header className="hero">
-        <IndustryReel />
-        <h1>
-          Your media plan, <em>in minutes.</em>
-        </h1>
-        <p className="sub">
-          Answer a few questions. Compass recommends the publishers, formats and spend split - and
-          the results to expect, with the reasoning shown.
-        </p>
-      </header>
-
+      {viewingSaved ? (
+        <header className="saved-page-head">
+          <div className="saved-page-navigation">
+            <button type="button" className="saved-back" onClick={() => go('plans')}><IconBack />View all plans</button>
+            <button type="button" className="ghost saved-create" onClick={reset}><IconPlus />Create another</button>
+          </div>
+          <h1>{viewBrief.name || 'Untitled campaign'}</h1>
+        </header>
+      ) : (
+        <header className="hero">
+          <IndustryReel />
+          <h1>Your media plan, <em>in minutes.</em></h1>
+          <p className="sub">
+            Answer a few questions. Compass recommends the publishers, formats and spend split - and
+            the results to expect, with the reasoning shown.
+          </p>
+        </header>
+      )}
       <div className="layout">
         <section className="card form" aria-label={savedBriefReadOnly ? 'Saved plan brief' : 'Plan a campaign'}>
           {savedBriefReadOnly ? (
             <>
-              <div className="planhead">
-                <h2>Your brief</h2>
-                <div className="cap">SAVED PLAN - READ ONLY</div>
+              <div className="planhead saved-brief-head">
+                <div className="saved-brief-heading">
+                  <h2>Your brief</h2>
+                  <div className="cap">SAVED PLAN - READ ONLY</div>
+                </div>
+                <div className="saved-brief-tools" role="group" aria-label="Export and share plan">
+                  <ComingSoonButton compact />
+                <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-label={linkCopy === 'copied' ? 'Plan link copied - only works in this browser' : 'Copy plan link - only works in this browser'}>
+                  {linkCopy === 'copied' ? <IconCheck /> : <IconShare />}
+                </button>
+                </div>
               </div>
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
                 <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
+                <div><div className="k">Market</div><div className="v">{marketLabels(brief.markets) || 'Not specified'}</div></div>
                 <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
                 <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
-                <div><div className="k">Seniority</div><div className="v">{brief.seniority.join(' + ') || '-'}</div></div>
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              {canViewPlan && <button type="button" className="gen" onClick={editSavedPlan}>
-                Edit plan <span>&rarr;</span>
-              </button>}
-              <div className="viewactions">
-                <button type="button" className="ghost" onClick={() => go('plans')}>
-                  <IconBack />
-                  View all plans
-                </button>
+              <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
+                {canViewPlan && <button type="button" className="btn saved-plan-edit" onClick={editSavedPlan}>
+                  <IconEdit />
+                  Edit plan
+                </button>}
               </div>
+              <span className="sr-only" role="status">{linkCopy === 'copied' ? 'Plan link copied.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
+              {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
             </>
           ) : (
             <>
@@ -1567,7 +1685,7 @@ export default function App() {
           </div>}
           <div className="hint">No media expertise needed.</div>
 
-          {demoMode && <>
+          {demoMode && !editingSaved && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 4l1.2 3.2L19.5 8.5l-3.3 1.3L15 13l-1.2-3.2L10.5 8.5l3.3-1.3L15 4z" />
@@ -1579,7 +1697,7 @@ export default function App() {
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
           </>}
 
-          <div className="field">
+          <div className="field planning-step">
             <label htmlFor="f-name">Campaign name</label>
             <input
               id="f-name"
@@ -1591,14 +1709,21 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
+            <label id="g-market">Market</label>
+            <div className="pills" role="group" aria-labelledby="g-market">
+              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
+            </div>
+          </div>
+
+          <div className="field planning-step">
             <label id="g-objective">Objective</label>
             <div className="pills" role="group" aria-labelledby="g-objective">
               {OBJECTIVES.map((o) => (
                 <button
                   key={o.id}
                   type="button"
-                  className={`pill${brief.objectives.includes(o.id) ? '' : ' off'}`}
+                  className={`pill obj-${o.id}${brief.objectives.includes(o.id) ? '' : ' off'}`}
                   aria-pressed={brief.objectives.includes(o.id)}
                   onClick={() => toggleObjective(o.id)}
                 >
@@ -1608,31 +1733,31 @@ export default function App() {
             </div>
           </div>
 
-          <div className="field">
-            <label>KPI</label>
+          <div className="field planning-step">
+            <label id="g-kpi">KPI</label>
             {kpiOptions.length === 0 ? (
               <div className="hint">Select an objective first</div>
             ) : (
-              <div className="pills">
-                {kpiOptions.map((k) => (
+              <div className="pills" role="group" aria-labelledby="g-kpi">
+                {kpiOptions.map((entry) => (
                   <button
-                    key={k}
+                    key={entry.label}
                     type="button"
-                    className={`pill${brief.kpis.includes(k) ? '' : ' off'}`}
-                    aria-pressed={brief.kpis.includes(k)}
-                    onClick={() => toggleKpi(k)}
+                    className={`pill obj-${entry.objective}${brief.kpis.includes(entry.label) ? '' : ' off'}`}
+                    aria-pressed={brief.kpis.includes(entry.label)}
+                    onClick={() => toggleKpi(entry.label)}
                   >
-                    {k}
+                    {entry.label}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label id="g-audience">Audience</label>
-            <div className="pills" role="group" aria-labelledby="g-audience">
-              {visibleAudiences.map((a) => (
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
+              {AUDIENCES.map((a) => (
                 <button
                   key={a}
                   type="button"
@@ -1643,37 +1768,10 @@ export default function App() {
                   {a}
                 </button>
               ))}
-              <button
-                type="button"
-                className="pill more"
-                aria-expanded={showAllAudiences}
-                onClick={() => setShowAllAudiences((v) => !v)}
-              >
-                {showAllAudiences
-                  ? 'Show fewer'
-                  : `Show ${hiddenAudienceCount} more`}
-              </button>
             </div>
           </div>
 
-          <div className="field">
-            <label id="g-seniority">Seniority</label>
-            <div className="pills" role="group" aria-labelledby="g-seniority">
-              {SENIORITY_LEVELS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`pill${brief.seniority.includes(s) ? '' : ' off'}`}
-                  aria-pressed={brief.seniority.includes(s)}
-                  onClick={() => toggleSeniority(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="field">
+          <div className="field planning-step">
             <label htmlFor="f-budget">Budget</label>
             <input
               id="f-budget"
@@ -1686,7 +1784,7 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
+          <div className="field planning-step">
             <label>Campaign dates</label>
             <div className="daterow">
               <div className="datewrap">
@@ -1836,8 +1934,8 @@ export default function App() {
               <div className="chips">
                 <span className="chip">{viewObjectiveLabels.join(' + ')}</span>
                 <span className="chip">{viewBrief.kpis.join(' + ')}</span>
+                <span className="chip">Market: {marketLabels(viewBrief.markets) || 'Not specified'}</span>
                 <span className="chip">{viewBrief.audiences.join(' + ')}</span>
-                <span className="chip">{viewBrief.seniority.join(' + ')}</span>
                 <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
                 <span className="chip">{weeksLabel(viewWeeks)}</span>
               </div>
@@ -1879,7 +1977,7 @@ export default function App() {
             <div className="planin">
               <div className="planhead">
                 <h2>{viewingSaved
-                  ? `${viewBrief.name || 'Untitled campaign'}${monthsRangeLabel(viewBrief.start, viewBrief.end) ? ` · ${monthsRangeLabel(viewBrief.start, viewBrief.end)}` : ''}`
+                  ? 'Media plan'
                   : 'Recommended plan'}</h2>
                 {viewingSaved ? <div className="cap">SAVED PLAN - READ ONLY</div> : <DemoCap />}
               </div>
@@ -1926,20 +2024,14 @@ export default function App() {
               </div>
               <div className="cta">
                 <div>
-                  <b>Want us to validate or activate this plan?</b>
-                  <p>
-                A{' '}
-                <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
-                  Hybrid House
-                </a>{' '}
-                media specialist can pick it up from here.
-              </p>
+                  <b>A Hybrid House specialist can pick it up from here.</b>
+
                 </div>
-                <button type="button" className="btn" onClick={() => showToast(FULL_PRODUCT_NOTE)}>
+                <a className="btn specialist-link" href="https://thehybridhouse.co.uk/contact/" target="_blank" rel="noreferrer">
                   Speak to a specialist
-                </button>
+                </a>
               </div>
-              <div className="secondary">
+              <div className="secondary" ref={saveRowRef}>
                 {viewingSaved ? (
                   <>
                     {justSavedId === savedEntry?.id && (
@@ -1948,15 +2040,6 @@ export default function App() {
                         Saved
                       </button>
                     )}
-                    <ComingSoonButton />
-                    <button type="button" className="ghost" onClick={reset}>
-                      <IconPlus />
-                      Create another scenario
-                    </button>
-                    <button type="button" className="ghost" onClick={() => go('plans')}>
-                      <IconBack />
-                      View all plans
-                    </button>
                   </>
                 ) : editingSaved ? (
                   <>
@@ -1984,7 +2067,7 @@ export default function App() {
                     <ComingSoonButton />
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
-                      Create another scenario
+                      Create another
                     </button>
                   </>
                 )}
@@ -1993,7 +2076,20 @@ export default function App() {
           )}
         </section>
       </div>
+      <div ref={saveSpacerRef} className="savespacer" aria-hidden="true" />
         </>
+      )}
+
+      {page === 'planner' && unavailablePlan && (
+        <section className="card pagecard" aria-label="Plan unavailable">
+          <div className="planhead"><h2>Plan unavailable in this browser</h2><DemoCap /></div>
+          <p className="pagesub">This link only opens a plan saved in the same browser. The plan may have been deleted, or this browser may not have it. It is not a shareable link.</p>
+          {plansLoadFailed && <p role="alert">Browser storage could not be read. Your saved data has been left untouched.</p>}
+          <div className="viewactions">
+            <button type="button" className="btn" onClick={() => go('plans')}>View all plans</button>
+            <button type="button" className="ghost" onClick={() => go('planner')}>Back to planner</button>
+          </div>
+        </section>
       )}
 
       {page === 'plans' && (
@@ -2055,6 +2151,9 @@ export default function App() {
                   .join(' + ');
                 return (
                   <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
+                    <button type="button" className="ghost pc-delete" aria-label={`Delete ${sp.brief.name || 'Untitled campaign'}`} title="Delete plan" onClick={() => setDeleteTarget(sp)}>
+                      <IconTrash />
+                    </button>
                     {campaignEnded(sp.brief.end) && <span className="chip expired">Expired</span>}
                     <div className="pc-main">
                       <b>
@@ -2063,6 +2162,7 @@ export default function App() {
                       </b>
                       <div className="chips">
                         {objLabels && <span className="chip">{objLabels}</span>}
+                        <span className="chip">Market: {marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
                         )}
@@ -2083,10 +2183,7 @@ export default function App() {
                         Open plan
                         <IconOpen />
                       </button>
-                      <button type="button" className="ghost" onClick={() => setDeleteTarget(sp)}>
-                        <IconTrash />
-                        Delete
-                      </button>
+
                     </div>
                   </div>
                 );
@@ -2103,7 +2200,7 @@ export default function App() {
       )}
 
       {page === 'signin' && (
-        <section className="card pagecard signincard" aria-label={authEmail ? 'Account' : 'Log in'}>
+        <section className="card pagecard signincard" aria-label={authEmail ? 'Account' : 'Sign in'}>
           <div className="planhead">
             <h2>{recoveringPassword ? 'Reset your password' : authEmail && !profileComplete ? 'Complete your profile' : authEmail ? 'Your account' : 'Log in to Compass'}</h2>
             <DemoCap />
@@ -2142,7 +2239,7 @@ export default function App() {
             <div className="include">
               <div className="n">01</div>
               <b>Your brief, answered</b>
-              <span>Objective, audience, seniority, budget and dates - no media expertise needed.</span>
+              <span>Objective, audience, budget and dates - no media expertise needed.</span>
             </div>
             <div className="include">
               <div className="n">02</div>
@@ -2182,7 +2279,7 @@ export default function App() {
         illustrative, adapted from the Compass brief
       </footer>
 
-      {demoMode && confirmFill && (
+      {demoMode && !editingSaved && confirmFill && (
         <ConfirmDialog
           title="Replace your answers?"
           body="Replace the answers you have already given with the example brief?"
@@ -2219,12 +2316,12 @@ export default function App() {
           }
           confirmLabel="Open plan"
           cancelLabel={openTarget.reason === 'edit' ? 'Keep editing' : openTarget.reason === 'unsaved' ? 'Keep my plan' : 'Keep my draft'}
-          onConfirm={() => openPlan(openTarget.entry, true)}
-          onCancel={() => setOpenTarget(null)}
+          onConfirm={navigation.confirm}
+          onCancel={navigation.cancel}
         />
       )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+          }

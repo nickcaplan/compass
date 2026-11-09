@@ -29,7 +29,8 @@ async function openSavedPlan(page) {
 
 async function generateExample(page) {
   await clickButton(page, 'Fill it in for me');
-  await page.waitForSelector('.planin .metrics');
+  await page.waitForSelector('.planin .metrics', { timeout: 20000 });
+  assert.equal(await page.$eval('.cta b', e => e.textContent), 'A Hybrid House specialist can pick it up from here.');
 }
 
 // Plants a stored Supabase session so the app loads as signed in, the way it
@@ -94,6 +95,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
     await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4173/?demo=1'));
+    await page.waitForFunction(() => location.hash === '#/planner');
 
     // Anonymous first generation is gated behind real sign-in: the gate shows
     // the sign-in options and keeps the plan hidden.
@@ -116,7 +118,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await clickButton(page, 'Save plan');
     await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
     await page.waitForSelector('.bsum');
-    assert.match(await page.$eval('.viewactions', (actions) => actions.textContent), /View all plans/);
+    assert.equal(await page.$eval('.saved-page-head .saved-back', e => e.textContent), 'View all plans');
 
     await t.test('saved new plan still warns after its form is edited', async () => {
       await clickButton(page, 'Edit plan');
@@ -150,6 +152,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       // Four950ms checklist ticks follow the1s walkthrough pause. Busy CI
   // must wait for completion rather than treating runner speed as app failure.
   await page.waitForSelector('.planin', { timeout: 20000 });
+  assert.equal(await page.$eval('.cta b',e=>e.textContent), 'A Hybrid House specialist can pick it up from here.');
       await clickButton(page, 'Save changes');
       await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
       await page.waitForSelector('.bsum');
@@ -225,7 +228,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     });
 
     await t.test('draft replacement warns and Escape preserves answers', async () => {
-      await clickButton(page, 'Create another scenario');
+      await clickButton(page, 'Create another');
       await page.locator('#f-name').fill('Unfinished draft');
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
@@ -241,7 +244,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     });
 
     await t.test('an unsaved generated plan still requires confirmation', async () => {
-      await clickButton(page, 'Create another scenario');
+      await clickButton(page, 'Create another');
       await generateExample(page);
       await openSavedPlan(page);
       await page.waitForSelector('[role="alertdialog"]');
@@ -260,7 +263,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.setViewport({ width: 412, height: 300 });
       await clickButton(page, 'My plans');
       await page.waitForSelector('.pc-actions');
-      await clickButton(page, 'Delete');
+      await page.locator('.pc-delete').click();
       await page.waitForSelector('[role="alertdialog"]');
       const bounds = await page.$eval('.confirm', (dialog) => {
         const rect = dialog.getBoundingClientRect();

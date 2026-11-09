@@ -30,10 +30,21 @@ npm run build
 
 Outputs static files to `dist/`, deployable to any static host.
 
+## Tests
+
+```
+npm test
+```
+
+Builds the app, then runs the browser-level regression tests (node:test +
+puppeteer against a local preview of the build). CI runs lint, build and
+these tests on every pull request and push to main.
+
 ## Deploy
 
-Designed to deploy as a Render static site: build command `npm run build`,
-publish directory `dist`.
+Deploys as a Render static site: build command `npm run build`, publish
+directory `dist`. The production demo serves the main branch at
+https://compass-demo.websitesbynick.co.uk/ behind Cloudflare.
 
 ## Layout
 
