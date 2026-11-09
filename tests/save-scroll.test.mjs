@@ -85,15 +85,10 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 12000
       }
     }
 
-    // Spacer cleanup, synthetic and labelled as such: on current main
-    // geometry (compact single-row form), measurement shows content below
-    // the save row grows ~48px on save (Roboto fixture fonts), so no
-    // scroll position at any viewport bottom-clamps on save and the spacer
-    // never triggers through a real save. The no-jump claim for real saves
-    // is covered by the sweep above. The spacer's lifecycle is therefore
-    // exercised by simulating the clamped state's spacer directly and
-    // verifying a real Edit plan click clears it - geometry coverage, not
-    // a user-reachable save state.
+    // Spacer cleanup: the saved-page heading and shorter action row change
+    // the content height, so a real save may now need scroll slack. The real
+    // save sweep above checks the row stays pinned. Verify Edit clears any
+    // naturally created slack, then inject 120px to test the larger case too.
     {
       const page = await newTestPage(browser, { width: 1280, height: 800 }, previewUrl);
       await clickButton(page, 'Fill it in for me');
@@ -101,8 +96,11 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 12000
       await page.evaluate(() => document.querySelector('.secondary').scrollIntoView({ block: 'center' }));
       await clickButton(page, 'Save plan');
       await page.waitForSelector('.ghost.saved', { timeout: 10000 });
-      const organic = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
-      assert.equal(organic, 0, `unexpected save slack on current geometry: ${organic}px (layout changed - re-check whether a real clamped state exists again)`);
+      await clickButton(page, 'Edit plan');
+      const organicLeft = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
+      assert.equal(organicLeft, 0, `natural save spacer still ${organicLeft}px after Edit plan`);
+      await clickButton(page, 'Cancel');
+      await page.waitForSelector('.bsum');
       await page.evaluate(() => { document.querySelector('.savespacer').style.height = '120px'; });
       await clickButton(page, 'Edit plan');
       await page.waitForSelector('input', { timeout: 10000 });
@@ -115,4 +113,3 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 12000
     server.kill();
   }
 });
-
