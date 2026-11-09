@@ -1076,6 +1076,13 @@ export default function App() {
         </p>
       </header>
 
+      {viewingSaved && (
+        <div className="planneractions" style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 12 }}>
+          <button type="button" className="gen" style={{ width: 'auto', marginTop: 0, padding: '12px 18px' }} onClick={reset}>
+            Plan a new campaign <span>&rarr;</span>
+          </button>
+        </div>
+      )}
       <div className="layout">
         <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
           {viewingSaved ? (
@@ -1084,9 +1091,6 @@ export default function App() {
                 <h2>Your brief</h2>
                 <div className="cap">SAVED PLAN - READ ONLY</div>
               </div>
-              <button type="button" className="gen" style={{ marginTop: 0 }} onClick={reset}>
-                Plan a new campaign <span>&rarr;</span>
-              </button>
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
                 <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
