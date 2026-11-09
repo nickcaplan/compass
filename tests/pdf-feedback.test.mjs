@@ -28,20 +28,27 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) {
       const page = await browser.newPage(); await page.setViewport({width,height:900});
-      await page.goto(previewUrl); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
+      await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
       await page.waitForFunction(()=>!document.querySelector('.gen').disabled); await page.evaluate(()=>document.querySelector('.gen').click()); await page.waitForSelector('.cs-wrap button');
       for (const saved of [false,true]) {
         if(saved){await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save plan').click());await page.waitForSelector('.bsum');}
         await page.$eval('.cs-wrap button',e=>e.scrollIntoView({block:'center'}));
+        // The plan reveal settles for a moment after generation; only measure once the layout is still.
+        await page.waitForFunction(()=>new Promise(res=>{const e=document.querySelector('.cs-wrap');const a=e.getBoundingClientRect().top+scrollY;setTimeout(()=>res(Math.abs(e.getBoundingClientRect().top+scrollY-a)<0.5),600)}),{polling:200});
         const button=await page.$eval('.cs-wrap button',e=>({width:e.offsetWidth,height:e.offsetHeight,left:e.offsetLeft,top:e.offsetTop}));
-        await page.locator('.cs-wrap button').click(); await page.waitForSelector('.cs-bubble');
+        const nextTop=await page.evaluate(()=>{const n=document.querySelector('.cs-wrap').nextElementSibling;return n?n.offsetTop:null});
+        const wrapPos=await page.evaluate(()=>{const r=document.querySelector('.cs-wrap').getBoundingClientRect();return {x:r.left,y:r.top+scrollY}});
         assert.equal(await page.$eval('.cs-label',e=>e.textContent.trim()),'Download PDF');
-        assert.equal(await page.$eval('.cs-bubble',e=>e.textContent.trim()),'Coming soon');
-        await page.waitForFunction(()=>['.cs-label','.cs-bubble'].every(s=>{const e=document.querySelector(s);if(!e)return false;const c=getComputedStyle(e),r=e.getBoundingClientRect();return c.visibility==='visible'&&Number(c.opacity)>.9&&r.width>0&&r.height>0}));
+        await page.locator('.cs-wrap button').click();
+        // The button itself becomes the status: label swaps in place.
+        await page.waitForFunction(()=>document.querySelector('.cs-label')?.textContent.trim()==='✧ Coming soon');
+        await page.waitForFunction(()=>{const e=document.querySelector('.cs-label');const c=getComputedStyle(e),r=e.getBoundingClientRect();return c.visibility==='visible'&&Number(c.opacity)>.9&&r.width>0&&r.height>0});
+        // No layout shift: the button box and the following action never move.
         assert.deepEqual(await page.$eval('.cs-wrap button',e=>({width:e.offsetWidth,height:e.offsetHeight,left:e.offsetLeft,top:e.offsetTop})),button);
+        assert.equal(await page.evaluate(()=>{const n=document.querySelector('.cs-wrap').nextElementSibling;return n?n.offsetTop:null}),nextTop);
+        assert.deepEqual(await page.evaluate(()=>{const r=document.querySelector('.cs-wrap').getBoundingClientRect();return {x:r.left,y:r.top+scrollY}}),wrapPos);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-        const overlap=await page.evaluate(()=>{const a=document.querySelector('.cs-label').getBoundingClientRect();const b=document.querySelector('.cs-bubble').getBoundingClientRect();return a.right>b.left});assert.equal(overlap,false);
-        await page.keyboard.press('Escape');await page.waitForSelector('.cs-bubble',{hidden:true});
+        await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelector('.cs-label')?.textContent.trim()==='Download PDF');
         await page.locator('.cs-wrap button').click();
         await new Promise(resolve=>setTimeout(resolve,450));
         const focused=await page.$('.cs-wrap button');
@@ -50,9 +57,9 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
         assert.ok(washTime!==undefined && washTime<200,'Repeated activation restarts wash');
         assert.equal(await focused.evaluate(e=>e===document.activeElement),true,'Focused button is preserved');
         await page.keyboard.press('Escape');
-        const start=await page.evaluate(()=>{document.querySelector('.cs-wrap button').click();return performance.now()});await page.waitForSelector('.cs-bubble');await page.waitForSelector('.cs-bubble',{hidden:true});const elapsed=await page.evaluate(t=>performance.now()-t,start);assert.ok(elapsed>=900&&elapsed<=1600,`feedback lasted ${elapsed}ms`);
+        const start=await page.evaluate(()=>{document.querySelector('.cs-wrap button').click();return performance.now()});await page.waitForFunction(()=>document.querySelector('.cs-label')?.textContent.trim()==='✧ Coming soon');await page.waitForFunction(()=>document.querySelector('.cs-label')?.textContent.trim()==='Download PDF');const elapsed=await page.evaluate(t=>performance.now()-t,start);assert.ok(elapsed>=900&&elapsed<=1600,`feedback lasted ${elapsed}ms`);
       }
-      await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await page.locator('.cs-wrap button').click();await page.waitForSelector('.cs-bubble');assert.equal(await page.$eval('.cs-bubble',e=>e.getAnimations().length),0);assert.equal(await page.$eval('.cs-wrap .ghost',e=>getComputedStyle(e).transitionDuration),'0s');await page.keyboard.press('Escape');assert.equal(await page.$eval('.cs-wrap .ghost',e=>getComputedStyle(e).transitionDuration),'0s');await page.close();
+      await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await page.locator('.cs-wrap button').click();await page.waitForFunction(()=>document.querySelector('.cs-label')?.textContent.trim()==='✧ Coming soon');assert.equal(await page.$eval('.cs-wrap .ghost',e=>e.getAnimations().length),0);assert.equal(await page.$eval('.cs-wrap .ghost',e=>getComputedStyle(e).transitionDuration),'0s');await page.keyboard.press('Escape');assert.equal(await page.$eval('.cs-wrap .ghost',e=>getComputedStyle(e).transitionDuration),'0s');await page.close();
     }
   } finally { await browser?.close(); server.kill(); }
 });
