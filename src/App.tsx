@@ -1070,12 +1070,20 @@ export default function App() {
         <h1>
           Your media plan, <em>in minutes.</em>
         </h1>
-        <p className="sub">
-          Answer a few questions. Compass recommends the publishers, formats and spend split - and
-          the results to expect, with the reasoning shown.
-        </p>
+        <div className={viewingSaved ? 'hero-tail' : undefined}>
+          <p className="sub">
+            Answer a few questions. Compass recommends the publishers, formats and spend split - and
+            the results to expect, with the reasoning shown.
+          </p>
+          {viewingSaved && (
+            <div className="planneractions">
+              <button type="button" className="gen" onClick={reset}>
+                Plan a new campaign <span>&rarr;</span>
+              </button>
+            </div>
+          )}
+        </div>
       </header>
-
       <div className="layout">
         <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
           {viewingSaved ? (
@@ -1093,10 +1101,10 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <button type="button" className="gen" onClick={editSavedPlan}>
-                Edit plan <span>&rarr;</span>
-              </button>
               <div className="viewactions">
+                <button type="button" className="ghost" onClick={editSavedPlan}>
+                  Edit plan <span>&rarr;</span>
+                </button>
                 <button type="button" className="ghost" onClick={() => go('plans')}>
                   <IconBack />
                   View all plans
