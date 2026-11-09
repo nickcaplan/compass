@@ -1121,25 +1121,20 @@ export default function App() {
 
       {page === 'planner' && !unavailablePlan && (
         <>
-      <header className="hero">
-        <IndustryReel />
-        <h1>
-          Your media plan, <em>in minutes.</em>
-        </h1>
-        <div className={viewingSaved ? 'hero-tail' : undefined}>
+      {viewingSaved ? (
+        <header className="saved-page-head">
+          <h1>{viewBrief.name || 'Untitled campaign'}</h1>
+        </header>
+      ) : (
+        <header className="hero">
+          <IndustryReel />
+          <h1>Your media plan, <em>in minutes.</em></h1>
           <p className="sub">
             Answer a few questions. Compass recommends the publishers, formats and spend split - and
             the results to expect, with the reasoning shown.
           </p>
-          {viewingSaved && (
-            <div className="planneractions">
-              <button type="button" className="gen" onClick={reset}>
-                Plan a new campaign <span>&rarr;</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+        </header>
+      )}
       <div className="layout">
         <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
           {viewingSaved ? (
@@ -1459,7 +1454,7 @@ export default function App() {
             <div className="planin">
               <div className="planhead">
                 <h2>{viewingSaved
-                  ? `${viewBrief.name || 'Untitled campaign'}${monthsRangeLabel(viewBrief.start, viewBrief.end) ? ` · ${monthsRangeLabel(viewBrief.start, viewBrief.end)}` : ''}`
+                  ? 'Media plan'
                   : 'Recommended plan'}</h2>
                 {viewingSaved ? <div className="cap">SAVED PLAN - READ ONLY</div> : <DemoCap />}
               </div>
@@ -1827,4 +1822,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-                }
+}
