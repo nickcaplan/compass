@@ -1084,6 +1084,9 @@ export default function App() {
                 <h2>Your brief</h2>
                 <div className="cap">SAVED PLAN - READ ONLY</div>
               </div>
+              <button type="button" className="gen" style={{ marginTop: 0 }} onClick={reset}>
+                Plan a new campaign <span>&rarr;</span>
+              </button>
               <div className="bsum">
                 <div><div className="k">Campaign name</div><div className="v">{brief.name || 'Untitled campaign'}</div></div>
                 <div><div className="k">Objective</div><div className="v">{brief.objectives.map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '').filter((l) => l !== '').join(' + ') || '-'}</div></div>
@@ -1093,10 +1096,10 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <button type="button" className="gen" onClick={editSavedPlan}>
-                Edit plan <span>&rarr;</span>
-              </button>
               <div className="viewactions">
+                <button type="button" className="ghost" onClick={editSavedPlan}>
+                  Edit plan <span>&rarr;</span>
+                </button>
                 <button type="button" className="ghost" onClick={() => go('plans')}>
                   <IconBack />
                   View all plans
