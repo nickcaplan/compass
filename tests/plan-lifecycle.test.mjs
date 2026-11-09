@@ -225,7 +225,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.setViewport({ width: 412, height: 300 });
       await clickButton(page, 'My plans');
       await page.waitForSelector('.pc-actions');
-      await clickButton(page, 'Delete');
+      await page.locator('.pc-delete').click();
       await page.waitForSelector('[role="alertdialog"]');
       const bounds = await page.$eval('.confirm', (dialog) => {
         const rect = dialog.getBoundingClientRect();
