@@ -476,7 +476,7 @@ input.ctl{color:var(--text)}
 .planlink-field:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 
 /* Saved brief: one primary action, then a balanced navigation/utility row. */
-.saved-plan-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px}
+.saved-plan-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 .saved-plan-actions .saved-plan-edit{width:100%;min-height:46px}
 .saved-plan-utilities{display:grid;grid-template-columns:1fr;gap:8px}
 .saved-plan-utilities .ghost{min-width:0;min-height:46px;padding:10px 8px;color:var(--text);font-size:13px}
@@ -499,3 +499,10 @@ input.ctl{color:var(--text)}
 .saved-back{display:inline-flex;align-items:center;gap:7px;min-height:44px;margin:0 0 8px;padding:0;background:none;border:0;color:var(--muted);font:500 13px Roboto,system-ui,sans-serif;cursor:pointer}
 .saved-back:hover{color:var(--text)}
 .saved-back:focus-visible{outline:2px solid var(--accent-ink);outline-offset:4px;border-radius:3px}
+
+.saved-page-navigation{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
+.saved-page-navigation .saved-back{margin:0;flex:none}
+.saved-create{min-height:44px;padding:10px 14px;font-size:13px}
+.saved-plan-actions .cs-wrap{width:100%;min-width:0}
+.saved-plan-actions .cs-wrap .ghost{width:100%;min-height:46px;padding:10px 8px;font-size:13px}
+@media(max-width:400px){.saved-page-navigation{gap:8px}.saved-create{padding:10px 8px;font-size:12px}}
