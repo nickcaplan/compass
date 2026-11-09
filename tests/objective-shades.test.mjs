@@ -15,7 +15,7 @@ test('objectives use three neutral shades and their KPIs inherit them',{timeout:
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true});
  const click=async(p,text)=>{const h=await p.evaluateHandle(t=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim().replace(/\s*→$/,'')===t),text);assert.ok(h.asElement(),text);await h.asElement().click();await h.dispose()};
  for(const theme of['dark','light']){
-  const p=await browser.newPage();await p.setViewport({width:1280,height:900});await p.goto(url);
+  const p=await browser.newPage();await p.setViewport({width:1280,height:900});await p.goto(url);await p.waitForSelector('.navlinks');
   if(theme==='light'){await p.evaluate(()=>{[...document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||'').toLowerCase().includes('light'))?.click()});await p.waitForFunction(()=>document.documentElement.getAttribute('data-theme')==='light',{timeout:8000})}
   await p.waitForSelector('[aria-labelledby=g-objective]');
   // Each objective carries its own shade class, unselected ones stay unfilled.
