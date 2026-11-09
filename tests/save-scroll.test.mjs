@@ -17,7 +17,7 @@ const robotoFixtureCss = [400, 500, 700].map((weight) => `@font-face{font-family
 // test): network font fetches are aborted so every runner lays out
 // identically. Without this the save geometry depends on installed fonts.
 async function newTestPage(browser, viewport, previewUrl) {
-  const page = await browser.newPage();
+  const context = await browser.createBrowserContext();const page = await context.newPage();
   await page.setViewport(viewport);
   await seedPlannerFixture(page, false);
   await page.setRequestInterception(true);
@@ -70,7 +70,7 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 12000
     for (const vp of [{ name: 'phone', width: 390, height: 844 }, { name: 'desktop', width: 1280, height: 800 }]) {
       for (const frac of [0.2, 0.5, 0.8]) {
         const page = await newTestPage(browser, vp, previewUrl);
-        await clickButton(page, 'Fill it in for me');
+        await page.waitForSelector('.demofill');await clickButton(page, 'Fill it in for me');
         await page.waitForSelector('.planin', { timeout: 20000 });
         await page.evaluate((f) => {
           const el = document.querySelector('.secondary');
@@ -84,34 +84,32 @@ test('saving a plan keeps the save row steady in the viewport', { timeout: 12000
         const shift = Math.abs(after - before);
         assert.ok(shift <= 60, `${vp.name} at ${Math.round(frac * 100)}% viewport: save row moved ${shift}px (was up to 330px without the pin)`);
         assert.ok(await page.$('.ghost.saved'), 'Saved state button shown');
-        await page.close();
+        await page.browserContext().close();
       }
     }
 
-    // Spacer cleanup, synthetic and labelled as such: on current main
-    // geometry (compact single-row form), measurement shows content below
-    // the save row grows ~48px on save (Roboto fixture fonts), so no
-    // scroll position at any viewport bottom-clamps on save and the spacer
-    // never triggers through a real save. The no-jump claim for real saves
-    // is covered by the sweep above. The spacer's lifecycle is therefore
-    // exercised by simulating the clamped state's spacer directly and
-    // verifying a real Edit plan click clears it - geometry coverage, not
-    // a user-reachable save state.
+    // Spacer cleanup: the saved-page heading and shorter action row change
+    // the content height, so a real save may now need scroll slack. The real
+    // save sweep above checks the row stays pinned. Verify Edit clears any
+    // naturally created slack, then inject 120px to test the larger case too.
     {
       const page = await newTestPage(browser, { width: 1280, height: 800 }, previewUrl);
-      await clickButton(page, 'Fill it in for me');
+      await page.waitForSelector('.demofill');await clickButton(page, 'Fill it in for me');
       await page.waitForSelector('.planin .metrics', { timeout: 20000 });
       await page.evaluate(() => document.querySelector('.secondary').scrollIntoView({ block: 'center' }));
       await clickButton(page, 'Save plan');
       await page.waitForSelector('.ghost.saved', { timeout: 10000 });
-      const organic = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
-      assert.equal(organic, 0, `unexpected save slack on current geometry: ${organic}px (layout changed - re-check whether a real clamped state exists again)`);
+      await clickButton(page, 'Edit plan');
+      const organicLeft = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
+      assert.equal(organicLeft, 0, `natural save spacer still ${organicLeft}px after Edit plan`);
+      await clickButton(page, 'Cancel');
+      await page.waitForSelector('.bsum');
       await page.evaluate(() => { document.querySelector('.savespacer').style.height = '120px'; });
       await clickButton(page, 'Edit plan');
       await page.waitForSelector('input', { timeout: 10000 });
       const left = await page.evaluate(() => parseFloat(document.querySelector('.savespacer').style.height) || 0);
       assert.equal(left, 0, `save spacer still ${left}px after Edit plan`);
-      await page.close();
+      await page.browserContext().close();
     }
   } finally {
     browser?.close();
