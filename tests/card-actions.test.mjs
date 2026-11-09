@@ -3,9 +3,9 @@ import {spawn} from 'node:child_process';
 import test from 'node:test';
 import puppeteer from 'puppeteer-core';
 test('saved cards keep named Delete targets apart from full-width Open plan', {timeout:60000}, async()=>{
- const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
+ const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
  try{
-  const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(Error('Preview did not start')),10000);server.stdout.on('data',chunk=>{output+=chunk.toString();const match=output.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0]);}});server.once('error',reject);});
+  const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(Error('Preview did not start')),10000);server.stdout.on('data',chunk=>{output+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=output.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0]);}});server.once('error',reject);});
   browser=await puppeteer.launch({executablePath:process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
   for(const width of [320,390,1440]) for(const theme of ['light','dark']){
    const context=await browser.createBrowserContext();const page=await context.newPage();await page.setViewport({width,height:900});await page.goto(url+'?demo=1#/my-plans');await page.waitForSelector('.pc-delete');await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);await page.evaluate(()=>document.fonts.ready);
