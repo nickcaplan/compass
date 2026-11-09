@@ -39,12 +39,12 @@ export function planReport(brief: Brief, plan: Plan): TDocumentDefinitions {
         { text: metric.k, margin: [8, 6] }, { text: metric.v, bold: true, color: metric.hl ? '#8b6400' : '#17171c', margin: [8, 6], alignment: 'right' },
       ]) }, layout: { fillColor: (row: number) => row % 2 === 0 ? '#f4f3ef' : '#ffffff', hLineWidth: () => 0, vLineWidth: () => 0 } },
       { text: 'Publisher allocations', style: 'section', pageBreak: 'before' },
-      ...plan.items.flatMap((item): Content[] => [
+      ...plan.items.map((item): Content => ({ unbreakable: true, stack: [
         { text: item.title, style: 'publisher' },
         { text: item.format, fontSize: 8, color: '#8b6400', margin: [0, 0, 0, 7] },
         { text: [{ text: 'Spend: ', color: '#656571' }, { text: gbp(item.spend), bold: true }, ...item.metrics.flatMap(metric => [{ text: `    ${metric.k}: `, color: '#656571' }, { text: metric.v, bold: true }])], margin: [0, 0, 0, 7] },
         { text: [{ text: 'Why: ', bold: true }, { text: item.why }], margin: [0, 0, 0, 18] },
-      ]),
+      ] })),
       heading('Suggested timing'),
       ...plan.timing.map((timing): Content => ({ columns: [{ text: timing.label, width: 94, bold: true, color: '#8b6400' }, { text: timing.activity, width: '*' }], columnGap: 12, margin: [0, 0, 0, 10] })),
     ],
