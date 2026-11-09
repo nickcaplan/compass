@@ -476,7 +476,7 @@ input.ctl{color:var(--text)}
 .planlink-field:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 
 /* Saved brief: one primary action, then a balanced navigation/utility row. */
-.saved-plan-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.saved-plan-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px}
 .saved-plan-actions .saved-plan-edit{width:100%;min-height:46px}
 .saved-plan-utilities{display:grid;grid-template-columns:1fr;gap:8px}
 .saved-plan-utilities .ghost{min-width:0;min-height:46px;padding:10px 8px;color:var(--text);font-size:13px}
@@ -495,3 +495,7 @@ input.ctl{color:var(--text)}
 .saved-page-head{padding:30px 0 20px}
 .saved-page-head h1{font-size:32px;line-height:1.2;max-width:none;overflow-wrap:anywhere}
 @media(max-width:600px){.saved-page-head{padding:24px 0 16px}.saved-page-head h1{font-size:26px}}
+
+.saved-back{display:inline-flex;align-items:center;gap:7px;min-height:44px;margin:0 0 8px;padding:0;background:none;border:0;color:var(--muted);font:500 13px Roboto,system-ui,sans-serif;cursor:pointer}
+.saved-back:hover{color:var(--text)}
+.saved-back:focus-visible{outline:2px solid var(--accent-ink);outline-offset:4px;border-radius:3px}
