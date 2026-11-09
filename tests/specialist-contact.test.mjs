@@ -1,3 +1,4 @@
+import { seedPlannerFixture, handleFixtureAuthRequest } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {stripVTControlCharacters} from 'node:util';
@@ -27,9 +28,11 @@ test('specialist link preserves presentation and opens only the verified contact
   const page=await browser.newPage();await page.setViewport({width,height:900});
   // Required CI proves the link with fallback fonts; loaded-font visuals are
   // checked separately against the deployed preview.
+  await seedPlannerFixture(page, false);
   await page.setRequestInterception(true);
   page.on('request',request=>{
-   const host=new URL(request.url()).hostname;
+   if (handleFixtureAuthRequest(request)) return;
+    const host=new URL(request.url()).hostname;
    if(host==='fonts.googleapis.com'||host==='fonts.gstatic.com')void request.abort();
    else void request.continue();
   });
