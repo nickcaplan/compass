@@ -59,7 +59,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     await page.waitForSelector('[role="alertdialog"]', { hidden: true });
     assert.ok(await page.$('.planin .metrics'));
     // Editing during the fill beat cancels automatic generation.
-    await clickButton(page, 'Create another scenario');
+    await clickButton(page, 'Create another');
     // Dispatch the edit in the fill task, before the intentional 1s pause.
     // Remote click/type round trips can exceed that pause on a busy runner.
     await page.evaluate(async () => {
@@ -99,7 +99,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     await page.waitForSelector('[role="alertdialog"]');
     await page.locator('.confirm .btn').click();
     await page.waitForSelector('.planin .metrics');
-    await clickButton(page, 'Create another scenario');
+    await clickButton(page, 'Create another');
     await clickButton(page, 'Fill it in for me');
     await clickButton(page, 'My plans');
     await delay(1300);
