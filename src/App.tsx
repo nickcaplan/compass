@@ -1123,7 +1123,10 @@ export default function App() {
         <>
       {viewingSaved ? (
         <header className="saved-page-head">
-          <button type="button" className="saved-back" onClick={() => go('plans')}><IconBack />View all plans</button>
+          <div className="saved-page-navigation">
+            <button type="button" className="saved-back" onClick={() => go('plans')}><IconBack />View all plans</button>
+            <button type="button" className="ghost saved-create" onClick={reset}><IconPlus />Create another scenario</button>
+          </div>
           <h1>{viewBrief.name || 'Untitled campaign'}</h1>
         </header>
       ) : (
@@ -1163,6 +1166,7 @@ export default function App() {
                   <IconEdit />
                   Edit plan
                 </button>
+                <ComingSoonButton />
               </div>
               <span className="sr-only" role="status">{linkCopy === 'copied' ? 'Plan link copied.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
               {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
@@ -1512,11 +1516,6 @@ export default function App() {
                         Saved
                       </button>
                     )}
-                    <ComingSoonButton />
-                    <button type="button" className="ghost" onClick={reset}>
-                      <IconPlus />
-                      Create another scenario
-                    </button>
                   </>
                 ) : editingSaved ? (
                   <>
