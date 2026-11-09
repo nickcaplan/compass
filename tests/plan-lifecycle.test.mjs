@@ -73,6 +73,8 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     page.setDefaultTimeout(10000);
     await page.setViewport({ width: 1440, height: 900 });
     await page.goto('http://127.0.0.1:4173/?demo=1');
+    // Initial router setup clears any pending walkthrough. Wait before clicking.
+    await page.waitForFunction(() => location.hash === '#/planner');
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
