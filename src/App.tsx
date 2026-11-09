@@ -63,8 +63,10 @@ function IconCancel() {
 function IconShare() {
   return (
     <svg {...iconProps}>
-      <path d="M12 16V3m-4 4 4-4 4 4" />
-      <path d="M5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
     </svg>
   );
 }
@@ -1147,9 +1149,8 @@ export default function App() {
                   <h2>Your brief</h2>
                   <div className="cap">SAVED PLAN - READ ONLY</div>
                 </div>
-                <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-label="Copy plan link" title="Copy plan link" aria-describedby="plan-link-note">
-                  <IconShare />
-                  <span className="share-tooltip" aria-hidden="true">Copy plan link</span>
+                <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-label={linkCopy === 'copied' ? 'Plan link copied - only works in this browser' : 'Copy plan link - only works in this browser'}>
+                  {linkCopy === 'copied' ? <IconCheck /> : <IconShare />}
                 </button>
               </div>
               <div className="bsum">
@@ -1173,7 +1174,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <p id="plan-link-note" className="planlink-note" role="status">{linkCopy === 'copied' ? 'Link copied. It only works in this browser.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : 'This plan link only works in this browser, not on another device or for someone else.'}</p>
+              <span className="sr-only" role="status">{linkCopy === 'copied' ? 'Plan link copied.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
               {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
             </>
           ) : (
@@ -1525,10 +1526,6 @@ export default function App() {
                     <button type="button" className="ghost" onClick={reset}>
                       <IconPlus />
                       Create another scenario
-                    </button>
-                    <button type="button" className="ghost" onClick={() => go('plans')}>
-                      <IconBack />
-                      View all plans
                     </button>
                   </>
                 ) : editingSaved ? (
