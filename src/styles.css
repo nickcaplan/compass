@@ -453,8 +453,8 @@ input.ctl{color:var(--text)}
 /* The collapse must also win over the 981px form-column rule, so it stays last. */
 @media(max-width:1199px){.layout{grid-template-columns:1fr}.form{position:static}}
 
-/* In the first two-column band the five metric boxes are too tight for 20px values. */
-@media(min-width:1200px) and (max-width:1340px){
+/* In the two-column layout the five metric boxes are too tight for 20px values. */
+@media(min-width:1200px){
   .metric{padding:13px 10px}
   .metric .v{font-size:17px;white-space:nowrap}
 }
