@@ -19,13 +19,13 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
   const heading = (text: string): Content => ({ text, style: 'section' });
   return {
     pageSize: 'A4', pageMargins: [42, 108, 42, 60],
-    header: { margin: [42, 20, 42, 0], stack: [
+    header: () => ({ margin: [42, 20, 42, 0], stack: [
       { table: { widths: [310, '*'], body: [[
         { fillColor: '#17171c', margin: [12, 11, 12, 11], columns: [{ image: brandMark, width: 26, margin: [0, 5, 9, 0] }, { text: 'COMPASS', font: 'Poppins', fontSize: 20, bold: true, characterSpacing: 2, color: '#ffcc00', margin: [10, 6, 0, 0] }], columnGap: 3 },
         { fillColor: '#17171c', margin: [12, 11, 12, 11], image: brandLogo, fit: [72, 36], alignment: 'right' },
       ]] }, layout: 'noBorders' },
       { canvas: [{ type: 'line', x1: 0, y1: 1, x2: 511, y2: 1, lineWidth: 2, lineColor: '#ffcc00' }] },
-    ] },
+    ] }),
     info: { title: brief.name || 'Untitled campaign', author: 'The Hybrid House', subject: 'Compass saved media plan - illustrative concept' },
     defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25, color: '#17171c' },
     footer: (page, pages) => ({ margin: [42, 10, 42, 0], stack: [
