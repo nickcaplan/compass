@@ -530,4 +530,4 @@ input.ctl{color:var(--text)}
 .plancard>.chip.expired{position:static;align-self:flex-start;margin:0 48px 0 0}
 
 /* Anchor saved-plan edits at the first field without a page transition. */
-.card.form{scroll-margin-top:24px}
+.saved-page-head{scroll-margin-top:24px}
