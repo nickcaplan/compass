@@ -622,6 +622,8 @@ export default function App() {
   const [unavailablePlan, setUnavailablePlan] = useState(false);
   const [linkCopy, setLinkCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
   const planLinkRef = useRef<HTMLInputElement>(null);
+  const linkCopyTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(linkCopyTimer.current), []);
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
     recoverCorruptPlans();
@@ -893,6 +895,7 @@ export default function App() {
   function reset() {
     clearPlannerState();
     setUnavailablePlan(false);
+    window.clearTimeout(linkCopyTimer.current);
     setLinkCopy('idle');
     navigation.address({ page: 'planner' });
     window.scrollTo(0, 0);
@@ -1011,6 +1014,7 @@ export default function App() {
 
   function applyRoute(route: PlanRoute) {
     setUnavailablePlan(false);
+    window.clearTimeout(linkCopyTimer.current);
     setLinkCopy('idle');
     clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
@@ -1046,11 +1050,14 @@ export default function App() {
 
   async function copyPlanLink() {
     if (!savedEntry) return;
+    window.clearTimeout(linkCopyTimer.current);
     const url = new URL(window.location.href);
     url.hash = routeHash({ page: 'planner', planId: savedEntry.id });
     try {
       await navigator.clipboard.writeText(url.href);
+      window.clearTimeout(linkCopyTimer.current);
       setLinkCopy('copied');
+      linkCopyTimer.current = window.setTimeout(() => setLinkCopy('idle'), 3000);
     } catch {
       setLinkCopy('failed');
       requestAnimationFrame(() => { planLinkRef.current?.focus(); planLinkRef.current?.select(); });
@@ -1816,4 +1823,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+    }
