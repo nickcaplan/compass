@@ -1070,19 +1070,20 @@ export default function App() {
         <h1>
           Your media plan, <em>in minutes.</em>
         </h1>
-        <p className="sub">
-          Answer a few questions. Compass recommends the publishers, formats and spend split - and
-          the results to expect, with the reasoning shown.
-        </p>
-      </header>
-
-      {viewingSaved && (
-        <div className="planneractions" style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 12 }}>
-          <button type="button" className="gen" style={{ width: 'auto', marginTop: 0, padding: '12px 18px' }} onClick={reset}>
-            Plan a new campaign <span>&rarr;</span>
-          </button>
+        <div className={viewingSaved ? 'hero-tail' : undefined}>
+          <p className="sub">
+            Answer a few questions. Compass recommends the publishers, formats and spend split - and
+            the results to expect, with the reasoning shown.
+          </p>
+          {viewingSaved && (
+            <div className="planneractions">
+              <button type="button" className="gen" onClick={reset}>
+                Plan a new campaign <span>&rarr;</span>
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </header>
       <div className="layout">
         <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : 'Plan a campaign'}>
           {viewingSaved ? (
