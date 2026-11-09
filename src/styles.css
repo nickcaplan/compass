@@ -507,3 +507,5 @@ input.ctl{color:var(--text)}
 .saved-plan-actions .cs-wrap .ghost{width:100%;min-height:46px;padding:10px 8px;font-size:13px}
 @media(max-width:400px){.saved-page-navigation{gap:8px}.saved-create{padding:10px 8px;font-size:12px}}
 .saved-page-navigation .saved-create{width:auto;flex:none}
+
+.saved-brief-head .saved-plan-copy[aria-label^="Plan link copied"]{color:var(--green)}
