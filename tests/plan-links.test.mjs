@@ -48,7 +48,7 @@ test('same-browser plan URLs survive refresh, history, cancellation and unavaila
   await new Promise(resolve=>setTimeout(resolve,3200));assert.ok(await page.$('.planlink-field'));
   assert.equal(await page.$eval('.planlink-field',e=>e===document.activeElement),true);
  }
- await click(page,'Edit plan');await page.locator('#f-name').fill('Keep my unfinished edits');await click(page,'My plans');await click(page,'Open plan');await page.waitForSelector('[role="alertdialog"]');await page.keyboard.press('Escape');await page.waitForSelector('[role="alertdialog"]',{hidden:true});await click(page,'Planner');assert.equal(await page.$eval('#f-name',e=>e.value),'Keep my unfinished edits');
+ await click(page,'Edit plan');await page.locator('#f-name').fill('Keep my unfinished edits');await click(page,'My plans');await page.waitForSelector('[role="alertdialog"]');await page.keyboard.press('Escape');await page.waitForSelector('[role="alertdialog"]',{hidden:true});await click(page,'Planner');assert.equal(await page.$eval('#f-name',e=>e.value),'Keep my unfinished edits');
  await click(page,'Cancel');await page.waitForSelector('.bsum');
  // A second plan has an encoded, nonnumeric ID. A freshly opened URL is a bookmark.
  await page.goto(url+'?demo=1#/planner/campaign%20two%2F%C3%A9');await page.waitForSelector('.bsum');assert.match(await page.$eval('.bsum',e=>e.textContent),/Second campaign/);

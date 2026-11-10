@@ -320,71 +320,70 @@ function isBrief(value: unknown): value is Brief {
 const SEED_KEY = 'compass-seeded-plans';
 const SEED_VERSION = 2;
 
-function isoDaysFromNow(days: number): string {
+function isoDaysFromNow(days: number, now = new Date()): string {
   // Local-time formatting: toISOString() is UTC and can land on the previous
   // calendar date when local time is ahead of UTC.
-  const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function seedPlans(): SavedPlan[] {
+function seedPlans(referenceDate = new Date()): SavedPlan[] {
   return [
     {
       id: 'seed-active-1',
       savedAt: '',
       brief: {
-        name: 'UK Laboratory Procurement Campaign',
+        name: 'UK Laboratory Procurement Campaign', markets: ['uk'],
         objectives: ['performance'],
         kpis: ['Lead generation', 'Cost per lead'],
         audiences: ['Procurement', 'Laboratory Manager'],
         budget: 100000,
-        start: isoDaysFromNow(-14),
-        end: isoDaysFromNow(56),
+        start: isoDaysFromNow(-14, referenceDate),
+        end: isoDaysFromNow(56, referenceDate),
       },
     },
     {
       id: 'seed-active-2',
       savedAt: '',
       brief: {
-        name: 'European Lab Automation Awareness Push',
+        name: 'European Lab Automation Awareness Push', markets: ['france', 'germany'],
         objectives: ['awareness'],
         kpis: ['Reach', 'Impressions'],
         audiences: ['Scientist / Researcher', 'Laboratory Technician'],
         budget: 45000,
-        start: isoDaysFromNow(7),
-        end: isoDaysFromNow(70),
+        start: isoDaysFromNow(7, referenceDate),
+        end: isoDaysFromNow(70, referenceDate),
       },
     },
     {
       id: 'seed-past-1',
       savedAt: '',
       brief: {
-        name: 'Quality and Compliance Enquiry Push',
+        name: 'Quality and Compliance Enquiry Push', markets: ['uk'],
         objectives: ['performance'],
         kpis: ['Enquiries'],
         audiences: ['Quality / Compliance'],
         budget: 75000,
-        start: isoDaysFromNow(-90),
-        end: isoDaysFromNow(-20),
+        start: isoDaysFromNow(-90, referenceDate),
+        end: isoDaysFromNow(-20, referenceDate),
       },
     },
     {
       id: 'seed-past-2',
       savedAt: '',
       brief: {
-        name: 'Global Reagent Launch Consideration',
+        name: 'Global Reagent Launch Consideration', markets: ['north-america', 'uk', 'france', 'germany'],
         objectives: ['consideration'],
         kpis: ['Content downloads', 'Article engagement'],
         audiences: [],
         budget: 60000,
-        start: isoDaysFromNow(-120),
-        end: isoDaysFromNow(-60),
+        start: isoDaysFromNow(-120, referenceDate),
+        end: isoDaysFromNow(-60, referenceDate),
       },
     },
-    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
-    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
-    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', markets: ['uk'], objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], budget: 55000, start: isoDaysFromNow(-150, referenceDate), end: isoDaysFromNow(-90, referenceDate) } },
+    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', markets: ['uk'], objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 40000, start: isoDaysFromNow(-210, referenceDate), end: isoDaysFromNow(-150, referenceDate) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', markets: ['uk'], objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], budget: 65000, start: isoDaysFromNow(-270, referenceDate), end: isoDaysFromNow(-210, referenceDate) } },
   ];
 }
 
@@ -409,12 +408,28 @@ function ensureSeedPlans(): void {
     if (!Array.isArray(candidate) || candidate.some((p) =>
       p === null || typeof p !== 'object' || typeof p.id !== 'string' ||
       typeof p.savedAt !== 'string' || !isBrief(p.brief))) return;
-    const plans: SavedPlan[] = candidate;
+    // Backfill only untouched examples. A saved-at date reconstructs the
+    // original relative campaign dates, so even a date-only edit is preserved.
+    let marketsAdded = false;
+    const plans: SavedPlan[] = candidate.map(plan => {
+      if (plan.brief.markets !== undefined || !Number.isFinite(Date.parse(plan.savedAt))) return plan;
+      const example = seedPlans(new Date(plan.savedAt)).find(seed => seed.id === plan.id);
+      if (!example?.brief.markets?.length) return plan;
+      const { markets, ...original } = example.brief;
+      const keys = Object.keys(original) as (keyof typeof original)[];
+      if (Object.keys(plan.brief).length !== keys.length ||
+        !keys.every(key => JSON.stringify(plan.brief[key]) === JSON.stringify(original[key]))) return plan;
+      marketsAdded = true;
+      return { ...plan, brief: { ...plan.brief, markets } };
+    });
     const existing = new Set(plans.map((p) => p.id));
     const fresh = seedPlans().filter((seed) => !applied.includes(seed.id) && !existing.has(seed.id));
     const room = 20 - plans.length;
     const toAdd = fresh.slice(0, Math.max(0, room));
-    if (toAdd.length === 0) return;
+    if (toAdd.length === 0) {
+      if (marketsAdded) window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
+      return;
+    }
     const now = new Date().toISOString();
     const stamped = toAdd.map((seed) => ({ ...seed, savedAt: now }));
     window.localStorage.setItem(
@@ -629,6 +644,7 @@ function IndustryReel() {
 export default function App() {
   const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
+  const editBaseline = useRef<Brief | null>(null);
   const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
   const [budgetText, setBudgetText] = useState('');
   const [stage, setStage] = useState<Stage>('empty');
@@ -1281,10 +1297,18 @@ export default function App() {
     }
   }
 
+  useLayoutEffect(() => {
+    if (!editingSaved) return;
+    document.querySelector('.saved-page-head')?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    document.getElementById('f-name')?.focus({ preventScroll: true });
+  }, [editingSaved]);
+
   function editSavedPlan() {
     clearSaveSpacer();
     setJustSavedId(null);
-    setBrief(b => ({ ...b, audiences: b.audiences.filter(a => AUDIENCES.includes(a)) }));
+    const loaded = { ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) };
+    editBaseline.current = loaded;
+    setBrief(loaded);
     setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
   }
 
@@ -1305,15 +1329,27 @@ export default function App() {
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
+  // Compare field values, not object identity or the fact that Edit was opened.
+  // Multi-select order and absent optional markets are not user-visible changes.
+  function briefValues(value: Brief) {
+    return JSON.stringify({ name: value.name, budget: value.budget,
+      start: value.start, end: value.end, objectives: [...value.objectives].sort(),
+      markets: [...(value.markets ?? [])].sort(), kpis: [...value.kpis].sort(),
+      audiences: [...value.audiences].sort() });
+  }
+
   function replacementReason() {
-    const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-    return savedEntry?.mode === 'edit' ? 'edit' : stage === 'plan' && savedEntry === null ? 'unsaved' : formDraft ? 'draft' : null;
+    if (editingSaved) return editBaseline.current && briefValues(brief) !== briefValues(editBaseline.current) ? 'edit' : null;
+    if (savedEntry) return null;
+    const hasInput = briefValues(brief) !== briefValues(EMPTY_BRIEF);
+    return hasInput ? stage === 'plan' ? 'unsaved' : 'draft' : null;
   }
 
   const navigation = usePlanNavigation(applyRoute, route => {
-    if (route.planId === undefined || !loadPlans().some(p => p.id === route.planId)) return false;
-    const alreadyOpen = savedEntry?.id === route.planId && (savedEntry.mode === 'view' || !route.reload);
-    return !alreadyOpen && replacementReason() !== null;
+    if (replacementReason() === null) return false;
+    if (route.page === 'planner' && !route.reload && route.planId === savedEntry?.id) return false;
+    clearCue();
+    return true;
   }, emailAuthCallback || googleOAuthCallback);
   function writePageUrl(page: Page) { navigation.address({ page }); }
   const openTarget = navigation.pending ? { reason: replacementReason() } : null;
@@ -1325,6 +1361,9 @@ export default function App() {
     clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
+    // At this point navigation is either unchanged or an approved discard.
+    // Do not carry a hidden edit onto My plans and ask again on the next Open.
+    if (route.page !== 'planner' && page === 'planner' && !viewingSaved) clearPlannerState();
     if (route.planId !== undefined) {
       const latest = loadPlans();
       const entry = latest.find(p => p.id === route.planId);
@@ -1608,7 +1647,7 @@ export default function App() {
 
       {page === 'planner' && !unavailablePlan && (
         <>
-      {viewingSaved ? (
+      {viewingSaved || editingSaved ? (
         <header className="saved-page-head">
           <div className="saved-page-navigation">
             <button type="button" className="saved-back" onClick={() => go('plans')}><IconBack />View all plans</button>
@@ -1627,7 +1666,7 @@ export default function App() {
         </header>
       )}
       <div className="layout">
-        <section className="card form" aria-label={savedBriefReadOnly ? 'Saved plan brief' : 'Plan a campaign'}>
+        <section className="card form" aria-label={savedBriefReadOnly ? 'Saved plan brief' : editingSaved ? 'Edit saved plan brief' : 'Plan a campaign'}>
           {savedBriefReadOnly ? (
             <>
               <div className="planhead saved-brief-head">
@@ -1662,13 +1701,13 @@ export default function App() {
             </>
           ) : (
             <>
-          <h2>Plan a campaign</h2>
+          <h2>{editingSaved ? 'Edit your brief' : 'Plan a campaign'}</h2>
           {earlierDraftKey && <div className="draft-choice" role="status">
             <p>Your other draft is also kept on this device. Your current answers have not changed.</p>
             <button type="button" className="ghost" onClick={openEarlierDraft}>Switch to other draft</button>
             <button type="button" className="ghost" onClick={() => setEarlierDraftKey(null)}>Keep current answers</button>
           </div>}
-          <div className="hint">No media expertise needed.</div>
+          <div className="hint">{editingSaved ? 'Changes update this saved plan when you save.' : 'No media expertise needed.'}</div>
 
           {demoMode && !editingSaved && <>
           <button type="button" className="demofill" onClick={() => fillDemo()}>
@@ -1776,6 +1815,8 @@ export default function App() {
                 <input
                   ref={startRef}
                   aria-label="Start date"
+                  aria-invalid={startNotFuture(brief.start) || undefined}
+                  aria-describedby={startNotFuture(brief.start) ? "start-date-error" : undefined}
                   className="ctl"
                   type="date"
                   onFocus={clearCue}
@@ -1800,6 +1841,8 @@ export default function App() {
                 <input
                   ref={endRef}
                   aria-label="End date"
+                  aria-invalid={endBeforeStart(brief.start, brief.end) || undefined}
+                  aria-describedby={endBeforeStart(brief.start, brief.end) ? "end-date-error" : undefined}
                   className="ctl"
                   type="date"
                   onFocus={clearCue}
@@ -1822,10 +1865,10 @@ export default function App() {
               </div>
             </div>
             {startNotFuture(brief.start) && (
-              <div className="dur warn">Start date must be in the future.</div>
+              <div id="start-date-error" className="dur date-error" role="status">⚠ Start date must be in the future.</div>
             )}
             {endBeforeStart(brief.start, brief.end) && (
-              <div className="dur warn">End date must be on or after the start date.</div>
+              <div id="end-date-error" className="dur date-error" role="status">⚠ End date must be on or after the start date.</div>
             )}
             {weeks > 0 && (
               <div className="dur">
@@ -1961,10 +2004,10 @@ export default function App() {
           {stage === 'plan' && canViewPlan && plan && (
             <div className="planin">
               <div className="planhead">
-                <h2>{viewingSaved
+                <h2>{viewingSaved || editingSaved
                   ? 'Media plan'
                   : 'Recommended plan'}</h2>
-                {viewingSaved ? <div className="cap">SAVED PLAN - READ ONLY</div> : <DemoCap />}
+                {viewingSaved || editingSaved ? <div className="cap">{editingSaved ? 'SAVED PLAN - EDITING BRIEF' : 'SAVED PLAN - READ ONLY'}</div> : <DemoCap />}
               </div>
               <div className="metrics">
                 {plan.metrics.map((m) => (
@@ -2146,7 +2189,7 @@ export default function App() {
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
-                        {objLabels && <span className="chip">{objLabels}</span>}
+                        {objLabels && <span className="chip pc-objective">{objLabels}</span>}
                         <span className="chip">Market: {marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
@@ -2294,12 +2337,12 @@ export default function App() {
           title={openTarget.reason === 'edit' ? 'Discard unsaved changes?' : openTarget.reason === 'unsaved' ? 'Replace your current plan?' : 'Replace your draft?'}
           body={
             openTarget.reason === 'edit'
-              ? 'Opening this saved plan will discard the changes you have not saved.'
+              ? 'Leaving this edit will discard the changes you have not saved.'
               : openTarget.reason === 'unsaved'
-                ? 'Your current plan has not been saved. Replace it with this saved plan?'
-                : 'Replace your current draft with this saved plan? Any answers you have not saved will be lost.'
+                ? 'Your current plan has not been saved. Leave it and discard your changes?'
+                : 'Leave this draft? Any answers you have not saved will be lost.'
           }
-          confirmLabel="Open plan"
+          confirmLabel={navigation.pending?.route.planId !== undefined ? "Open plan" : "Discard changes"}
           cancelLabel={openTarget.reason === 'edit' ? 'Keep editing' : openTarget.reason === 'unsaved' ? 'Keep my plan' : 'Keep my draft'}
           onConfirm={navigation.confirm}
           onCancel={navigation.cancel}
