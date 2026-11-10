@@ -30,7 +30,9 @@ test('Generated-plan PDF placeholder preserves layout, text and dismissal', { ti
     for (const width of [320, 390, 1440]) {
       const context = await browser.createBrowserContext();const page = await context.newPage(); await observeJourney(page);await page.setViewport({width,height:900});
       await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
-      await page.waitForFunction(()=>!document.querySelector('.gen').disabled); await page.evaluate(()=>document.querySelector('.gen').click()); await page.waitForSelector('.cs-wrap button');
+      // Fill it in already generates the plan after the example walkthrough.
+      // Waiting for transient Generate enablement races the automatic start.
+      await page.waitForSelector('.cs-wrap button');
       for (const saved of [false]) {
         if(saved){await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save plan').click());await page.waitForSelector('.bsum');}
         await page.$eval('.cs-wrap button',e=>e.scrollIntoView({block:'center'}));
