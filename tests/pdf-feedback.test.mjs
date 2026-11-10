@@ -29,7 +29,13 @@ test('Generated-plan PDF placeholder preserves layout, text and dismissal', { ti
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) {
       const context = await browser.createBrowserContext();const page = await context.newPage(); await observeJourney(page);await page.setViewport({width,height:900});
-      await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
+      await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill');
+      await page.evaluate(() => document.fonts.ready);
+      // Exercise the PDF journey via keyboard so font/layout movement cannot
+      // redirect a coordinate click to the surrounding form on a busy runner.
+      await page.focus('.demofill');
+      assert.equal(await page.$eval('.demofill', e => e === document.activeElement), true);
+      await page.keyboard.press('Enter');
       // Fill it in already generates the plan after the example walkthrough.
       // Waiting for transient Generate enablement races the automatic start.
       await page.waitForSelector('.cs-wrap button');
