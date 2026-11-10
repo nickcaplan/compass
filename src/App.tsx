@@ -1291,13 +1291,9 @@ export default function App() {
               type="text"
               placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
               value={brief.name}
-              aria-invalid={nameTooLong || undefined}
-              aria-describedby="campaign-name-limit"
-              onChange={(e) => patch({ name: e.target.value })}
+              maxLength={80}
+              onChange={(e) => patch({ name: e.target.value.slice(0, 80) })}
             />
-            <p id="campaign-name-limit" className={nameTooLong ? 'fieldnote' : 'hint'} role={nameTooLong ? 'status' : undefined}>
-              {legacyNameUnchanged ? 'This older name is over 80 characters. Keep it unchanged or shorten it to 80 or fewer.' : nameTooLong ? `${brief.name.length}/80 characters. Shorten the name before generating or saving. Your text has been kept.` : `${brief.name.length}/80 characters`}
-            </p>
           </div>
 
           <div className="field planning-step">
