@@ -529,6 +529,8 @@ input.ctl{color:var(--text)}
 .plancard.is-expired{padding-top:18px}
 .plancard>.chip.expired{position:static;align-self:flex-start;margin:0 48px 0 0}
 
+/* Anchor saved-plan edits at the first field without a page transition. */
+.saved-page-head{scroll-margin-top:24px}
 /* Card metadata is quiet; objective and primary action keep their accent. */
 .plancard .chips .chip:not(.pc-objective){border-color:var(--line-mid);color:var(--text2)}
 
