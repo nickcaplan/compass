@@ -1214,7 +1214,7 @@ export default function App() {
           </p>
         </header>
       )}
-      <div className="layout">
+      <div className={`layout${!viewingSaved && !editingSaved && (stage === 'empty' || stage === 'filling') ? ' brief-first' : ''}`}>
         <section className="card form" aria-label={viewingSaved ? 'Saved plan brief' : editingSaved ? 'Edit saved plan brief' : 'Plan a campaign'}>
           {viewingSaved ? (
             <>
