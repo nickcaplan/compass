@@ -105,7 +105,11 @@ test('example walkthrough generates automatically and respects interruptions', {
     await page.waitForSelector('[role=alertdialog]', {hidden:true});
     await clickButton(page, 'Fill it in for me');
     await clickButton(page, 'My plans');
+    await page.waitForSelector('[role="alertdialog"]');
     await delay(1300);
+    assert.equal(await page.$('.planin .metrics'), null);
+    await clickButton(page, 'Discard changes');
+    await page.waitForSelector('.plancard');
     await clickButton(page, 'Planner');
     await delay(1300);
     assert.equal(await page.$('.planin .metrics'), null);

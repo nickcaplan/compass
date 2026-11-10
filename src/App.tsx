@@ -1031,6 +1031,7 @@ export default function App() {
     if (replacementReason() === null) return false;
     // Staying on this edit is not leaving it. Reopening explicitly reloads it.
     if (route.page === 'planner' && !route.reload && route.planId === savedEntry?.id) return false;
+    clearCue();
     return true;
   });
   const openTarget = navigation.pending ? { reason: replacementReason() } : null;
