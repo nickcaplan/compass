@@ -26,7 +26,7 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
   for (let i = 0; i < plan.metrics.length; i += 3) {
     metricRows.push({ columns: plan.metrics.slice(i, i + 3).map(metric => ({
       width: 163, stack: [
-        { canvas: [{ type: 'rect', x: 0, y: 0, w: 147, h: 3, color: '#ffcc00' }] },
+        { canvas: [{ type: 'rect', x: 0, y: 0, w: 64, h: 3, color: '#ffcc00' }] },
         { table: { widths: [147], body: [[{ stack: [
           { text: metric.k, fontSize: 8, margin: [0, 0, 0, 6] },
           { text: metric.v, font: 'Poppins', bold: true, fontSize: 17 },
@@ -50,12 +50,11 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
         { fillColor: '#17171c', margin: [12, 11, 12, 11], columns: [{ image: brandMark, width: 26, margin: [0, 5, 9, 0] }, { text: 'COMPASS', font: 'Poppins', fontSize: 20, bold: true, characterSpacing: 2, color: '#ffffff', margin: [10, 6, 0, 0] }], columnGap: 3 },
         { fillColor: '#17171c', margin: [12, 11, 12, 11], image: brandLogo, fit: [72, 36], alignment: 'right' },
       ]] }, layout: 'noBorders' },
-      { canvas: [{ type: 'line', x1: 0, y1: 1, x2: 511, y2: 1, lineWidth: 2, lineColor: '#ffcc00' }] },
+      { canvas: [{ type: 'line', x1: 0, y1: 1, x2: 64, y2: 1, lineWidth: 2, lineColor: '#ffcc00' }] },
     ] }),
     info: { title: brief.name || 'Untitled campaign', author: 'The Hybrid House', subject: 'Compass saved media plan - illustrative concept' },
     defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25, color: '#000000' },
     footer: (page, pages) => ({ margin: [42, 10, 42, 0], stack: [
-      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 511, y2: 0, lineWidth: 1, lineColor: '#ffcc00' }], margin: [0, 0, 0, 5] },
       { text: REPORT_NOTE, fontSize: 7.5, color: '#000000' },
       { text: `Compass by The Hybrid House  |  ${page} / ${pages}`, fontSize: 8, color: '#000000', margin: [0, 5, 0, 0] },
     ] }),
@@ -73,8 +72,8 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
         { text: item.title, style: 'publisher' },
         { text: item.format, fontSize: 8, color: '#000000', margin: [0, 0, 0, 7] },
         { canvas: [
-          { type: 'rect', x: 0, y: 0, w: 511, h: 5, color: '#f0efeb' },
-          { type: 'rect', x: 0, y: 0, w: allocated > 0 ? 511 * item.spend / allocated : 0, h: 5, color: '#ffcc00' },
+          { type: 'rect', x: 0, y: 0, w: 180, h: 5, color: '#f0efeb' },
+          { type: 'rect', x: 0, y: 0, w: allocated > 0 ? 180 * item.spend / allocated : 0, h: 5, color: '#ffcc00' },
         ], margin: [0, 0, 0, 5] },
         { text: `${spendShares[index]}% of allocated spend`, fontSize: 8, margin: [0, 0, 0, 7] },
         { text: [{ text: 'Spend: ', color: '#000000' }, { text: gbp(item.spend), bold: true }, ...item.metrics.flatMap(metric => [{ text: `    ${metric.k}: `, color: '#000000' }, { text: metric.v, bold: true }])], margin: [0, 0, 0, 7] },
