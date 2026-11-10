@@ -268,7 +268,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         await otherPage.waitForSelector('.pc-actions');
         beforeCount = await cardsWithName(otherPage);
         const deleteHandle = await otherPage.evaluateHandle((n) =>
-          [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes(n))?.querySelector('button.ghost'), savedName);
+          [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes(n))?.querySelector('button.pc-delete'), savedName);
         const deleteButton = deleteHandle.asElement();
         assert.ok(deleteButton, 'saved plan card not found');
         await deleteButton.click();
@@ -381,7 +381,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
 
     // Deleting a seed sticks: it is not re-added on reload.
     const deleteHandle = await page.evaluateHandle(() =>
-      [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes('Global Reagent Launch'))?.querySelector('button.ghost'));
+      [...document.querySelectorAll('.plancard')].find((c) => c.textContent.includes('Global Reagent Launch'))?.querySelector('button.pc-delete'));
     const deleteButton = deleteHandle.asElement();
     assert.ok(deleteButton, 'seed card delete button not found');
     await deleteButton.click();
