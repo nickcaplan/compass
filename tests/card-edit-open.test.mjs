@@ -48,7 +48,7 @@ test('equal active card Edit/Open actions use selected colours and correct edit/
       await page.waitForSelector('.bsum');
       assert.equal(await page.$('#f-name'), null);
       assert.ok(await page.$('.saved-plan-copy'));
-      assert.ok(await page.$('.cs-wrap'));
+      assert.ok(await page.$('.pdf-report button'));
       await page.locator('.saved-back').click();
       await page.waitForSelector('.pc-edit');
       await page.locator('.pc-edit').click();

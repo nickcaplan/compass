@@ -43,8 +43,7 @@ committed to.
   illustrative on screen.
 - Saved plans do persist, in the visitor's own browser. A Supabase
   backend (sign-in and plan sync) is in progress on separate branches.
-- Speak to a specialist opens the Hybrid House contact page. Download PDF
-  shows a coming-soon note. Support is no longer in the navigation.
+- Speak to a specialist opens the Hybrid House contact page. Saved-plan Download PDF exports a print-ready report in a light theme, including the full brief, metrics, publisher allocations, explanations, timing and illustrative-data note. Rendering is local in the browser; no campaign data is uploaded. The generated unsaved plan still shows a coming-soon note. Support is no longer in the navigation.
 
 ## Requirements
 
