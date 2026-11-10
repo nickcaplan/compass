@@ -987,8 +987,16 @@ export default function App() {
     const refresh = () => {
       if (document.visibilityState === 'visible') setDayTick((t) => t + 1);
     };
+    // Update even when the visible page is left untouched across midnight.
+    let timer: number;
+    const scheduleMidnight = () => {
+      const next = new Date();
+      next.setHours(24, 0, 0, 0);
+      timer = window.setTimeout(() => { setDayTick(t => t + 1); scheduleMidnight(); }, next.getTime() - Date.now() + 50);
+    };
+    scheduleMidnight();
     document.addEventListener('visibilitychange', refresh);
-    return () => document.removeEventListener('visibilitychange', refresh);
+    return () => { document.removeEventListener('visibilitychange', refresh); window.clearTimeout(timer); };
   }, []);
 
   const count = answeredCount({ ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) });
@@ -1013,6 +1021,10 @@ export default function App() {
   const savedBriefReadOnly = savedEntry !== null && savedEntry.mode === 'view';
   const viewingSaved = savedBriefReadOnly && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
+  // A page kept open across midnight must not retain an expired Edit form.
+  useEffect(() => {
+    if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
+  });
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
 
   useEffect(() => {
@@ -1262,6 +1274,7 @@ export default function App() {
     if (!submittedBrief) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
+      if (latest.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) { cancelEditSaved(); return; }
       if (!latest.some((p) => p.id === savedEntry.id)) {
         setSavedEntry(null);
         showToast('That plan is no longer in My plans - save it again as a new plan');
@@ -1319,6 +1332,7 @@ export default function App() {
   }, [editingSaved]);
 
   function editSavedPlan() {
+    if (campaignEnded(brief.end)) return;
     clearSaveSpacer();
     setJustSavedId(null);
     const loaded = { ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) };
@@ -1727,12 +1741,12 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
-                {canViewPlan && <button type="button" className="btn saved-plan-edit" onClick={editSavedPlan}>
+              {canViewPlan && !campaignEnded(brief.end) && <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
+                <button type="button" className="btn saved-plan-edit" onClick={editSavedPlan}>
                   <IconEdit />
                   Edit plan
-                </button>}
-              </div>
+                </button>
+              </div>}
               <span className="sr-only" role="status">{linkCopy === 'copied' ? 'Plan link copied.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
               {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
             </>

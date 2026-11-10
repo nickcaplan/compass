@@ -50,6 +50,7 @@ test('example walkthrough generates automatically and respects interruptions', {
 
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
+    await page.waitForFunction(()=>document.querySelector('.demohint')?.textContent.includes('Example filled'));
     assert.match(await page.$eval('.demohint', e => e.textContent), /Example filled/);
     await page.waitForSelector('.planin .metrics');
     assert.ok(await page.$('.secondary'));
@@ -80,6 +81,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     assert.equal(await page.$eval('#f-name', e => e.value), 'My own draft');
     // Opening a date field cancels the example before a date is committed.
     await page.reload();
+    await page.waitForSelector('.demofill');
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
     await page.focus('input[type=date]');
@@ -88,6 +90,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
     // Replacement confirmation during the fill pause must stop that pause.
     await page.reload();
+    await page.waitForSelector('.demofill');
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
     await clickButton(page, 'Try another example');
