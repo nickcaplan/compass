@@ -539,3 +539,8 @@ input.ctl{color:var(--text)}
 :root[data-theme="dark"]{--date-error:#ff9caa}
 .ctl[aria-invalid="true"]{border:2px solid var(--date-error);box-shadow:0 0 0 1px var(--date-error)}
 .date-error{color:var(--date-error);font-weight:600}
+
+/* Destructive confirmation only, never the Edit or primary plan actions. */
+.confirm .btn.destructive{background:#B42332;color:#fff;border:1px solid #B42332;box-shadow:none}
+.confirm .btn.destructive:hover{background:#971D2A;border-color:#971D2A}
+.confirm .btn.destructive:focus-visible{outline:2px solid var(--text);outline-offset:3px}
