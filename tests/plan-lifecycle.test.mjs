@@ -123,7 +123,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await t.test('saved new plan still warns after its form is edited', async () => {
       await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Unsaved campaign name');
-      await openSavedPlan(page);
+      await clickButton(page, 'My plans');
       await page.waitForSelector('[role="alertdialog"]');
       assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Discard unsaved changes/);
       await page.locator('.confirm .ghost').click();
@@ -131,9 +131,11 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await clickButton(page, 'Planner');
       assert.equal(await page.$eval('#f-name', (input) => input.value), 'Unsaved campaign name');
 
-      await openSavedPlan(page);
+      await clickButton(page, 'My plans');
       await page.waitForSelector('[role="alertdialog"]');
       await page.locator('.confirm .btn').click();
+      await page.waitForSelector('.plancard');
+      await clickButton(page, 'Open plan');
       await page.waitForSelector('.bsum');
       assert.equal(await page.$eval('.bsum .v', (value) => value.textContent), originalName);
       assert.equal(await page.$('[role="alertdialog"]'), null);
@@ -217,7 +219,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await t.test('saved-plan edit mode still warns and cancellation keeps edits', async () => {
       await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Edited saved plan');
-      await openSavedPlan(page);
+      await clickButton(page, 'My plans');
       await page.waitForSelector('[role="alertdialog"]');
       await page.locator('.confirm .ghost').click();
       await page.waitForSelector('[role="alertdialog"]', { hidden: true });
@@ -230,23 +232,25 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await t.test('draft replacement warns and Escape preserves answers', async () => {
       await clickButton(page, 'Create another');
       await page.locator('#f-name').fill('Unfinished draft');
-      await openSavedPlan(page);
+      await clickButton(page, 'My plans');
       await page.waitForSelector('[role="alertdialog"]');
       assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Replace your draft/);
       await page.keyboard.press('Escape');
       await page.waitForSelector('[role="alertdialog"]', { hidden: true });
       await clickButton(page, 'Planner');
       assert.equal(await page.$eval('#f-name', (input) => input.value), 'Unfinished draft');
-      await openSavedPlan(page);
+      await clickButton(page, 'My plans');
       await page.waitForSelector('[role="alertdialog"]');
       await page.locator('.confirm .btn').click();
+      await page.waitForSelector('.plancard');
+      await clickButton(page, 'Open plan');
       await page.waitForSelector('.bsum');
     });
 
     await t.test('an unsaved generated plan still requires confirmation', async () => {
       await clickButton(page, 'Create another');
       await generateExample(page);
-      await openSavedPlan(page);
+      await clickButton(page, 'My plans');
       await page.waitForSelector('[role="alertdialog"]');
       assert.match(await page.$eval('.confirm', (dialog) => dialog.textContent), /Replace your current plan/);
       await page.locator('.confirm .ghost').click();
