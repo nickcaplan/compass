@@ -1488,7 +1488,7 @@ export default function App() {
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
           {missingForRegeneration.length > 0 && stage !== 'generating' && (
-            <p id="regenerate-required" className="regenerate-required" role="status">To regenerate, add {missingForRegeneration.join(', ')}.</p>
+            <p id="regenerate-required" className="regenerate-required" role="status">{new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' }).format(missingForRegeneration)} must be selected.</p>
           )}
             </>
           )}
