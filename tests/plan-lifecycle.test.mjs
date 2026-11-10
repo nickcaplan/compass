@@ -1,3 +1,4 @@
+import {observeJourney, reportJourneyFailure} from './fixtures/journey-diagnostics.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
@@ -71,7 +72,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
-    await page.setViewport({ width: 1440, height: 900 });
+    await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
     await page.goto('http://127.0.0.1:4173/?demo=1');
     // Initial router setup clears any pending walkthrough. Wait before clicking.
     await page.waitForFunction(() => location.hash === '#/planner');
@@ -255,6 +256,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Unsaved edit to deleted plan');
       const otherPage = await context.newPage();
+      await observeJourney(otherPage);
       // A seed plan can share the saved plan's name (demoBrief picks at
       // random and two variants reuse seed names), so identity is a count:
       // user plans render before seeds, the first match is the saved plan,
@@ -280,7 +282,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         await otherPage.waitForFunction((n, before) =>
           [...document.querySelectorAll('.plancard')].filter((c) => c.textContent.includes(n)).length === before - 1,
           {}, savedName, beforeCount);
-      } finally {
+      } catch (error) { await reportJourneyFailure(browser); throw error; } finally {
         await otherPage.close();
       }
       await clickButton(page, 'Cancel');
@@ -291,7 +293,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       const remaining = await cardsWithName(page);
       assert.equal(remaining, beforeCount - 1);
     });
-  } finally {
+  } catch (error) { await reportJourneyFailure(browser); throw error; } finally {
     await browser?.close();
     server.kill();
   }
@@ -329,7 +331,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
-    await page.setViewport({ width: 1440, height: 900 });
+    await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
 
     const cardNames = () => page.$$eval('.plancard b', (els) => els.map((e) => e.textContent));
     const expiredCount = () => page.$$eval('.chip', (els) => els.filter((e) => e.textContent.trim() === 'Expired').length);
@@ -399,7 +401,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     }));
     assert.ok(!afterDelete.plans.some((p) => p.id === 'seed-past-2'));
     assert.ok(afterDelete.meta.applied.includes('seed-past-2'), 'deleted seed stays in applied');
-  } finally {
+  } catch (error) { await reportJourneyFailure(browser); throw error; } finally {
     if (browser) await browser.close();
     server.kill();
   }
@@ -437,7 +439,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
-    await page.setViewport({ width: 1440, height: 900 });
+    await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
     await page.goto('http://127.0.0.1:4174/?demo=1');
 
     // A clean visitor sees samples without a recovery notice.
@@ -533,7 +535,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     assert.equal(afterBlockedSave, '{still here');
     await blocked.close();
     await blockedContext.close();
-  } finally {
+  } catch (error) { await reportJourneyFailure(browser); throw error; } finally {
     if (browser) await browser.close();
     server.kill();
   }

@@ -557,3 +557,6 @@ input.ctl{color:var(--text)}
 .pc-share,.pc-delete{color:var(--muted)}
 .pc-share svg,.pc-delete svg{width:16px;height:16px;stroke-width:1.8}
 .pc-share:hover,.pc-delete:hover{color:var(--text)}
+
+/* Unselected Objective choices are peers; colour coding begins on selection. */
+[aria-labelledby=g-objective] .pill.off{border-color:var(--muted);color:var(--muted);background:none}
