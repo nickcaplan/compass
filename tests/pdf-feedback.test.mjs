@@ -1,3 +1,4 @@
+import {observeJourney, reportJourneyFailure} from './fixtures/journey-diagnostics.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
@@ -27,7 +28,7 @@ test('Generated-plan PDF placeholder preserves layout, text and dismissal', { ti
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) {
-      const context = await browser.createBrowserContext();const page = await context.newPage(); await page.setViewport({width,height:900});
+      const context = await browser.createBrowserContext();const page = await context.newPage(); await observeJourney(page);await page.setViewport({width,height:900});
       await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
       await page.waitForFunction(()=>!document.querySelector('.gen').disabled); await page.evaluate(()=>document.querySelector('.gen').click()); await page.waitForSelector('.cs-wrap button');
       for (const saved of [false]) {
@@ -61,5 +62,5 @@ test('Generated-plan PDF placeholder preserves layout, text and dismissal', { ti
       }
       await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await page.locator('.cs-wrap button').click();await page.waitForFunction(()=>document.querySelector('.cs-wrap').classList.contains('cs-showing'));assert.equal(await page.$eval('.cs-wrap .ghost',e=>e.getAnimations().length),0);assert.equal(await page.$eval('.cs-wrap .ghost',e=>getComputedStyle(e).transitionDuration),'0s');await page.keyboard.press('Escape');assert.equal(await page.$eval('.cs-wrap .ghost',e=>getComputedStyle(e).transitionDuration),'0s');await context.close();
     }
-  } finally { await browser?.close(); server.kill(); }
+  } catch (error) { await reportJourneyFailure(browser); throw error; } finally { await browser?.close(); server.kill(); }
 });
