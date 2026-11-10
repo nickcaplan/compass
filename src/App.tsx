@@ -1647,7 +1647,7 @@ export default function App() {
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
-                        {objLabels && <span className="chip">{objLabels}</span>}
+                        {objLabels && <span className="chip pc-objective">{objLabels}</span>}
                         <span className="chip">Market: {marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
