@@ -175,3 +175,10 @@ Nick clarified demo fill is for testing and must include Market. Generated
 example briefs use UK as explicit illustrative test data, not inferred visitor
 geography; existing saved plans are not backfilled. The auto-generation flow
 continues with all seven required answers populated.
+
+## 2026-11-10 - Unselected Objective choices match
+
+Unselected Awareness, Consideration and Performance choices use the same
+outline and text treatment. Objective shades begin when selected; KPIs keep
+their objective colour coding. This supersedes distinct unselected Objective
+outlines only, not the selected or KPI shades.
