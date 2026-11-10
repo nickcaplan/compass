@@ -46,6 +46,8 @@ test('example walkthrough generates automatically and respects interruptions', {
     await page.setViewport({ width: 390, height: 844 });
     await page.evaluateOnNewDocument(()=>localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify({access_token:'test',refresh_token:'test',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'walk-test',email:'walk@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Walk Test',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'}})));
     await page.goto(previewUrl+'?demo=1');
+    await page.waitForSelector('.demofill');
+    await page.waitForFunction(()=>location.hash==='#/planner');
 
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
