@@ -1758,10 +1758,6 @@ export default function App() {
               <div className="planlist">
               {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).map((sp) => {
                 const wks = campaignWeeks(sp.brief.start, sp.brief.end);
-                const objLabels = sp.brief.objectives
-                  .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
-                  .filter((l) => l !== '')
-                  .join(' + ');
                 return (
                   <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
                     <button type="button" className="ghost pc-share" aria-label={`${cardCopyId === sp.id && linkCopy === 'copied' ? 'Plan link copied' : 'Copy plan link'}: ${sp.brief.name || 'Untitled campaign'} - only works in this browser`} title="Copy plan link - only works in this browser" onClick={() => copyPlanLink(sp.id, true)}>
@@ -1779,7 +1775,10 @@ export default function App() {
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
-                        {objLabels && <span className="chip pc-objective">{objLabels}</span>}
+                        {sp.brief.objectives.map(id => {
+                          const objective = OBJECTIVES.find(o => o.id === id);
+                          return objective ? <span className={`chip pc-objective obj-${id}`} key={id}>{objective.label}</span> : null;
+                        })}
                         <span className="chip pc-market" aria-label={`Market: ${marketLabels(sp.brief.markets) || 'Not specified'}`}>{marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
