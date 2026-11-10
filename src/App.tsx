@@ -1721,7 +1721,7 @@ export default function App() {
                       </b>
                       <div className="chips">
                         {objLabels && <span className="chip pc-objective">{objLabels}</span>}
-                        <span className="chip">Market: {marketLabels(sp.brief.markets) || 'Not specified'}</span>
+                        <span className="chip pc-market" aria-label={`Market: ${marketLabels(sp.brief.markets) || 'Not specified'}`}>{marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
                         )}
