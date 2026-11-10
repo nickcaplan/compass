@@ -670,6 +670,7 @@ export default function App() {
   const [linkCopy, setLinkCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
   const planLinkRef = useRef<HTMLInputElement>(null);
   const linkCopyTimer = useRef<number | undefined>(undefined);
+  const copyRequest = useRef(0);
   useEffect(() => () => window.clearTimeout(linkCopyTimer.current), []);
   const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
@@ -961,6 +962,7 @@ export default function App() {
     setConfirmReset(false);
     clearPlannerState();
     setUnavailablePlan(false);
+    copyRequest.current += 1;
     window.clearTimeout(linkCopyTimer.current);
     setLinkCopy('idle');
     navigation.address({ page: 'planner' });
@@ -1108,6 +1110,7 @@ export default function App() {
 
   function applyRoute(route: PlanRoute) {
     setUnavailablePlan(false);
+    copyRequest.current += 1;
     window.clearTimeout(linkCopyTimer.current);
     setLinkCopy('idle');
     clearSaveSpacer();
@@ -1162,16 +1165,23 @@ export default function App() {
 
   async function copyPlanLink(id = savedEntry?.id, card = false) {
     if (!id) return;
+    const request = ++copyRequest.current;
+    setLinkCopy('idle');
     setCardCopyId(card ? id : null);
     window.clearTimeout(linkCopyTimer.current);
     const url = new URL(window.location.href);
     url.hash = routeHash({ page: 'planner', planId: id });
     try {
       await navigator.clipboard.writeText(url.href);
+      if (request !== copyRequest.current) return;
       window.clearTimeout(linkCopyTimer.current);
       setLinkCopy('copied');
-      linkCopyTimer.current = window.setTimeout(() => setLinkCopy('idle'), 3000);
+      linkCopyTimer.current = window.setTimeout(() => {
+        if (request !== copyRequest.current) return;
+        setLinkCopy('idle'); setCardCopyId(null);
+      }, 3000);
     } catch {
+      if (request !== copyRequest.current) return;
       setLinkCopy('failed');
       requestAnimationFrame(() => { planLinkRef.current?.focus(); planLinkRef.current?.select(); });
     }

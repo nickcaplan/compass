@@ -8,12 +8,14 @@ test('equal active card Edit/Open actions use selected colours and correct edit/
   const server = process.env.HOSTED_URL ? null : spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'] });
   let browser;
   try {
-    const url = process.env.HOSTED_URL || await new Promise(resolve => {
+    const url = process.env.HOSTED_URL || await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(Error('Preview startup timeout')), 10000);
+      server.once('error', reject);
       let output = '';
       server.stdout.on('data', data => {
         output += stripVTControlCharacters(data.toString());
         const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
-        if (match) resolve(match[0]);
+        if (match) { clearTimeout(timer); resolve(match[0]); }
       });
     });
     browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
