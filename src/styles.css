@@ -557,3 +557,7 @@ input.ctl{color:var(--text)}
 .pc-share,.pc-delete{color:var(--muted)}
 .pc-share svg,.pc-delete svg{width:16px;height:16px;stroke-width:1.8}
 .pc-share:hover,.pc-delete:hover{color:var(--text)}
+
+/* Secondary Open remains distinct from the primary Edit action in dark mode. */
+:root[data-theme="dark"] .pc-actions .pc-open{border-color:#767680;color:#eeeef2}
+:root[data-theme="dark"] .pc-actions .pc-open:hover{border-color:#aaaab4;background:#242429;color:#fff}
