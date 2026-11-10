@@ -933,7 +933,7 @@ export default function App() {
     setUnavailablePlan(false);
     window.clearTimeout(linkCopyTimer.current);
     setLinkCopy('idle');
-    navigation.address({ page: 'planner' });
+    navigation.navigate({ page: 'planner' }, false, true);
     window.scrollTo(0, 0);
   }
 
