@@ -551,3 +551,5 @@ input.ctl{color:var(--text)}
 .layout-B .pc-actions .pc-edit{width:84px;flex:none}
 .layout-B .pc-actions .btn{width:auto;flex:1}
 .layout-A .is-expired .pc-actions .btn,.layout-B .is-expired .pc-actions .btn{width:100%}
+.layout-A .pc-actions .pc-edit,.layout-A .pc-actions .btn{flex:1 1 0;min-width:0;width:0;padding-left:10px;padding-right:10px}
+.layout-A .pc-actions .btn{border:1px solid transparent}
