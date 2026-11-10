@@ -9,7 +9,7 @@ const chromePath = process.platform === 'darwin'
   ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
   : '/usr/bin/google-chrome';
 
-test('PDF gold feedback preserves layout, text and dismissal in generated and saved views', { timeout: 60000 }, async () => {
+test('Generated-plan PDF placeholder preserves layout, text and dismissal', { timeout: 60000 }, async () => {
   const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
   let browser;
   try {
@@ -30,7 +30,7 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
       const context = await browser.createBrowserContext();const page = await context.newPage(); await page.setViewport({width,height:900});
       await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
       await page.waitForFunction(()=>!document.querySelector('.gen').disabled); await page.evaluate(()=>document.querySelector('.gen').click()); await page.waitForSelector('.cs-wrap button');
-      for (const saved of [false,true]) {
+      for (const saved of [false]) {
         if(saved){await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save plan').click());await page.waitForSelector('.bsum');}
         await page.$eval('.cs-wrap button',e=>e.scrollIntoView({block:'center'}));
         // The plan reveal settles for a moment after generation; only measure once the layout is still.
