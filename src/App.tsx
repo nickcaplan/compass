@@ -689,8 +689,16 @@ export default function App() {
     const refresh = () => {
       if (document.visibilityState === 'visible') setDayTick((t) => t + 1);
     };
+    // Update even when the visible page is left untouched across midnight.
+    let timer: number;
+    const scheduleMidnight = () => {
+      const next = new Date();
+      next.setHours(24, 0, 0, 0);
+      timer = window.setTimeout(() => { setDayTick(t => t + 1); scheduleMidnight(); }, next.getTime() - Date.now() + 50);
+    };
+    scheduleMidnight();
     document.addEventListener('visibilitychange', refresh);
-    return () => document.removeEventListener('visibilitychange', refresh);
+    return () => { document.removeEventListener('visibilitychange', refresh); window.clearTimeout(timer); };
   }, []);
 
   const count = answeredCount({ ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) });
@@ -947,6 +955,7 @@ export default function App() {
     if (!submittedBrief) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
+      if (latest.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) { cancelEditSaved(); return; }
       if (!latest.some((p) => p.id === savedEntry.id)) {
         setSavedEntry(null);
         showToast('That plan is no longer in My plans - save it again as a new plan');
