@@ -15,7 +15,7 @@ export function readPlanRoute(): PlanRoute {
       const path = hash.slice('#/planner/'.length);
       const edit = path.endsWith('/edit');
       const planId = decodeURIComponent(edit ? path.slice(0, -5) : path);
-      return { page: 'planner', planId, edit, editFrom: window.history.state?.compassEditFrom ?? 'view' };
+      return { page: 'planner', planId, edit, editFrom: window.history.state?.compassEditFrom ?? undefined };
     }
     catch { return { page: 'planner', planId: '' }; }
   }
@@ -40,11 +40,12 @@ export function usePlanNavigation(apply: (route: PlanRoute) => void, blocks: (ro
     const url = new URL(window.location.href);
     url.hash = routeHash(route);
     if (!replace) index.current += 1;
-    window.history[replace ? 'replaceState' : 'pushState']({ ...window.history.state, compassNavigation: index.current, compassEditFrom: route.edit ? route.editFrom ?? 'plans' : null }, '', url);
+    window.history[replace ? 'replaceState' : 'pushState']({ ...window.history.state, compassNavigation: index.current, compassEditFrom: route.edit ? route.editFrom ?? null : null }, '', url);
     seen.current = window.location.href;
     current.current = route;
   }
   function navigate(route: PlanRoute, replace = false, force = false) {
+    if (route.edit && !route.editFrom && current.current.page === 'plans') route = { ...route, editFrom: 'plans' };
     if (!force && callbacks.current.blocks(route)) { setPending({ route, ready: true }); return; }
     setPending(null);
     if (window.location.hash !== routeHash(route)) write(route, replace);
