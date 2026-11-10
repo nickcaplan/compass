@@ -1,17 +1,22 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 export type Page = 'planner' | 'plans' | 'signin' | 'pricing';
-export type PlanRoute = { page: Page; planId?: string; reload?: boolean };
+export type PlanRoute = { page: Page; planId?: string; reload?: boolean; edit?: boolean; editFrom?: 'plans' | 'view' };
 export const PAGE_ROUTES: Record<Page, string> = {
   planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing',
 };
 export function routeHash(route: PlanRoute): string {
-  return route.planId !== undefined ? `#/planner/${encodeURIComponent(route.planId)}` : PAGE_ROUTES[route.page];
+  return route.planId !== undefined ? `#/planner/${encodeURIComponent(route.planId)}${route.edit ? '/edit' : ''}` : PAGE_ROUTES[route.page];
 }
 export function readPlanRoute(): PlanRoute {
   const hash = window.location.hash;
   if (hash.startsWith('#/planner/')) {
-    try { return { page: 'planner', planId: decodeURIComponent(hash.slice('#/planner/'.length)) }; }
+    try {
+      const path = hash.slice('#/planner/'.length);
+      const edit = path.endsWith('/edit');
+      const planId = decodeURIComponent(edit ? path.slice(0, -5) : path);
+      return { page: 'planner', planId, edit, editFrom: window.history.state?.compassEditFrom ?? 'view' };
+    }
     catch { return { page: 'planner', planId: '' }; }
   }
   const page = (Object.keys(PAGE_ROUTES) as Page[]).find(p => PAGE_ROUTES[p] === hash);
@@ -35,7 +40,7 @@ export function usePlanNavigation(apply: (route: PlanRoute) => void, blocks: (ro
     const url = new URL(window.location.href);
     url.hash = routeHash(route);
     if (!replace) index.current += 1;
-    window.history[replace ? 'replaceState' : 'pushState']({ ...window.history.state, compassNavigation: index.current }, '', url);
+    window.history[replace ? 'replaceState' : 'pushState']({ ...window.history.state, compassNavigation: index.current, compassEditFrom: route.edit ? route.editFrom ?? 'plans' : null }, '', url);
     seen.current = window.location.href;
     current.current = route;
   }
