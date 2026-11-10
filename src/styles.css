@@ -583,3 +583,13 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
 .pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
+
+/* Text enlargement reflows actions and labels without widening the page. */
+.saved-page-navigation,.cta,.planhead{flex-wrap:wrap}
+.saved-page-navigation>*,.cta>*,.planhead>*{min-width:0;max-width:100%}
+.cta button{white-space:normal;overflow-wrap:normal}
+.planlist,.plancard,.pc-main{min-width:0}
+h1,.empty h3,.planhead h2,.metric .k,.num .k{overflow-wrap:anywhere}
+.pc-actions{flex-wrap:wrap}
+.pc-actions .pc-edit,.pc-actions .pc-open{flex:1 1 calc(50% - 5px);min-width:max-content;width:auto}
+.is-expired .pc-actions .pc-open{flex-basis:100%}
