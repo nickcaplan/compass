@@ -539,3 +539,9 @@ input.ctl{color:var(--text)}
 :root[data-theme="dark"]{--date-error:#ff9caa}
 .ctl[aria-invalid="true"]{border:2px solid var(--date-error);box-shadow:0 0 0 1px var(--date-error)}
 .date-error{color:var(--date-error);font-weight:600}
+
+/* Preserve compact labels while providing finger-sized navigation hit areas. */
+.navlinks button:not(.signin){min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.themebtn{width:44px;height:44px}
+@media(max-width:520px){.toprow{gap:12px}.navlinks{gap:8px}.navlinks .signin{padding-inline:12px}.themebtn{margin-left:auto}}
+.navlinks button{min-height:44px;min-width:44px}
