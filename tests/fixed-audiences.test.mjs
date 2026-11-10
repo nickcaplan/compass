@@ -29,8 +29,7 @@ test('natural audience pills stay consistent and invalid saved choices require a
     // the unmodified shared pill dimensions fit in the current card.
     assert.ok(g.every(x=>x.height===g[0].height));
     const available=await p.$eval('[aria-labelledby=g-audience]',e=>e.clientWidth);
-    if(g[2].width+g[3].width+8<=available)assert.equal(g[2].y,g[3].y);
-    else assert.ok(g[2].y<g[3].y);
+    let used=0;for(let i=0;i<g.length;i++){const fits=i>0&&used+8+g[i].width<=available+1;if(i>0)assert.equal(g[i].y===g[i-1].y,fits,'natural rows must pack every preceding pill');used=fits?used+8+g[i].width:g[i].width;}
     assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     if(process.env.SCREENSHOT_DIR){await p.$eval('[aria-labelledby=g-audience]',e=>e.scrollIntoView({block:'center'}));await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/audience-pairs-${process.env.HOSTED_URL?'hosted':'local'}-${width}-${theme}.png`})}
    }

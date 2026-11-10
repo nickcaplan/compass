@@ -548,13 +548,13 @@ input.ctl{color:var(--text)}
 
 /* Desktop proposal: complete the brief before introducing the result column. */
 @media(min-width:1200px){
- .layout.brief-first{display:block;max-width:980px;margin-inline:auto}
+ .layout.brief-first{display:block;max-width:none;margin-inline:0}
  .brief-first>.form{position:static;display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;padding:26px}
  .brief-first>.form>h2,.brief-first>.form>.hint,.brief-first>.form>.demofill,.brief-first>.form>.demohint,.brief-first>.form>.gen{grid-column:1/-1}
  .brief-first>.form>h2{margin-bottom:0}
  .brief-first>.form>.hint{margin-bottom:0}
  .brief-first>.form>.field{margin:0}
- .brief-first>.form>.field:has(#f-name){grid-column:1/-1}
+ .brief-first>.form>.field:has(#g-audience){grid-column:1/-1}
  .brief-first>.form>.gen{margin-top:4px;justify-self:end;width:auto;min-width:250px}
  .brief-first>.plan{display:none}
 }
