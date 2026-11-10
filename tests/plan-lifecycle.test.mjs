@@ -227,7 +227,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         localStorage.setItem('compass-saved-plans', JSON.stringify(plans));
       });
       await page.reload();
-      await observeJourney(page);await page.setViewport({ width: 412, height: 300 });
+      await page.setViewport({ width: 412, height: 300 });
       await clickButton(page, 'My plans');
       await page.waitForSelector('.pc-actions');
       await page.locator('.pc-delete').click();
@@ -239,7 +239,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       assert.ok(bounds.top >= 0 && bounds.bottom <= bounds.height, 'Dialog must fit inside the viewport');
       await page.locator('.confirm .ghost').click();
       await page.waitForSelector('[role="alertdialog"]', { hidden: true });
-      await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
+      await page.setViewport({ width: 1440, height: 900 });
       await page.evaluate((name) => {
         const plans = JSON.parse(localStorage.getItem('compass-saved-plans'));
         plans[0].brief.name = name;
@@ -256,6 +256,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await clickButton(page, 'Edit plan');
       await page.locator('#f-name').fill('Unsaved edit to deleted plan');
       const otherPage = await context.newPage();
+      await observeJourney(otherPage);
       // A seed plan can share the saved plan's name (demoBrief picks at
       // random and two variants reuse seed names), so identity is a count:
       // user plans render before seeds, the first match is the saved plan,
