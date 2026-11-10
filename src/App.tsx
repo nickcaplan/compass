@@ -759,6 +759,14 @@ export default function App() {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
   });
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
+  const missingForRegeneration = editingSaved ? [
+    !(brief.markets?.length) && 'Market',
+    !brief.objectives.length && 'Objective',
+    !brief.kpis.length && 'KPI',
+    !brief.audiences.some(a => AUDIENCES.includes(a)) && 'Audience',
+    !(brief.budget !== null && brief.budget > 0) && 'Budget',
+    !(weeks > 0 && !startNotFuture(brief.start)) && 'valid future campaign dates',
+  ].filter((answer): answer is string => Boolean(answer)) : [];
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -1476,9 +1484,12 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
+          {missingForRegeneration.length > 0 && stage !== 'generating' && (
+            <p id="regenerate-required" className="regenerate-required" role="status">To regenerate, add {missingForRegeneration.join(', ')}.</p>
+          )}
             </>
           )}
         </section>
