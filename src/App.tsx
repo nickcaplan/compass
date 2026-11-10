@@ -1354,6 +1354,8 @@ export default function App() {
   }
 
   const navigation = usePlanNavigation(applyRoute, route => {
+    // Sign-in is part of continuing this brief, not a discard destination.
+    if (route.page === 'signin') return false;
     if (replacementReason() === null) return false;
     if (route.page === 'planner' && !route.reload && route.planId === savedEntry?.id) return false;
     clearCue();
@@ -1371,7 +1373,7 @@ export default function App() {
     setToast(null);
     // At this point navigation is either unchanged or an approved discard.
     // Do not carry a hidden edit onto My plans and ask again on the next Open.
-    if (route.page !== 'planner' && page === 'planner' && !viewingSaved) clearPlannerState();
+    if (route.page !== 'planner' && route.page !== 'signin' && page === 'planner' && !viewingSaved) clearPlannerState();
     if (route.planId !== undefined) {
       const latest = loadPlans();
       const entry = latest.find(p => p.id === route.planId);
