@@ -1,5 +1,5 @@
 """Offline guard tests. Does not invoke Robin, GitHub or OpenRouter."""
-import copy, io, json, os, pathlib, tempfile, unittest, urllib.request
+import ast, re, copy, io, json, os, pathlib, tempfile, unittest, urllib.request
 from unittest.mock import patch
 
 workflow = pathlib.Path('.github/workflows/robin-pilot.yml').read_text()
@@ -46,6 +46,19 @@ class PilotGuardTests(unittest.TestCase):
             with self.assertRaises(SystemExit):self.run_guard(files=files)
     def test_complete_diff_cap(self):
         with self.assertRaises(SystemExit):self.run_guard(diff='x'*20001)
+    def test_both_triggers_request_named_free_model_and_no_reasoning(self):
+        manual=ast.literal_eval(re.search(r"inputs=(\{.*\})", workflow).group(1))
+        self.assertEqual(manual['model'],'nvidia/nemotron-3-ultra-550b-a55b:free')
+        self.assertEqual(manual['reasoning-effort'],'none')
+        self.assertEqual(manual['max-output-tokens'],'4000')
+        self.assertEqual(manual['agent-mode'],'off')
+        self.assertEqual(manual['request-changes'],'false')
+        self.assertEqual(manual['fail-on-high'],'false')
+        self.assertIn('model: '+manual['model'],workflow)
+        self.assertIn("reasoning-effort: 'none'",workflow)
+        self.assertIn("max-output-tokens: '4000'",workflow)
+        self.assertNotIn('openrouter/free',workflow)
+        self.assertIn('antongulin/robin@808e18045c93f80f917a41be8fa3f80fa03d70a0',workflow)
     def test_workflow_has_no_automatic_review_or_checkout(self):
         self.assertNotIn('pull_request:',workflow.split('permissions:',1)[0]);self.assertNotIn('actions/checkout',workflow)
         self.assertIn("github.actor == 'nickcaplan'",workflow);self.assertIn("github.triggering_actor == 'nickcaplan'",workflow);self.assertIn("github.event.comment.body == '/review'",workflow)
