@@ -18,10 +18,12 @@ test('objectives use three neutral shades and their KPIs inherit them',{timeout:
   const p=await browser.newPage();await p.setViewport({width:1280,height:900});await p.goto(url);
   if(theme==='light'){await p.evaluate(()=>{[...document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||'').toLowerCase().includes('light'))?.click()});await p.waitForFunction(()=>document.documentElement.getAttribute('data-theme')==='light',{timeout:8000})}
   await p.waitForSelector('[aria-labelledby=g-objective]');
-  // Each objective carries its own shade class, unselected ones stay unfilled.
+  // Keep shade identity for selection; unselected Objective choices look equal.
   assert.deepEqual(await p.$$eval('[aria-labelledby=g-objective] .pill',bs=>bs.map(b=>[...b.classList].find(c=>c.startsWith('obj-')))),['obj-awareness','obj-consideration','obj-performance']);
   const offBorders=await p.$$eval('[aria-labelledby=g-objective] .pill.off',bs=>bs.map(b=>getComputedStyle(b).borderTopColor));
-  assert.equal(new Set(offBorders).size,3,`unselected objective shades not distinct: ${offBorders}`);
+  assert.equal(new Set(offBorders).size,1,`unselected objective outlines differ: ${offBorders}`);
+  const offText=await p.$$eval('[aria-labelledby=g-objective] .pill.off',bs=>bs.map(b=>getComputedStyle(b).color));
+  assert.equal(new Set(offText).size,1,`unselected objective text differs: ${offText}`);
   assert.deepEqual(await p.$$eval('[aria-labelledby=g-objective] .pill.off',bs=>bs.map(b=>getComputedStyle(b).backgroundColor)),['rgba(0, 0, 0, 0)','rgba(0, 0, 0, 0)','rgba(0, 0, 0, 0)']);
   // Select Awareness: its pill fills with the black shade, and every KPI it
   // reveals inherits the awareness treatment.
