@@ -49,5 +49,9 @@ class PilotGuardTests(unittest.TestCase):
     def test_workflow_has_no_automatic_review_or_checkout(self):
         self.assertNotIn('pull_request:',workflow.split('permissions:',1)[0]);self.assertNotIn('actions/checkout',workflow)
         self.assertIn("github.actor == 'nickcaplan'",workflow);self.assertIn("github.event.comment.body == '/review'",workflow)
+        self.assertNotIn('          GITHUB_EVENT_NAME:',workflow)
+        self.assertNotIn('          GITHUB_EVENT_PATH:',workflow)
+        self.assertIn("env['GITHUB_EVENT_NAME']='pull_request'",workflow)
+        self.assertIn('hashlib.sha256(bundle).hexdigest()',workflow)
 
 if __name__=='__main__':unittest.main()
