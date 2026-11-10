@@ -1056,7 +1056,7 @@ export default function App() {
   const navigation = usePlanNavigation(applyRoute, route => {
     if (replacementReason() === null) return false;
     // Staying on this edit is not leaving it. Reopening explicitly reloads it.
-    if (route.page === 'planner' && !route.reload && route.planId === savedEntry?.id) return false;
+    if (route.page === 'planner' && !route.reload && route.planId === savedEntry?.id && Boolean(route.edit) === editingSaved) return false;
     clearCue();
     return true;
   });
