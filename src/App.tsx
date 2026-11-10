@@ -606,6 +606,7 @@ function IndustryReel() {
 export default function App() {
   const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
+  const editBaseline = useRef<Brief | null>(null);
   const [submittedBrief, setSubmittedBrief] = useState<Brief | null>(null);
   const [budgetText, setBudgetText] = useState('');
   const [stage, setStage] = useState<Stage>('empty');
@@ -987,7 +988,9 @@ export default function App() {
   function editSavedPlan() {
     clearSaveSpacer();
     setJustSavedId(null);
-    setBrief(b => ({ ...b, audiences: b.audiences.filter(a => AUDIENCES.includes(a)) }));
+    const loaded = { ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) };
+    editBaseline.current = loaded;
+    setBrief(loaded);
     setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
   }
 
@@ -1008,15 +1011,27 @@ export default function App() {
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
   }
 
+  // Compare field values, not object identity or the fact that Edit was opened.
+  // Multi-select order and absent optional markets are not user-visible changes.
+  function briefValues(value: Brief) {
+    return JSON.stringify({ name: value.name, budget: value.budget,
+      start: value.start, end: value.end, objectives: [...value.objectives].sort(),
+      markets: [...(value.markets ?? [])].sort(), kpis: [...value.kpis].sort(),
+      audiences: [...value.audiences].sort() });
+  }
+
   function replacementReason() {
-    const formDraft = stage !== 'plan' && (count > 0 || (brief.markets?.length ?? 0) > 0 || brief.name.trim() !== '' || budgetText.trim() !== '');
-    return savedEntry?.mode === 'edit' ? 'edit' : stage === 'plan' && savedEntry === null ? 'unsaved' : formDraft ? 'draft' : null;
+    if (editingSaved) return editBaseline.current && briefValues(brief) !== briefValues(editBaseline.current) ? 'edit' : null;
+    if (savedEntry) return null;
+    const hasInput = briefValues(brief) !== briefValues(EMPTY_BRIEF);
+    return hasInput ? stage === 'plan' ? 'unsaved' : 'draft' : null;
   }
 
   const navigation = usePlanNavigation(applyRoute, route => {
-    if (route.planId === undefined || !loadPlans().some(p => p.id === route.planId)) return false;
-    const alreadyOpen = savedEntry?.id === route.planId && (savedEntry.mode === 'view' || !route.reload);
-    return !alreadyOpen && replacementReason() !== null;
+    if (replacementReason() === null) return false;
+    // Staying on this edit is not leaving it. Reopening explicitly reloads it.
+    if (route.page === 'planner' && !route.reload && route.planId === savedEntry?.id) return false;
+    return true;
   });
   const openTarget = navigation.pending ? { reason: replacementReason() } : null;
 
@@ -1030,6 +1045,9 @@ export default function App() {
     if (route.page === 'planner' && route.planId === undefined && viewingSaved) {
       clearPlannerState();
     }
+    // At this point navigation is either unchanged or an approved discard.
+    // Do not carry a hidden edit onto My plans and ask again on the next Open.
+    if (route.page !== 'planner' && page === 'planner' && !viewingSaved) clearPlannerState();
     if (route.planId !== undefined) {
       const latest = loadPlans();
       const entry = latest.find(p => p.id === route.planId);
@@ -1312,6 +1330,8 @@ export default function App() {
                 <input
                   ref={startRef}
                   aria-label="Start date"
+                  aria-invalid={startNotFuture(brief.start) || undefined}
+                  aria-describedby={startNotFuture(brief.start) ? "start-date-error" : undefined}
                   className="ctl"
                   type="date"
                   onFocus={clearCue}
@@ -1336,6 +1356,8 @@ export default function App() {
                 <input
                   ref={endRef}
                   aria-label="End date"
+                  aria-invalid={endBeforeStart(brief.start, brief.end) || undefined}
+                  aria-describedby={endBeforeStart(brief.start, brief.end) ? "end-date-error" : undefined}
                   className="ctl"
                   type="date"
                   onFocus={clearCue}
@@ -1358,10 +1380,10 @@ export default function App() {
               </div>
             </div>
             {startNotFuture(brief.start) && (
-              <div className="dur warn">Start date must be in the future.</div>
+              <div id="start-date-error" className="dur date-error" role="status">⚠ Start date must be in the future.</div>
             )}
             {endBeforeStart(brief.start, brief.end) && (
-              <div className="dur warn">End date must be on or after the start date.</div>
+              <div id="end-date-error" className="dur date-error" role="status">⚠ End date must be on or after the start date.</div>
             )}
             {weeks > 0 && (
               <div className="dur">
@@ -1842,12 +1864,12 @@ export default function App() {
           title={openTarget.reason === 'edit' ? 'Discard unsaved changes?' : openTarget.reason === 'unsaved' ? 'Replace your current plan?' : 'Replace your draft?'}
           body={
             openTarget.reason === 'edit'
-              ? 'Opening this saved plan will discard the changes you have not saved.'
+              ? 'Leaving this edit will discard the changes you have not saved.'
               : openTarget.reason === 'unsaved'
-                ? 'Your current plan has not been saved. Replace it with this saved plan?'
-                : 'Replace your current draft with this saved plan? Any answers you have not saved will be lost.'
+                ? 'Your current plan has not been saved. Leave it and discard your changes?'
+                : 'Leave this draft? Any answers you have not saved will be lost.'
           }
-          confirmLabel="Open plan"
+          confirmLabel={navigation.pending?.route.planId !== undefined ? "Open plan" : "Discard changes"}
           cancelLabel={openTarget.reason === 'edit' ? 'Keep editing' : openTarget.reason === 'unsaved' ? 'Keep my plan' : 'Keep my draft'}
           onConfirm={navigation.confirm}
           onCancel={navigation.cancel}
