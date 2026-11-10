@@ -512,7 +512,7 @@ input.ctl{color:var(--text)}
 
 .saved-brief-tools{display:flex;align-items:center;gap:6px;flex:none}
 .saved-brief-tools .cs-compact{width:44px;flex:none}
-.saved-brief-tools .cs-compact .ghost{width:44px;height:44px;min-height:44px;padding:0;border-radius:12px;color:var(--muted)}
+.saved-brief-tools .cs-compact .ghost{width:44px;height:44px;min-height:44px;padding:0;border-radius:12px;color:var(--text)}
 .saved-brief-tools .cs-compact svg{width:15px;height:15px}
 .saved-brief-tools .cs-label{color:inherit}
 .pdf-icon-notice{position:absolute;right:0;top:calc(100% + 7px);padding:6px 9px;border:1px solid var(--line-mid);border-radius:8px;background:var(--card);color:var(--text);white-space:nowrap;font-size:12px;z-index:4;box-shadow:0 3px 10px #0002}
