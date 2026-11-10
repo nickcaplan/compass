@@ -20,7 +20,7 @@ async function clickButton(page, label) {
     const button = handle.asElement();
     assert.ok(button, `Button not found: ${label}`);
     await button.click();
-  } catch (error) { await reportJourneyFailure(browser); throw error; } finally {
+  } finally {
     await handle.dispose();
   }
 }
