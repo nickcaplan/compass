@@ -16,7 +16,26 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
     ['Budget', brief.budget !== null ? gbp(brief.budget) : '-'],
     ['Campaign dates', weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'],
   ];
-  const heading = (text: string): Content => ({ text, style: 'section' });
+  const heading = (text: string, number: string): Content => ({
+    columns: [
+      { width: 28, table: { widths: [22], body: [[{ text: number, bold: true, fontSize: 10, alignment: 'center', fillColor: '#ffcc00', margin: [0, 3] }]] }, layout: 'noBorders' },
+      { text, style: 'section', margin: [8, 1, 0, 0] },
+    ], margin: [0, 15, 0, 10], unbreakable: true,
+  });
+  const metricRows: Content[] = [];
+  for (let i = 0; i < plan.metrics.length; i += 3) {
+    metricRows.push({ columns: plan.metrics.slice(i, i + 3).map(metric => ({
+      width: 163, stack: [
+        { canvas: [{ type: 'rect', x: 0, y: 0, w: 163, h: 3, color: '#ffcc00' }] },
+        { table: { widths: [147], body: [[{ stack: [
+          { text: metric.k, fontSize: 8, margin: [0, 0, 0, 6] },
+          { text: metric.v, font: 'Poppins', bold: true, fontSize: 17 },
+        ], fillColor: '#f4f3ef', margin: [5, 8, 5, 9] }]] }, layout: 'noBorders' },
+      ],
+    })), columnGap: 11, margin: [0, 0, 0, 10], unbreakable: true });
+  }
+  const allocated = plan.items.reduce((total, item) => total + item.spend, 0);
+
   return {
     pageSize: 'A4', pageMargins: [42, 108, 42, 60],
     header: () => ({ margin: [42, 20, 42, 0], stack: [
@@ -36,23 +55,28 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
     content: [
       { text: brief.name || 'Untitled campaign', font: 'Poppins', fontSize: 19, bold: true, margin: [0, 0, 0, 6] },
       { text: 'SAVED MEDIA PLAN', fontSize: 8, characterSpacing: 1.3, color: '#000000', margin: [0, 0, 0, 16] },
-      heading('Your brief'),
+      heading('Your brief', '01'),
       { table: { widths: [92, 292], body: rows.map(([label, value]) => [
         { text: label, color: '#000000' }, { text: value, bold: true },
       ]) }, layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 0, paddingRight: () => 10, paddingTop: () => 3.5, paddingBottom: () => 3.5 } },
-      heading('Plan summary'),
-      { table: { widths: [202, 112], body: plan.metrics.map(metric => [
-        { text: metric.k, margin: [8, 4] }, { text: metric.v, bold: true, color: '#000000', margin: [8, 4], alignment: 'right' },
-      ]) }, layout: { fillColor: (row: number) => row % 2 === 0 ? '#f4f3ef' : '#ffffff', hLineWidth: () => 0, vLineWidth: () => 0 } },
-      { text: 'Publisher allocations', style: 'section', pageBreak: 'before' },
+      heading('Key figures', '02'),
+      ...metricRows,
+      { ...heading('Publisher allocations', '03') as object, pageBreak: 'before' } as Content,
       ...plan.items.map((item): Content => ({ unbreakable: true, stack: [
         { text: item.title, style: 'publisher' },
         { text: item.format, fontSize: 8, color: '#000000', margin: [0, 0, 0, 7] },
+        { canvas: [
+          { type: 'rect', x: 0, y: 0, w: 511, h: 5, color: '#f0efeb' },
+          { type: 'rect', x: 0, y: 0, w: allocated > 0 ? 511 * item.spend / allocated : 0, h: 5, color: '#ffcc00' },
+        ], margin: [0, 0, 0, 5] },
+        { text: `${allocated > 0 ? Math.round(100 * item.spend / allocated) : 0}% of allocated spend`, fontSize: 8, margin: [0, 0, 0, 7] },
         { text: [{ text: 'Spend: ', color: '#000000' }, { text: gbp(item.spend), bold: true }, ...item.metrics.flatMap(metric => [{ text: `    ${metric.k}: `, color: '#000000' }, { text: metric.v, bold: true }])], margin: [0, 0, 0, 7] },
         { text: [{ text: 'Why: ', bold: true }, { text: item.why }], margin: [0, 0, 0, 18] },
       ] })),
-      heading('Suggested timing'),
-      ...plan.timing.map((timing): Content => ({ columns: [{ text: timing.label, width: 94, bold: true, color: '#000000' }, { text: timing.activity, width: '*' }], columnGap: 12, margin: [0, 0, 0, 10] })),
+      { unbreakable: true, stack: [
+        heading('Suggested timing', '04'),
+        ...plan.timing.map((timing): Content => ({ columns: [{ text: timing.label, width: 94, bold: true, color: '#000000' }, { text: timing.activity, width: '*' }], columnGap: 12, margin: [0, 0, 0, 8] })),
+      ] },
     ],
     styles: {
       section: { font: 'Poppins', fontSize: 13, bold: true, margin: [0, 13, 0, 8] },
