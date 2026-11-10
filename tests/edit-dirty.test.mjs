@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {stripVTControlCharacters} from 'node:util';
+import test from 'node:test';
+import puppeteer from 'puppeteer-core';
+const click=async(p,t)=>{const h=await p.evaluateHandle(t=>[...document.querySelectorAll('button')].find(e=>(e.getAttribute('aria-label')||e.textContent.trim().replace(/\s*→$/,''))===t),t);assert.ok(h.asElement(),t);await h.asElement().click();await h.dispose()};
+test('unchanged edits leave silently; only changed fields block leaving; invalid dates identify the field',{timeout:90000},async()=>{
+ const server=process.env.HOSTED_URL?null:spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let b;
+ try{const url=process.env.HOSTED_URL||await new Promise(r=>{let out='';server.stdout.on('data',d=>{out+=stripVTControlCharacters(d.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m)r(m[0])})});b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+ for(const width of[390,1440])for(const theme of['light','dark']){
+ const c=await b.createBrowserContext(),p=await c.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});await p.goto(url+'?demo=1#/my-plans');await p.waitForSelector('.pc-actions .btn');await p.evaluate(()=>document.fonts.ready);await p.waitForSelector('.toast',{hidden:true});await p.evaluate(t=>{document.documentElement.dataset.theme=t;localStorage.setItem('compass-theme',t)},theme);const stored=await p.evaluate(()=>localStorage.getItem('compass-saved-plans'));
+ await click(p,'Open plan');await p.waitForSelector('.bsum');await click(p,'Edit plan');await p.waitForSelector('#f-name');const name=await p.$eval('#f-name',e=>e.value);
+ await click(p,'My plans');await p.waitForSelector('.pc-actions .btn');await click(p,'Open plan');
+ if(process.env.BEFORE){await p.waitForSelector('[role=alertdialog]');await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/discard-before-${width}-${theme}.png`});await p.keyboard.press('Escape');await click(p,'Planner');}
+ else{await p.waitForSelector('.bsum');assert.equal(await p.$('[role=alertdialog]'),null);if(process.env.SCREENSHOT_DIR)await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/discard-after-${width}-${theme}.png`});await click(p,'Edit plan');}
+ await p.waitForSelector('#f-name');await p.$eval('input[aria-label="Start date"]',e=>e.scrollIntoView({block:'center'}));await p.evaluate(()=>document.fonts.ready);
+ if(process.env.SCREENSHOT_DIR)await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/dates-${process.env.BEFORE?'before':'after'}-${width}-${theme}.png`});
+ if(process.env.BEFORE){await c.close();continue}
+ assert.equal(await p.$eval('input[aria-label="Start date"]',e=>e.getAttribute('aria-invalid')),'true');assert.equal(await p.$eval('input[aria-label="End date"]',e=>e.hasAttribute('aria-invalid')),false);assert.equal(await p.$eval('input[aria-label="Start date"]',e=>e.getAttribute('aria-describedby')),'start-date-error');assert.match(await p.$eval('#start-date-error',e=>e.textContent),/⚠ Start date/);
+ const originalStart=await p.$eval('input[aria-label="Start date"]',e=>e.value);
+ await p.$eval('input[aria-label="Start date"]',e=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'2027-12-01');e.dispatchEvent(new Event('input',{bubbles:true}))});await p.waitForSelector('#end-date-error');assert.equal(await p.$eval('input[aria-label="End date"]',e=>e.getAttribute('aria-invalid')),'true');assert.equal(await p.$('#start-date-error'),null);await p.$eval('input[aria-label="Start date"]',(e,v)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,v);e.dispatchEvent(new Event('input',{bubbles:true}))},originalStart);
+ // A round trip back to the loaded values is clean, including multiselect toggles.
+ await p.locator('#f-name').fill('Temporary change');await p.locator('#f-name').fill(name);await p.locator('[aria-labelledby=g-market] button').click();await p.locator('[aria-labelledby=g-market] button').click();await click(p,'My plans');await p.waitForSelector('.pc-actions .btn');assert.equal(await p.$('[role=alertdialog]'),null);await click(p,'Open plan');await p.waitForSelector('.bsum');await click(p,'Edit plan');await p.locator('#f-name').fill('A real edit');
+ await click(p,'My plans');await p.waitForSelector('[role=alertdialog]');assert.match(await p.$eval('.confirm',e=>e.textContent),/Leaving this edit/);await p.keyboard.press('Escape');await p.waitForSelector('[role=alertdialog]',{hidden:true});assert.equal(await p.$eval('#f-name',e=>e.value),'A real edit');await click(p,'My plans');await p.waitForSelector('[role=alertdialog]');await click(p,'Discard changes');await p.waitForSelector('.pc-actions .btn');await click(p,'Open plan');await p.waitForSelector('.bsum');assert.equal(await p.$('[role=alertdialog]'),null);assert.equal(await p.evaluate(()=>localStorage.getItem('compass-saved-plans')),stored);
+ // Browser Back/Forward also discard unchanged edits without a delayed warning.
+ await click(p,'Edit plan');await p.evaluate(()=>history.back());await p.waitForSelector('.pc-actions .btn');assert.equal(await p.$('[role=alertdialog]'),null);await p.evaluate(()=>history.forward());await p.waitForSelector('.bsum');assert.equal(await p.$('[role=alertdialog]'),null);
+ await click(p,'Create another');await p.waitForSelector('#f-name');await click(p,'My plans');await p.waitForSelector('.pc-actions .btn');assert.equal(await p.$('[role=alertdialog]'),null);await click(p,'Planner');await p.waitForSelector('#f-name');await p.locator('#f-name').fill('New plan work');await click(p,'My plans');await p.waitForSelector('[role=alertdialog]');await p.keyboard.press('Escape');await p.waitForSelector('[role=alertdialog]',{hidden:true});assert.equal(await p.$eval('#f-name',e=>e.value),'New plan work');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await c.close();}
+ }finally{await b?.close();server?.kill()}
+});
