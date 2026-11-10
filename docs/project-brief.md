@@ -21,7 +21,7 @@ committed to.
 ## What it is
 
 - A single-page front end: the user answers a short brief (objective, KPI,
-  audience, seniority, budget, campaign dates) and Compass shows a
+  audience, budget, campaign dates) and Compass shows a
   recommended media plan on the right.
 - Four states, matching the approved design: an explainer before anything is
   answered, "your brief so far" while answering, a generating state that
@@ -29,7 +29,7 @@ committed to.
 - The plan view shows summary metrics, per-activity spend, expected delivery
   and efficiency, a one-line rationale per choice, suggested timing, and the
   "speak to a Hybrid House specialist" call to action from the brief.
-- Objectives, KPIs, audiences and seniority levels come from the Compass
+- Objectives, KPIs and audiences come from the Compass
   brief's own taxonomy. KPI options follow the selected objective, as the
   brief requires.
 - Metrics shown adapt to the objective (awareness shows reach and
@@ -38,13 +38,13 @@ committed to.
 
 ## What it is not
 
-- Not connected to any backend, database or real data. No real publisher
-  rates, audience sizes or benchmarks appear anywhere.
-- Publishers are anonymised (Publisher A, B, C) and every figure is marked
+- No real publisher rates, audience sizes or benchmarks appear anywhere.
+  Publishers are anonymised (Publisher A, B, C) and every figure is marked
   illustrative on screen.
-- Save plan, Download PDF, Speak to a specialist, Sign in, My plans and
-  Support are visual affordances only; clicking them says they are part of
-  the full product.
+- Saved plans do persist, in the visitor's own browser. A Supabase
+  backend (sign-in and plan sync) is in progress on separate branches.
+- Speak to a specialist opens the Hybrid House contact page. Download PDF
+  shows a coming-soon note. Support is no longer in the navigation.
 
 ## Requirements
 
