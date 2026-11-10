@@ -53,13 +53,13 @@ test('same-browser plan URLs survive refresh, history, cancellation and unavaila
  await click(page,'Cancel');await page.waitForSelector('.bsum');
  // A second plan has an encoded, nonnumeric ID. A freshly opened URL is a bookmark.
  await page.goto(url+'?demo=1#/planner/campaign%20two%2F%C3%A9');await page.waitForSelector('.bsum');assert.match(await page.$eval('.bsum',e=>e.textContent),/Second campaign/);
- // Back targets a different plan while there are unsaved edits. Cancel twice,
+ // Back first restores the same saved view. Cancel twice,
  // then confirm, without duplicating or breaking the Forward history entry.
  await click(page,'Edit plan');await page.locator('#f-name').fill('Back must not lose this');
  for(let i=0;i<2;i++){
-  await page.evaluate(()=>history.back());await page.waitForSelector('[role="alertdialog"]');await page.keyboard.press('Escape');await page.waitForSelector('[role="alertdialog"]',{hidden:true});await hash(page,'#/planner/campaign%20two%2F%C3%A9');assert.equal(await page.$eval('#f-name',e=>e.value),'Back must not lose this');
+  await page.evaluate(()=>history.back());await page.waitForSelector('[role="alertdialog"]');await page.keyboard.press('Escape');await page.waitForSelector('[role="alertdialog"]',{hidden:true});await hash(page,'#/planner/campaign%20two%2F%C3%A9/edit');assert.equal(await page.$eval('#f-name',e=>e.value),'Back must not lose this');
  }
- await page.evaluate(()=>history.back());await page.waitForSelector('[role="alertdialog"]');await click(page,'Open plan');await hash(page,'#/planner/campaign-one');await page.waitForSelector('.bsum');await page.evaluate(()=>history.forward());await hash(page,'#/planner/campaign%20two%2F%C3%A9');await page.waitForSelector('.bsum');
+ await page.evaluate(()=>history.back());await page.waitForSelector('[role="alertdialog"]');await click(page,'Open plan');await hash(page,'#/planner/campaign%20two%2F%C3%A9');await page.waitForSelector('.bsum');await page.evaluate(()=>history.forward());await hash(page,'#/planner/campaign%20two%2F%C3%A9/edit');await page.waitForSelector('#f-name');await page.evaluate(()=>history.back());await page.waitForSelector('.bsum');await page.evaluate(()=>history.back());await hash(page,'#/planner/campaign-one');await page.waitForSelector('.bsum');await page.evaluate(()=>history.forward());await hash(page,'#/planner/campaign%20two%2F%C3%A9');await page.waitForSelector('.bsum');
  await page.goto(url+'?demo=1#/planner/deleted-plan');await page.waitForSelector('[aria-label="Plan unavailable"]');assert.match(await page.$eval('[aria-label="Plan unavailable"]',e=>e.textContent),/not a shareable link/);await click(page,'View all plans');await page.waitForSelector('.plancard');
  await page.goto(url+'?demo=1#/planner/%zz');await page.waitForSelector('[aria-label="Plan unavailable"]');await click(page,'Back to planner');await page.waitForSelector('.bsum');assert.match(await page.$eval('.bsum',e=>e.textContent),/Second campaign/);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${width}/${theme}: overflow`);
