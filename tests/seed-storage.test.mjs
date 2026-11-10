@@ -98,3 +98,26 @@ for (const fails of [false, true]) {
     else{assert.equal(writes,1);assert.deepEqual(JSON.parse(raw),plans.map((p,i)=>({...p,brief:{...p.brief,audiences:[[],['Scientist / Researcher'],['Procurement']][i]}})))}
   });
 }
+
+const seedSource = stripTypeScriptTypes(source.slice(source.indexOf('function isoDaysFromNow('), source.indexOf('function ensureSeedPlans()')));
+const actualSeeds = new Function(`${seedSource}; return seedPlans;`)();
+test('every example has the proposed explicit market mapping', () => {
+ assert.deepEqual(actualSeeds(new Date('2026-11-09T14:00:00Z')).map(p=>[p.id,p.brief.markets]), [
+ ['seed-active-1',['uk']],['seed-active-2',['france','germany']],['seed-past-1',['uk']],
+ ['seed-past-2',['north-america','uk','france','germany']],['seed-past-3',['uk']],['seed-past-4',['uk']],['seed-past-5',['uk']]]);
+});
+test('market backfill is seed-only, content-exact, idempotent and preserves deletes, dates and explicit choices', () => {
+ const date='2026-11-09T14:00:00Z';
+ const originals=actualSeeds(new Date(date)).map(p=>{const {markets,...brief}=p.brief;return {...p,savedAt:date,brief}});
+ const edited=structuredClone(originals[0]);edited.brief.start='2026-11-01';
+ const custom={...structuredClone(originals[1]),id:'my-own-plan'};
+ const explicit={...structuredClone(originals[2]),brief:{...originals[2].brief,markets:[]}};
+ const deleted=originals[6].id;
+ const old=[...originals.slice(0,6),edited,custom,explicit];
+ const data=new Map([['plans',JSON.stringify(old)],['meta',JSON.stringify({version:2,applied:originals.map(p=>p.id)})]]);
+ const window={localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)}};
+ const run=factory(window,()=>JSON.parse(data.get('plans')),actualSeeds,'meta',2,'plans');run();
+ const result=JSON.parse(data.get('plans'));assert.equal(result.length,old.length);assert.equal(result.some(p=>p.id===deleted),false);
+ for(let i=0;i<6;i++){assert.deepEqual(result[i],{...old[i],brief:{...old[i].brief,markets:actualSeeds(new Date(date))[i].brief.markets}})}
+ assert.deepEqual(result.slice(6),old.slice(6));const once=data.get('plans');run();assert.equal(data.get('plans'),once);
+});
