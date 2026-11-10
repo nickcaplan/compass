@@ -113,6 +113,7 @@ type ConfirmDialogProps = {
   title: string;
   body: string;
   confirmLabel: string;
+  destructive?: boolean;
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -121,7 +122,7 @@ type ConfirmDialogProps = {
 // Styled replacement for native browser confirms: overlay dialog with the
 // safe option focused by default, Escape or backdrop click to cancel, and
 // Tab trapped between the two actions.
-function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCancel, destructive = false }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const cancelCb = useRef(onCancel);
@@ -167,7 +168,7 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
         <b>{title}</b>
         <p>{body}</p>
         <div className="row">
-          <button type="button" className="btn" onClick={onConfirm}>
+          <button type="button" className={`btn${destructive ? ' destructive' : ''}`} onClick={onConfirm}>
             {confirmLabel}
           </button>
           <button type="button" className="ghost" ref={cancelRef} onClick={() => cancelCb.current()}>
@@ -1951,6 +1952,7 @@ export default function App() {
           title="Delete this saved plan?"
           body={`"${deleteTarget.brief.name || 'Untitled campaign'}" will be permanently deleted. This cannot be undone.`}
           confirmLabel="Delete plan"
+          destructive
           cancelLabel="Keep plan"
           onConfirm={() => {
             deletePlan(deleteTarget.id);
