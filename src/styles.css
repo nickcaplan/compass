@@ -539,3 +539,15 @@ input.ctl{color:var(--text)}
 :root[data-theme="dark"]{--date-error:#ff9caa}
 .ctl[aria-invalid="true"]{border:2px solid var(--date-error);box-shadow:0 0 0 1px var(--date-error)}
 .date-error{color:var(--date-error);font-weight:600}
+
+.options-preview{border:1px dashed var(--line-mid);padding:14px;border-radius:14px;margin:16px 0;color:var(--text)}
+.options-preview p{font-size:13px;margin:8px 0 12px;color:var(--text2)}
+.options-preview>div{display:flex;gap:8px;flex-wrap:wrap}
+.options-preview a{color:var(--text);padding:8px;border:1px solid var(--line-mid);border-radius:8px;font-size:12px}
+.options-preview a.selected{border-color:var(--accent-ink)}
+.pc-actions{gap:10px}
+.pc-actions .pc-edit{min-height:46px;display:flex;align-items:center;justify-content:center;gap:6px;min-width:72px}
+.layout-A .pc-actions .pc-edit,.layout-A .pc-actions .btn{width:50%;flex:1}
+.layout-B .pc-actions .pc-edit{width:84px;flex:none}
+.layout-B .pc-actions .btn{width:auto;flex:1}
+.layout-A .is-expired .pc-actions .btn,.layout-B .is-expired .pc-actions .btn{width:100%}

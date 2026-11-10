@@ -619,6 +619,7 @@ function IndustryReel() {
 }
 
 export default function App() {
+  const cardLayout = new URLSearchParams(window.location.search).get('cardLayout') === 'A' ? 'A' : 'B';
   const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const editBaseline = useRef<Brief | null>(null);
@@ -1000,6 +1001,7 @@ export default function App() {
   }, [editingSaved]);
 
   function editSavedPlan() {
+    if (campaignEnded(brief.end)) return;
     clearSaveSpacer();
     setJustSavedId(null);
     const loaded = { ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) };
@@ -1072,7 +1074,9 @@ export default function App() {
         setSubmittedBrief(entry.brief);
         setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
         setStage('plan');
-        setSavedEntry({ id: entry.id, mode: 'view' });
+        const edit = route.edit && !campaignEnded(entry.brief.end);
+        editBaseline.current = edit ? entry.brief : null;
+        setSavedEntry({ id: entry.id, mode: edit ? 'edit' : 'view' });
         setJustSavedId(null);
       }
     }
@@ -1212,12 +1216,12 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
+              {!campaignEnded(brief.end) && <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
                 <button type="button" className="btn saved-plan-edit" onClick={editSavedPlan}>
                   <IconEdit />
                   Edit plan
                 </button>
-              </div>
+              </div>}
               <span className="sr-only" role="status">{linkCopy === 'copied' ? 'Plan link copied.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
               {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
             </>
@@ -1672,7 +1676,12 @@ export default function App() {
                   </button>;
                 })}
               </div>
-              <div className="planlist">
+              <div className="options-preview" role="region" aria-label="Card layout preview">
+                <b>Design preview - not ready</b>
+                <p>Compare the active-plan actions. Expired plans have Open plan only.</p>
+                <div><a className={cardLayout === 'A' ? 'selected' : ''} href="?demo=1&cardLayout=A#/my-plans">A: equal buttons</a><a className={cardLayout === 'B' ? 'selected' : ''} href="?demo=1&cardLayout=B#/my-plans">B: Open primary</a></div>
+              </div>
+              <div className={`planlist layout-${cardLayout}`}>
               {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).map((sp) => {
                 const wks = campaignWeeks(sp.brief.start, sp.brief.end);
                 const objLabels = sp.brief.objectives
@@ -1709,6 +1718,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="pc-actions">
+                      {!campaignEnded(sp.brief.end) && <button type="button" className="ghost pc-edit" onClick={() => navigation.navigate({ page: 'planner', planId: sp.id, reload: true, edit: true })}><IconEdit />Edit</button>}
                       <button type="button" className="btn" onClick={() => openPlan(sp)}>
                         Open plan
                         <IconOpen />
