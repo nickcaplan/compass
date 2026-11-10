@@ -637,6 +637,7 @@ export default function App() {
   const [cueSeq, setCueSeq] = useState(0);
   const [page, setPage] = useState<Page>(() => readPlanRoute().page);
   const [unavailablePlan, setUnavailablePlan] = useState(false);
+  const [cardCopyId, setCardCopyId] = useState<string | null>(null);
   const [linkCopy, setLinkCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
   const planLinkRef = useRef<HTMLInputElement>(null);
   const linkCopyTimer = useRef<number | undefined>(undefined);
@@ -1125,11 +1126,12 @@ export default function App() {
       ? { page: p, planId: savedEntry.id } : { page: p });
   }
 
-  async function copyPlanLink() {
-    if (!savedEntry) return;
+  async function copyPlanLink(id = savedEntry?.id, card = false) {
+    if (!id) return;
+    setCardCopyId(card ? id : null);
     window.clearTimeout(linkCopyTimer.current);
     const url = new URL(window.location.href);
-    url.hash = routeHash({ page: 'planner', planId: savedEntry.id });
+    url.hash = routeHash({ page: 'planner', planId: id });
     try {
       await navigator.clipboard.writeText(url.href);
       window.clearTimeout(linkCopyTimer.current);
@@ -1234,7 +1236,7 @@ export default function App() {
                 </div>
                 <div className="saved-brief-tools" role="group" aria-label="Export and share plan">
                   <ComingSoonButton compact />
-                <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-label={linkCopy === 'copied' ? 'Plan link copied - only works in this browser' : 'Copy plan link - only works in this browser'}>
+                <button type="button" className="ghost saved-plan-copy" onClick={() => copyPlanLink()} aria-label={linkCopy === 'copied' ? 'Plan link copied - only works in this browser' : 'Copy plan link - only works in this browser'}>
                   {linkCopy === 'copied' ? <IconCheck /> : <IconShare />}
                 </button>
                 </div>
@@ -1717,6 +1719,11 @@ export default function App() {
                   .join(' + ');
                 return (
                   <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
+                    <button type="button" className="ghost pc-share" aria-label={`${cardCopyId === sp.id && linkCopy === 'copied' ? 'Plan link copied' : 'Copy plan link'}: ${sp.brief.name || 'Untitled campaign'} - only works in this browser`} title="Copy plan link - only works in this browser" onClick={() => copyPlanLink(sp.id, true)}>
+                      {cardCopyId === sp.id && linkCopy === 'copied' ? <IconCheck /> : <IconShare />}
+                    </button>
+                    <span className="sr-only" role="status">{cardCopyId === sp.id && linkCopy === 'copied' ? 'Plan link copied.' : cardCopyId === sp.id && linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
+                    {cardCopyId === sp.id && linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field pc-link-field" aria-label="Plan link - copy manually" readOnly value={new URL(routeHash({ page: 'planner', planId: sp.id }), window.location.href).href} onFocus={e => e.target.select()} />}
                     <button type="button" className="ghost pc-delete" aria-label={`Delete ${sp.brief.name || 'Untitled campaign'}`} title="Delete plan" onClick={() => setDeleteTarget(sp)}>
                       <IconTrash />
                     </button>
