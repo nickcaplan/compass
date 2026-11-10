@@ -26,7 +26,7 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
   for (let i = 0; i < plan.metrics.length; i += 3) {
     metricRows.push({ columns: plan.metrics.slice(i, i + 3).map(metric => ({
       width: 163, stack: [
-        { canvas: [{ type: 'rect', x: 0, y: 0, w: 64, h: 3, color: '#ffcc00' }] },
+        { canvas: [{ type: 'rect', x: 0, y: 0, w: 147, h: 3, color: '#ffcc00' }] },
         { table: { widths: [147], body: [[{ stack: [
           { text: metric.k, fontSize: 8, margin: [0, 0, 0, 6] },
           { text: metric.v, font: 'Poppins', bold: true, fontSize: 17 },
