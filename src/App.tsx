@@ -714,6 +714,10 @@ export default function App() {
   );
   const viewingSaved = savedEntry !== null && savedEntry.mode === 'view' && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
+  // A page kept open across midnight must not retain an expired Edit form.
+  useEffect(() => {
+    if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
+  });
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
 
   useEffect(() => {
@@ -1000,6 +1004,7 @@ export default function App() {
   }, [editingSaved]);
 
   function editSavedPlan() {
+    if (campaignEnded(brief.end)) return;
     clearSaveSpacer();
     setJustSavedId(null);
     const loaded = { ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) };
@@ -1212,12 +1217,12 @@ export default function App() {
                 <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
-              <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
+              {!campaignEnded(brief.end) && <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
                 <button type="button" className="btn saved-plan-edit" onClick={editSavedPlan}>
                   <IconEdit />
                   Edit plan
                 </button>
-              </div>
+              </div>}
               <span className="sr-only" role="status">{linkCopy === 'copied' ? 'Plan link copied.' : linkCopy === 'failed' ? 'Could not copy automatically. Select and copy the link below.' : ''}</span>
               {linkCopy === 'failed' && <input ref={planLinkRef} className="planlink-field" aria-label="Plan link - copy manually" readOnly value={window.location.href} onFocus={e => e.target.select()} />}
             </>
