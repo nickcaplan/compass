@@ -539,3 +539,9 @@ input.ctl{color:var(--text)}
 :root[data-theme="dark"]{--date-error:#ff9caa}
 .ctl[aria-invalid="true"]{border:2px solid var(--date-error);box-shadow:0 0 0 1px var(--date-error)}
 .date-error{color:var(--date-error);font-weight:600}
+
+/* Empty workspace stays compact; the main introduction remains above. */
+.plan:has(>.empty){align-self:start;min-height:0}
+.plan>.empty{padding:24px 18px}
+.plan>.empty .glyph{width:48px;height:48px;margin-bottom:14px}
+.plan>.empty p{margin-bottom:0}

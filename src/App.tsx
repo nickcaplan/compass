@@ -555,49 +555,6 @@ function SkeletonBlock() {
   );
 }
 
-function PlanOutline() {
-  return (
-    <div className="outline">
-      <div className="outlinetitle">Your new plan will appear here</div>
-      <div className="osect">
-        <div className="ok">Key figures</div>
-        <div className="ometrics">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div className="ometric" key={i}>
-              <span className="ol w40" />
-              <span className="ol w65" />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="osect">
-        <div className="ok">Publishers, formats and spend split</div>
-        {[0, 1, 2].map((i) => (
-          <div className="oact" key={i}>
-            <div className="oacttop">
-              <span className="ol w45" />
-              <span className="ol pill" />
-              <span className="ol w15 r" />
-            </div>
-            <span className="ol w80" />
-          </div>
-        ))}
-      </div>
-      <div className="osect">
-        <div className="ok">Suggested timing</div>
-        <div className="omonths">
-          {[0, 1, 2].map((i) => (
-            <div className="omonth" key={i}>
-              <span className="ol w50" />
-              <span className="ol w80" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function DemoCap() {
   return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
 }
@@ -1453,34 +1410,10 @@ export default function App() {
                 </div>
                 <h3>Your recommended plan builds here</h3>
                 <p>
-                  As you answer, Compass checks your brief against publisher rates, audience sizes
-                  and performance benchmarks - then shows the full plan{' '}
-                  <span className="only-d">on this side</span>
-                  <span className="only-m">below</span>.
+                  Answer your brief, then generate your publishers, spend split and expected results.
                 </p>
               </div>
-              <div className="steps3">
-                <div className="step3">
-                  <div className="n">01</div>
-                  <b>Tell us your brief</b>
-                  <span>Objective, audience, budget and dates. No media knowledge needed.</span>
-                </div>
-                <div className="step3">
-                  <div className="n">02</div>
-                  <b>Compass builds the plan</b>
-                  <span>Publishers, formats and a spend split matched to your brief.</span>
-                </div>
-                <div className="step3">
-                  <div className="n">03</div>
-                  <b>Act on it</b>
-                  <span>Save it, download it, or ask{' '}
-                  <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
-                    Hybrid House
-                  </a>{' '}
-                  to activate it.</span>
-                </div>
-              </div>
-              <PlanOutline />
+
             </>
           )}
 
