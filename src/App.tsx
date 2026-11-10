@@ -297,71 +297,70 @@ function isBrief(value: unknown): value is Brief {
 const SEED_KEY = 'compass-seeded-plans';
 const SEED_VERSION = 2;
 
-function isoDaysFromNow(days: number): string {
+function isoDaysFromNow(days: number, now = new Date()): string {
   // Local-time formatting: toISOString() is UTC and can land on the previous
   // calendar date when local time is ahead of UTC.
-  const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function seedPlans(): SavedPlan[] {
+function seedPlans(referenceDate = new Date()): SavedPlan[] {
   return [
     {
       id: 'seed-active-1',
       savedAt: '',
       brief: {
-        name: 'UK Laboratory Procurement Campaign',
+        name: 'UK Laboratory Procurement Campaign', markets: ['uk'],
         objectives: ['performance'],
         kpis: ['Lead generation', 'Cost per lead'],
         audiences: ['Procurement', 'Laboratory Manager'],
         budget: 100000,
-        start: isoDaysFromNow(-14),
-        end: isoDaysFromNow(56),
+        start: isoDaysFromNow(-14, referenceDate),
+        end: isoDaysFromNow(56, referenceDate),
       },
     },
     {
       id: 'seed-active-2',
       savedAt: '',
       brief: {
-        name: 'European Lab Automation Awareness Push',
+        name: 'European Lab Automation Awareness Push', markets: ['france', 'germany'],
         objectives: ['awareness'],
         kpis: ['Reach', 'Impressions'],
         audiences: ['Scientist / Researcher', 'Laboratory Technician'],
         budget: 45000,
-        start: isoDaysFromNow(7),
-        end: isoDaysFromNow(70),
+        start: isoDaysFromNow(7, referenceDate),
+        end: isoDaysFromNow(70, referenceDate),
       },
     },
     {
       id: 'seed-past-1',
       savedAt: '',
       brief: {
-        name: 'Quality and Compliance Enquiry Push',
+        name: 'Quality and Compliance Enquiry Push', markets: ['uk'],
         objectives: ['performance'],
         kpis: ['Enquiries'],
         audiences: ['Quality / Compliance'],
         budget: 75000,
-        start: isoDaysFromNow(-90),
-        end: isoDaysFromNow(-20),
+        start: isoDaysFromNow(-90, referenceDate),
+        end: isoDaysFromNow(-20, referenceDate),
       },
     },
     {
       id: 'seed-past-2',
       savedAt: '',
       brief: {
-        name: 'Global Reagent Launch Consideration',
+        name: 'Global Reagent Launch Consideration', markets: ['north-america', 'uk', 'france', 'germany'],
         objectives: ['consideration'],
         kpis: ['Content downloads', 'Article engagement'],
         audiences: [],
         budget: 60000,
-        start: isoDaysFromNow(-120),
-        end: isoDaysFromNow(-60),
+        start: isoDaysFromNow(-120, referenceDate),
+        end: isoDaysFromNow(-60, referenceDate),
       },
     },
-    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], budget: 55000, start: isoDaysFromNow(-150), end: isoDaysFromNow(-90) } },
-    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 40000, start: isoDaysFromNow(-210), end: isoDaysFromNow(-150) } },
-    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], budget: 65000, start: isoDaysFromNow(-270), end: isoDaysFromNow(-210) } },
+    { id: 'seed-past-3', savedAt: '', brief: { name: 'Laboratory Informatics Lead Campaign', markets: ['uk'], objectives: ['performance'], kpis: ['Lead generation'], audiences: ['Laboratory Manager'], budget: 55000, start: isoDaysFromNow(-150, referenceDate), end: isoDaysFromNow(-90, referenceDate) } },
+    { id: 'seed-past-4', savedAt: '', brief: { name: 'Clinical Research Awareness Campaign', markets: ['uk'], objectives: ['awareness'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 40000, start: isoDaysFromNow(-210, referenceDate), end: isoDaysFromNow(-150, referenceDate) } },
+    { id: 'seed-past-5', savedAt: '', brief: { name: 'Bioprocessing Content Programme', markets: ['uk'], objectives: ['consideration'], kpis: ['Content downloads'], audiences: [], budget: 65000, start: isoDaysFromNow(-270, referenceDate), end: isoDaysFromNow(-210, referenceDate) } },
   ];
 }
 
@@ -386,12 +385,28 @@ function ensureSeedPlans(): void {
     if (!Array.isArray(candidate) || candidate.some((p) =>
       p === null || typeof p !== 'object' || typeof p.id !== 'string' ||
       typeof p.savedAt !== 'string' || !isBrief(p.brief))) return;
-    const plans: SavedPlan[] = candidate;
+    // Backfill only untouched examples. A saved-at date reconstructs the
+    // original relative campaign dates, so even a date-only edit is preserved.
+    let marketsAdded = false;
+    const plans: SavedPlan[] = candidate.map(plan => {
+      if (plan.brief.markets !== undefined || !Number.isFinite(Date.parse(plan.savedAt))) return plan;
+      const example = seedPlans(new Date(plan.savedAt)).find(seed => seed.id === plan.id);
+      if (!example?.brief.markets?.length) return plan;
+      const { markets, ...original } = example.brief;
+      const keys = Object.keys(original) as (keyof typeof original)[];
+      if (Object.keys(plan.brief).length !== keys.length ||
+        !keys.every(key => JSON.stringify(plan.brief[key]) === JSON.stringify(original[key]))) return plan;
+      marketsAdded = true;
+      return { ...plan, brief: { ...plan.brief, markets } };
+    });
     const existing = new Set(plans.map((p) => p.id));
     const fresh = seedPlans().filter((seed) => !applied.includes(seed.id) && !existing.has(seed.id));
     const room = 20 - plans.length;
     const toAdd = fresh.slice(0, Math.max(0, room));
-    if (toAdd.length === 0) return;
+    if (toAdd.length === 0) {
+      if (marketsAdded) window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
+      return;
+    }
     const now = new Date().toISOString();
     const stamped = toAdd.map((seed) => ({ ...seed, savedAt: now }));
     window.localStorage.setItem(
