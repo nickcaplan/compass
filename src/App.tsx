@@ -965,7 +965,7 @@ export default function App() {
     copyRequest.current += 1;
     window.clearTimeout(linkCopyTimer.current);
     setLinkCopy('idle');
-    navigation.address({ page: 'planner' });
+    navigation.navigate({ page: 'planner' }, false, true);
     window.scrollTo(0, 0);
   }
 
@@ -1116,7 +1116,7 @@ export default function App() {
     clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
-    if (route.page === 'planner' && route.planId === undefined && viewingSaved) {
+    if (route.page === 'planner' && route.planId === undefined && (viewingSaved || editingSaved)) {
       clearPlannerState();
     }
     // At this point navigation is either unchanged or an approved discard.
