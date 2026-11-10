@@ -1,3 +1,4 @@
+import { downloadPlanPdf } from './planPdf';
 import { readPlanRoute, routeHash, usePlanNavigation } from './planRoutes';
 import type { Page, PlanRoute } from './planRoutes';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -197,6 +198,7 @@ import {
   campaignEnded,
   weeksLabel,
   type Brief,
+  type Plan,
   type ObjectiveId,
 } from './data';
 
@@ -256,6 +258,33 @@ function ComingSoonButton({ compact = false }: { compact?: boolean }) {
 }
 
 
+
+function DownloadReportButton({ brief, plan }: { brief: Brief; plan: Plan }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const wrap = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (status !== 'ready' && status !== 'error') return;
+    const dismiss = () => setStatus('idle');
+    const keydown = (event: KeyboardEvent) => { if (event.key === 'Escape') dismiss(); };
+    const outside = (event: Event) => { if (event.target instanceof Node && !wrap.current?.contains(event.target)) dismiss(); };
+    const timer = status === 'ready' ? window.setTimeout(dismiss, 3000) : undefined;
+    document.addEventListener('keydown', keydown);
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('focusin', outside);
+    return () => { window.clearTimeout(timer); document.removeEventListener('keydown', keydown); document.removeEventListener('pointerdown', outside); document.removeEventListener('focusin', outside); };
+  }, [status]);
+  const message = status === 'loading' ? 'Preparing PDF...' : status === 'ready' ? 'PDF ready' : status === 'error' ? 'Could not create PDF. Try again.' : '';
+  async function download() {
+    if (status === 'loading') return;
+    setStatus('loading');
+    try { await downloadPlanPdf(brief, plan); setStatus('ready'); } catch { setStatus('error'); }
+  }
+  return <span className="cs-wrap cs-compact pdf-report" ref={wrap}>
+    <button type="button" className="ghost" aria-label="Download PDF" aria-busy={status === 'loading'} aria-disabled={status === 'loading'} onClick={download}><IconDownload /></button>
+    <span className="sr-only" role="status" aria-live="polite">{message}</span>
+    {message && <span className="pdf-icon-notice" aria-hidden="true">{message}</span>}
+  </span>;
+}
 
 const FULL_PRODUCT_NOTE = 'Not available yet';
 
@@ -1238,7 +1267,7 @@ export default function App() {
                   <div className="cap">SAVED PLAN - READ ONLY</div>
                 </div>
                 <div className="saved-brief-tools" role="group" aria-label="Export and share plan">
-                  <ComingSoonButton compact />
+                  {plan && <DownloadReportButton key={savedEntry?.id} brief={brief} plan={plan} />}
                 <button type="button" className="ghost saved-plan-copy" onClick={copyPlanLink} aria-label={linkCopy === 'copied' ? 'Plan link copied - only works in this browser' : 'Copy plan link - only works in this browser'}>
                   {linkCopy === 'copied' ? <IconCheck /> : <IconShare />}
                 </button>
@@ -1919,4 +1948,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-          }
+}
