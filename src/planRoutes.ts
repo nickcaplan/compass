@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 export type Page = 'planner' | 'plans' | 'signin' | 'pricing';
-export type PlanRoute = { page: Page; planId?: string; reload?: boolean };
+export type PlanRoute = { page: Page; planId?: string; reload?: boolean; edit?: boolean };
 export const PAGE_ROUTES: Record<Page, string> = {
   planner: '#/planner', plans: '#/my-plans', signin: '#/sign-in', pricing: '#/pricing',
 };

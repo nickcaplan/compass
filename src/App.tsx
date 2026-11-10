@@ -1072,7 +1072,9 @@ export default function App() {
         setSubmittedBrief(entry.brief);
         setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
         setStage('plan');
-        setSavedEntry({ id: entry.id, mode: 'view' });
+        const edit = route.edit && !campaignEnded(entry.brief.end);
+        editBaseline.current = edit ? entry.brief : null;
+        setSavedEntry({ id: entry.id, mode: edit ? 'edit' : 'view' });
         setJustSavedId(null);
       }
     }
@@ -1709,7 +1711,8 @@ export default function App() {
                       </div>
                     </div>
                     <div className="pc-actions">
-                      <button type="button" className="btn" onClick={() => openPlan(sp)}>
+                      {!campaignEnded(sp.brief.end) && <button type="button" className="btn pc-edit" onClick={() => navigation.navigate({ page: 'planner', planId: sp.id, reload: true, edit: true })}><IconEdit />Edit</button>}
+                      <button type="button" className="ghost pc-open" onClick={() => openPlan(sp)}>
                         Open plan
                         <IconOpen />
                       </button>
