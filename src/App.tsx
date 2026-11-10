@@ -965,7 +965,7 @@ export default function App() {
     copyRequest.current += 1;
     window.clearTimeout(linkCopyTimer.current);
     setLinkCopy('idle');
-    navigation.address({ page: 'planner' });
+    navigation.navigate({ page: 'planner' }, false, true);
     window.scrollTo(0, 0);
   }
 
