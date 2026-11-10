@@ -1021,13 +1021,17 @@ export default function App() {
   }, [editingSaved]);
 
   function editSavedPlan() {
-    if (campaignEnded(brief.end)) return;
-    clearSaveSpacer();
-    setJustSavedId(null);
-    const loaded = { ...brief, audiences: brief.audiences.filter(a => AUDIENCES.includes(a)) };
-    editBaseline.current = loaded;
-    setBrief(loaded);
-    setSavedEntry(s => s ? { ...s, mode: 'edit' } : s);
+    if (!savedEntry || campaignEnded(brief.end)) return;
+    navigation.navigate({ page: 'planner', planId: savedEntry.id, edit: true, editFrom: 'view', reload: true });
+  }
+
+  function backFromEdit() {
+    if (!savedEntry) return;
+    // Existing edit entries have a real previous page. A pasted Edit URL
+    // has no such promise, so its safe fallback is this plan's read-only view.
+    if (window.history.state?.compassEditFrom) window.history.back();
+    else navigation.navigate({ page: 'planner', planId: savedEntry.id, reload: true }, true);
+
   }
 
   function cancelEditSaved() {
@@ -1045,6 +1049,7 @@ export default function App() {
     setBudgetText(original.brief.budget !== null ? original.brief.budget.toLocaleString('en-GB') : '');
     setStage('plan');
     setSavedEntry({ id: savedEntry.id, mode: 'view' });
+    navigation.address({ page: 'planner', planId: savedEntry.id });
   }
 
   // Compare field values, not object identity or the fact that Edit was opened.
@@ -1066,7 +1071,7 @@ export default function App() {
   const navigation = usePlanNavigation(applyRoute, route => {
     if (replacementReason() === null) return false;
     // Staying on this edit is not leaving it. Reopening explicitly reloads it.
-    if (route.page === 'planner' && !route.reload && route.planId === savedEntry?.id) return false;
+    if (route.page === 'planner' && !route.reload && route.planId === savedEntry?.id && Boolean(route.edit) === editingSaved) return false;
     clearCue();
     return true;
   });
@@ -1091,13 +1096,15 @@ export default function App() {
       setSavedPlans(latest);
       if (!entry || plansLoadFailed) {
         setUnavailablePlan(true);
-      } else if (savedEntry?.id !== entry.id || route.reload) {
+      } else if (savedEntry?.id !== entry.id || route.reload || savedEntry.mode !== (route.edit && !campaignEnded(entry.brief.end) ? 'edit' : 'view')) {
         clearCue();
         setBrief(entry.brief);
         setSubmittedBrief(entry.brief);
         setBudgetText(entry.brief.budget !== null ? entry.brief.budget.toLocaleString('en-GB') : '');
         setStage('plan');
-        setSavedEntry({ id: entry.id, mode: 'view' });
+        const edit = route.edit && !campaignEnded(entry.brief.end);
+        editBaseline.current = edit ? entry.brief : null;
+        setSavedEntry({ id: entry.id, mode: edit ? 'edit' : 'view' });
         setJustSavedId(null);
       }
     }
@@ -1121,7 +1128,7 @@ export default function App() {
 
   function go(p: Page) {
     navigation.navigate(p === 'planner' && savedEntry && loadPlans().some(entry => entry.id === savedEntry.id)
-      ? { page: p, planId: savedEntry.id } : { page: p });
+      ? { page: p, planId: savedEntry.id, edit: editingSaved, editFrom: window.history.state?.compassEditFrom ?? 'view' } : { page: p });
   }
 
   async function copyPlanLink() {
@@ -1207,7 +1214,7 @@ export default function App() {
       {viewingSaved || editingSaved ? (
         <header className="saved-page-head">
           <div className="saved-page-navigation">
-            <button type="button" className="saved-back" onClick={() => go('plans')}><IconBack />View all plans</button>
+            <button type="button" className="saved-back" onClick={() => editingSaved ? backFromEdit() : go('plans')}><IconBack />{editingSaved && window.history.state?.compassEditFrom === 'view' ? 'Back to plan' : 'View all plans'}</button>
             <button type="button" className="ghost saved-create" onClick={reset}><IconPlus />Create another</button>
           </div>
           <h1>{viewBrief.name || 'Untitled campaign'}</h1>
