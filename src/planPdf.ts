@@ -21,38 +21,38 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
     pageSize: 'A4', pageMargins: [42, 108, 42, 60],
     header: () => ({ margin: [42, 20, 42, 0], stack: [
       { table: { widths: [310, '*'], body: [[
-        { fillColor: '#17171c', margin: [12, 11, 12, 11], columns: [{ image: brandMark, width: 26, margin: [0, 5, 9, 0] }, { text: 'COMPASS', font: 'Poppins', fontSize: 20, bold: true, characterSpacing: 2, color: '#ffcc00', margin: [10, 6, 0, 0] }], columnGap: 3 },
+        { fillColor: '#17171c', margin: [12, 11, 12, 11], columns: [{ image: brandMark, width: 26, margin: [0, 5, 9, 0] }, { text: 'COMPASS', font: 'Poppins', fontSize: 20, bold: true, characterSpacing: 2, color: '#ffffff', margin: [10, 6, 0, 0] }], columnGap: 3 },
         { fillColor: '#17171c', margin: [12, 11, 12, 11], image: brandLogo, fit: [72, 36], alignment: 'right' },
       ]] }, layout: 'noBorders' },
       { canvas: [{ type: 'line', x1: 0, y1: 1, x2: 511, y2: 1, lineWidth: 2, lineColor: '#ffcc00' }] },
     ] }),
     info: { title: brief.name || 'Untitled campaign', author: 'The Hybrid House', subject: 'Compass saved media plan - illustrative concept' },
-    defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25, color: '#17171c' },
+    defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25, color: '#000000' },
     footer: (page, pages) => ({ margin: [42, 10, 42, 0], stack: [
       { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 511, y2: 0, lineWidth: 1, lineColor: '#ffcc00' }], margin: [0, 0, 0, 5] },
-      { text: REPORT_NOTE, fontSize: 7.5, color: '#656571' },
-      { text: `Compass by The Hybrid House  |  ${page} / ${pages}`, fontSize: 8, color: '#656571', margin: [0, 5, 0, 0] },
+      { text: REPORT_NOTE, fontSize: 7.5, color: '#000000' },
+      { text: `Compass by The Hybrid House  |  ${page} / ${pages}`, fontSize: 8, color: '#000000', margin: [0, 5, 0, 0] },
     ] }),
     content: [
       { text: brief.name || 'Untitled campaign', font: 'Poppins', fontSize: 19, bold: true, margin: [0, 0, 0, 6] },
-      { text: 'SAVED MEDIA PLAN', fontSize: 8, characterSpacing: 1.3, color: '#656571', margin: [0, 0, 0, 16] },
+      { text: 'SAVED MEDIA PLAN', fontSize: 8, characterSpacing: 1.3, color: '#000000', margin: [0, 0, 0, 16] },
       heading('Your brief'),
       { table: { widths: [92, 292], body: rows.map(([label, value]) => [
-        { text: label, color: '#656571' }, { text: value, bold: true },
+        { text: label, color: '#000000' }, { text: value, bold: true },
       ]) }, layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 0, paddingRight: () => 10, paddingTop: () => 3.5, paddingBottom: () => 3.5 } },
       heading('Plan summary'),
       { table: { widths: [202, 112], body: plan.metrics.map(metric => [
-        { text: metric.k, margin: [8, 4] }, { text: metric.v, bold: true, color: metric.hl ? '#8b6400' : '#17171c', margin: [8, 4], alignment: 'right' },
+        { text: metric.k, margin: [8, 4] }, { text: metric.v, bold: true, color: '#000000', margin: [8, 4], alignment: 'right' },
       ]) }, layout: { fillColor: (row: number) => row % 2 === 0 ? '#f4f3ef' : '#ffffff', hLineWidth: () => 0, vLineWidth: () => 0 } },
       { text: 'Publisher allocations', style: 'section', pageBreak: 'before' },
       ...plan.items.map((item): Content => ({ unbreakable: true, stack: [
         { text: item.title, style: 'publisher' },
-        { text: item.format, fontSize: 8, color: '#8b6400', margin: [0, 0, 0, 7] },
-        { text: [{ text: 'Spend: ', color: '#656571' }, { text: gbp(item.spend), bold: true }, ...item.metrics.flatMap(metric => [{ text: `    ${metric.k}: `, color: '#656571' }, { text: metric.v, bold: true }])], margin: [0, 0, 0, 7] },
+        { text: item.format, fontSize: 8, color: '#000000', margin: [0, 0, 0, 7] },
+        { text: [{ text: 'Spend: ', color: '#000000' }, { text: gbp(item.spend), bold: true }, ...item.metrics.flatMap(metric => [{ text: `    ${metric.k}: `, color: '#000000' }, { text: metric.v, bold: true }])], margin: [0, 0, 0, 7] },
         { text: [{ text: 'Why: ', bold: true }, { text: item.why }], margin: [0, 0, 0, 18] },
       ] })),
       heading('Suggested timing'),
-      ...plan.timing.map((timing): Content => ({ columns: [{ text: timing.label, width: 94, bold: true, color: '#8b6400' }, { text: timing.activity, width: '*' }], columnGap: 12, margin: [0, 0, 0, 10] })),
+      ...plan.timing.map((timing): Content => ({ columns: [{ text: timing.label, width: 94, bold: true, color: '#000000' }, { text: timing.activity, width: '*' }], columnGap: 12, margin: [0, 0, 0, 10] })),
     ],
     styles: {
       section: { font: 'Poppins', fontSize: 13, bold: true, margin: [0, 13, 0, 8] },
