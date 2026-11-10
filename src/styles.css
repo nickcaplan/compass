@@ -557,3 +557,7 @@ input.ctl{color:var(--text)}
 .pc-share,.pc-delete{color:var(--muted)}
 .pc-share svg,.pc-delete svg{width:16px;height:16px;stroke-width:1.8}
 .pc-share:hover,.pc-delete:hover{color:var(--text)}
+/* Destructive confirmation only, never the Edit or primary plan actions. */
+.confirm .btn.destructive{background:#B42332;color:#fff;border:1px solid #B42332;box-shadow:none}
+.confirm .btn.destructive:hover{background:#971D2A;border-color:#971D2A}
+.confirm .btn.destructive:focus-visible{outline:2px solid var(--text);outline-offset:3px}
