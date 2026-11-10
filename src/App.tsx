@@ -728,6 +728,9 @@ export default function App() {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
   });
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
+  const legacyNameUnchanged = editingSaved && brief.name === editBaseline.current?.name && brief.name.length > 80;
+  const nameTooLong = brief.name.length > 80 && !legacyNameUnchanged;
+
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -897,6 +900,7 @@ export default function App() {
   }, [stage]);
 
   function generate() {
+    if (nameTooLong) return;
     if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
@@ -959,7 +963,7 @@ export default function App() {
   }
 
   function savePlan() {
-    if (!submittedBrief) return;
+    if (!submittedBrief || nameTooLong) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
       if (latest.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) { cancelEditSaved(); return; }
@@ -1287,8 +1291,13 @@ export default function App() {
               type="text"
               placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
               value={brief.name}
+              aria-invalid={nameTooLong || undefined}
+              aria-describedby="campaign-name-limit"
               onChange={(e) => patch({ name: e.target.value })}
             />
+            <p id="campaign-name-limit" className={nameTooLong ? 'fieldnote' : 'hint'} role={nameTooLong ? 'status' : undefined}>
+              {legacyNameUnchanged ? 'This older name is over 80 characters. Keep it unchanged or shorten it to 80 or fewer.' : nameTooLong ? `${brief.name.length}/80 characters. Shorten the name before generating or saving. Your text has been kept.` : `${brief.name.length}/80 characters`}
+            </p>
           </div>
 
           <div className="field planning-step">
@@ -1435,7 +1444,7 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || nameTooLong || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
             </>
@@ -1617,7 +1626,7 @@ export default function App() {
                     {editsNotGenerated && (
                       <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
                     )}
-                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated || nameTooLong}>
                       <IconSave />
                       Save changes
                     </button>
@@ -1631,7 +1640,7 @@ export default function App() {
                     {editsNotGenerated && (
                       <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
                     )}
-                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated || nameTooLong}>
                       <IconSave />
                       Save plan
                     </button>
