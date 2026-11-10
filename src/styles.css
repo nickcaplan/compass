@@ -512,7 +512,7 @@ input.ctl{color:var(--text)}
 
 .saved-brief-tools{display:flex;align-items:center;gap:6px;flex:none}
 .saved-brief-tools .cs-compact{width:44px;flex:none}
-.saved-brief-tools .cs-compact .ghost{width:44px;height:44px;min-height:44px;padding:0;border-radius:12px;color:var(--text)}
+.saved-brief-tools .cs-compact .ghost{width:44px;height:44px;min-height:44px;padding:0;border-radius:12px;color:var(--muted)}
 .saved-brief-tools .cs-compact svg{width:15px;height:15px}
 .saved-brief-tools .cs-label{color:inherit}
 .pdf-icon-notice{position:absolute;right:0;top:calc(100% + 7px);padding:6px 9px;border:1px solid var(--line-mid);border-radius:8px;background:var(--card);color:var(--text);white-space:nowrap;font-size:12px;z-index:4;box-shadow:0 3px 10px #0002}
@@ -548,8 +548,13 @@ input.ctl{color:var(--text)}
 .is-expired .pc-actions .pc-open{width:100%}
 
 .plancard .pc-main{padding-right:98px}
-.pc-share{position:absolute;top:10px;right:60px;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:12px;color:var(--text)}
+.pc-share{position:absolute;top:10px;right:60px;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:12px;color:var(--muted)}
 .pc-share svg{width:16px;height:16px}
 .pc-share:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .pc-link-field{margin-top:48px;width:100%}
 @media(max-width:360px){.plancard{padding-top:64px}.plancard.is-expired{padding-top:18px}.plancard .pc-main{padding-right:0}.plancard.is-expired .pc-main{padding-top:12px}.plancard>.chip.expired{margin-right:98px;min-height:28px}}
+
+/* Card utility icons share one size, stroke and colour treatment. */
+.pc-share,.pc-delete{color:var(--muted)}
+.pc-share svg,.pc-delete svg{width:16px;height:16px;stroke-width:1.8}
+.pc-share:hover,.pc-delete:hover{color:var(--text)}
