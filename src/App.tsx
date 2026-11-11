@@ -738,7 +738,7 @@ export default function App() {
       if (!stashAuthDraft({ accountId: previous.id })) {
         failedAccountDrafts.current.set(previous.id, latestPlanner.current);
         setAuthNotice('Your previous account draft could not be saved. It is kept in this tab for that account. Do not close this tab until you log back in and save it.');
-      }
+      } else failedAccountDrafts.current.delete(previous.id);
       clearPlannerState();
       anonymousBinding.current = null;
     } else if (!previous && user && hasPlannerWork() &&
@@ -749,7 +749,7 @@ export default function App() {
     }
     if (user && !googleOAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
     currentAccount.current = user;
-    const retained = user ? failedAccountDrafts.current.get(user.id) : null;
+    const retained = user && previous?.id !== user.id ? failedAccountDrafts.current.get(user.id) : null;
     if (user && retained) {
       setBrief(retained.brief); setSubmittedBrief(retained.submittedBrief); setBudgetText(retained.budgetText); setStage(retained.stage); setSavedEntry(retained.savedEntry);
       editBaseline.current = retained.savedEntry?.mode === 'edit' ? loadPlans().find(p => p.id === retained.savedEntry!.id)?.brief ?? null : null;
@@ -923,23 +923,24 @@ export default function App() {
         // A routed selection may resume only its own stored edit, never an
         // unrelated account draft merely because its text is still pristine.
         if (pristineSelection && (entry?.id !== live.savedEntry?.id || entry?.mode !== live.savedEntry?.mode)) continue;
-        window.localStorage.removeItem(key);
         const restoredEntry: { id: string; mode: 'view' | 'edit' } | null = entry && typeof entry.id === 'string' &&
           (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)
           ? { id: entry.id, mode: entry.mode } : null;
         const savedOriginal = restoredEntry ? loadPlans().find(p => p.id === restoredEntry.id) : null;
-        editBaseline.current = restoredEntry?.mode === 'edit' ? savedOriginal?.brief ?? null : null;
-        setSavedEntry(restoredEntry);
         const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
         const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
-        setBrief(snap.brief); setSubmittedBrief(unchangedPlan ? snap.brief : snap.submittedBrief);
-        setBudgetText(snap.budgetText); setStage(restoredStage);
-        latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
-          savedEntry: restoredEntry, budgetText: snap.budgetText, stage: restoredStage };
+        const restored = { brief:snap.brief, submittedBrief:unchangedPlan ? snap.brief : snap.submittedBrief, savedEntry:restoredEntry, budgetText:snap.budgetText, stage:restoredStage };
+        const durable = authController.recovering || restoredEntry?.mode === 'edit';
+        if (durable && !persistAuthDraft({accountId:user.id},restored)) {
+          setAuthNotice('Could not keep your restored draft in this browser. Its original copy is still kept. Free some browser storage and try again.');
+          return;
+        }
+        if (!durable || key !== draftDestination({accountId:user.id},restoredEntry)) window.localStorage.removeItem(key);
+        editBaseline.current = restoredEntry?.mode === 'edit' ? savedOriginal?.brief ?? null : null;
+        setSavedEntry(restoredEntry);
+        setBrief(restored.brief); setSubmittedBrief(restored.submittedBrief); setBudgetText(restored.budgetText); setStage(restored.stage);
+        latestPlanner.current = restored;
         anonymousBinding.current = null;
-        // Reset mode and saved edits can reload before completion. Keep work
-        // bound to its verified account rather than consuming its only copy.
-        if (authController.recovering || restoredEntry?.mode === 'edit') stashAuthDraft({ accountId: user.id });
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
         if (!recoveringPassword) { setPage('planner'); navigation.address(restoredEntry ? { page: 'planner', planId: restoredEntry.id, edit: restoredEntry.mode === 'edit' } : { page: 'planner' }); }
         break;
@@ -1020,7 +1021,7 @@ export default function App() {
         }).catch(() => { /* Keep the current profile gate; never infer completion on failure. */ });
       }
     }).catch(error => { setAuthNotice(error instanceof Error ? error.message : 'Secure browser storage is unavailable. Log-in is paused.'); }).finally(() => setAuthInitializing(false));
-    void authController.ready.then(() => { if (authController.error) { setAuthNotice(authController.error.message); recoveryPrincipal.current = null; setRecoveringPassword(false); } });
+    void authController.ready.then(() => { if (authController.error) { setAuthNotice(authController.error.message); recoveryPrincipal.current = null; setRecoveringPassword(false); if (emailAuthCallback || googleOAuthCallback) { setPage('signin'); writePageUrl('signin'); } } });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       applyAuthUser(session?.user ?? null, false, event === 'INITIAL_SESSION' || (event === 'TOKEN_REFRESHED' && initialSessionPending.current));
       if (!authController.recovering) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
@@ -1388,6 +1389,7 @@ export default function App() {
       );
       if (persist(updated)) {
         pinSaveRow();
+        invalidateWorkspaceDraft();
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
         navigation.address({ page: 'planner', planId: savedEntry.id });
@@ -1665,10 +1667,12 @@ export default function App() {
         <div className="divider"><span>or</span></div></>}
         <EmailAuth key={`${idPrefix}:${authUser?.id ?? 'anonymous'}:${recoveringPassword}`} idPrefix={idPrefix} recovery={recoveringPassword}
           recoveryUserId={recoveryPrincipal.current}
-          isRecoveryCurrent={id => recoveryPrincipal.current === id && currentAccount.current?.id === id} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); stashAuthDraft({ accountId: user.id });
-          try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
-          anonymousBinding.current = null;
-          setRecoveringPassword(false); setAuthNotice(null); const selection = latestPlanner.current.savedEntry; navigation.navigate(selection ? {page:'planner',planId:selection.id,edit:selection.mode==='edit'} : {page:'planner'}); }} />
+          isRecoveryCurrent={id => recoveryPrincipal.current === id && currentAccount.current?.id === id} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); const persisted = stashAuthDraft({ accountId: user.id });
+          if (persisted) {
+            try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
+            anonymousBinding.current = null;
+          }
+          setRecoveringPassword(false); setAuthNotice(persisted ? null : 'Could not keep your account draft in this browser. Your original email draft is still kept. Free some browser storage and try again.'); const selection = latestPlanner.current.savedEntry; navigation.navigate(selection ? {page:'planner',planId:selection.id,edit:selection.mode==='edit'} : {page:'planner'}); }} />
         {recoveringPassword && (
           <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
             Cancel password reset
@@ -1876,7 +1880,7 @@ export default function App() {
           ) : (
             <>
           <h2>{editingSaved ? 'Edit your brief' : 'Plan a campaign'}</h2>
-          {authNotice && /could not be saved|Could not keep both drafts/.test(authNotice) && <p className="fieldnote" role="alert">{authNotice}</p>}
+          {authNotice && /could not be saved|Could not keep/.test(authNotice) && <p className="fieldnote" role="alert">{authNotice}</p>}
           {earlierDraftKey && <div className="draft-choice" role="status">
             <p>Your other draft is also kept on this device. Your current answers have not changed.</p>
             <button type="button" className="ghost" onClick={openEarlierDraft}>Switch to other draft</button>

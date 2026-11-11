@@ -89,10 +89,12 @@ export class AuthController {
     const existing = this.clients.get(generation);
     if (existing) return existing;
     const refreshExpected = new Map<string, string | undefined>();
+    let failedRefreshExpected: {value:string | undefined} | null = null;
     const client = createClient(URL, KEY, { global: { fetch: async (input, init) => {
       const refresh = String(input).includes('grant_type=refresh_token');
       const before = refresh ? await this.read() : null;
       const response = await fetch(input, init);
+      if (refresh && !response.ok && before?.generation === generation) failedRefreshExpected = {value:before.values[SESSION_KEY]};
       if (refresh && response.ok && before?.generation === generation) {
         const body = await response.clone().json();
         if (typeof body.access_token === 'string') refreshExpected.set(body.access_token, before.values[SESSION_KEY]);
@@ -133,6 +135,10 @@ export class AuthController {
           key = key.replace(`${SESSION_KEY}-g${generation}`, SESSION_KEY);
           await this.transaction((state, store) => {
             if (state.generation !== generation) throw stale();
+            if (key === SESSION_KEY && failedRefreshExpected) {
+              const expected = failedRefreshExpected.value; failedRefreshExpected = null;
+              if (state.values[SESSION_KEY] !== expected) return;
+            }
             const values = { ...state.values }; delete values[key]; store.put({ ...state, values }, 'canonical');
           }, 'readwrite');
         },
@@ -212,12 +218,13 @@ export class AuthController {
   }
 
   /** New intent retires every older operation, including in other tabs. */
-  private async begin(clear = false, callback?: string, preserveCallback = false) {
+  private async begin(clear = false, callback?: string, preserveCallback = false, expectedGeneration?: number) {
     await this.ready;
     if (this.failure) throw this.failure;
     this.callbackNotice = null;
     this.recovery = false;
     const state = await this.transaction((previous, store) => {
+      if (expectedGeneration !== undefined && previous.generation !== expectedGeneration) throw stale();
       const next = { generation: previous.generation + 1, values: clear ? {} : previous.values, callback: preserveCallback ? previous.callback : callback, pendingCallback: preserveCallback ? callback : undefined };
       store.put(next, 'canonical'); return { ...next, previousCallback: previous.callback };
     }, 'readwrite');
@@ -293,7 +300,7 @@ export class AuthController {
     // Logout must not wait for an expired session's refresh network request.
     const previous = state.values[SESSION_KEY] ? JSON.parse(state.values[SESSION_KEY]) as Session : null;
     const token = previous?.access_token;
-    const operation = await this.begin(scope !== 'others');
+    const operation = await this.begin(scope !== 'others', undefined, false, state.generation);
     if (!token) return { error: null };
     const response = await fetch(`${URL}/auth/v1/logout?scope=${scope}`, { method: 'POST', headers: { apikey: KEY, Authorization: `Bearer ${token}` } });
     if (this.failure) throw this.failure;
