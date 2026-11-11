@@ -565,3 +565,6 @@ input.ctl{color:var(--text)}
 
 /* Unselected Objective choices are peers; colour coding begins on selection. */
 [aria-labelledby=g-objective] .pill.off{border-color:var(--muted);color:var(--muted);background:none}
+
+/* Explain legacy saved briefs without a required answer, next to Regenerate. */
+.regenerate-required{margin-top:10px;color:var(--date-error);font-size:13px;font-weight:600;line-height:1.5}
