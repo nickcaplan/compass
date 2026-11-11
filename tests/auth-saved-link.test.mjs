@@ -40,7 +40,8 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         await page.evaluate(mode => {
           const brief = { name: 'Restored saved campaign', objectives: ['awareness'], markets: ['uk'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 10000, start: '2026-12-01', end: '2027-02-01' };
           const id = mode === 'missing' ? 'removed-entry' : 'saved-entry';
-          localStorage.setItem('compass-saved-plans', JSON.stringify([{ id: 'saved-entry', savedAt: '2026-11-01T12:00:00Z', brief }]));
+          const savedBrief = {...brief, name:'Original saved campaign'};
+          localStorage.setItem('compass-saved-plans', JSON.stringify([{ id: 'saved-entry', savedAt: '2026-11-01T12:00:00Z', brief: mode==='edit'?savedBrief:brief }]));
           localStorage.setItem('compass-auth-draft:account:saved-link-fixture', JSON.stringify({ binding: { accountId: 'saved-link-fixture' }, brief, submittedBrief: brief, stage: 'plan', budgetText: '10000', savedEntry: { id, mode: mode === 'missing' ? 'view' : mode }, ts: Date.now() }));
         }, mode);
         await page.locator('#f-signin-email').fill(user.email);
@@ -59,6 +60,16 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         } else if (mode === 'edit') {
           assert.ok(await page.$('#f-name'));
           assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Save changes')), true);
+        }
+        if(mode!=='missing'){
+          assert.match(new URL(page.url()).hash,mode==='edit'?/saved-entry\/edit$/:/saved-entry$/);
+          await page.reload();await page.waitForSelector('.metrics');
+          if(mode==='edit'){
+            await page.waitForFunction(()=>document.querySelector('#f-name')?.value==='Restored saved campaign');
+            await page.locator('.navlinks button:nth-child(2)').click();await page.waitForSelector('[role=alertdialog]');
+            await page.keyboard.press('Escape');await page.waitForSelector('[role=alertdialog]',{hidden:true});
+            assert.equal(await page.$eval('#f-name',e=>e.value),'Restored saved campaign');
+          }else await page.waitForSelector('.bsum');
         }
         assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('compass-saved-plans')).filter(p => p.id === 'saved-entry').length), 1);
         await context.close();

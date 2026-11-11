@@ -71,6 +71,7 @@ test('signed-in account view shows account state, not log-in prompt', {timeout:6
    const ctx=await browser.createBrowserContext();const p=await ctx.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});
    await p.evaluateOnNewDocument((theme)=>localStorage.setItem('compass-theme',theme),theme);
    const complete=session(user({full_name:'Test User',compass_profile_complete:true}));
+   await p.setRequestInterception(true);p.on('request',req=>{if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};return req.respond({status:req.method()==='OPTIONS'?204:200,headers,contentType:'application/json',body:req.method()==='OPTIONS'?'':JSON.stringify(complete.user)})});
    await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1#/sign-in'));await p.waitForSelector('.themebtn');
    await p.evaluate(async ({key,s})=>(await window.fixtureAuth.setItem(key,JSON.stringify(s))),{key,s:complete});await p.reload();await p.waitForSelector('.signin');
    await p.waitForFunction(()=>document.querySelector('.signin')?.getAttribute('aria-label')?.includes('profile@example.com'));

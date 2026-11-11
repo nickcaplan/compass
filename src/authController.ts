@@ -20,6 +20,7 @@ export class AuthController {
   private failure: Error | null = null;
   private callbackNotice: Error | null = null;
   private hydrated = false;
+  private acceptedCallback: { generation: number; userId: string } | null = null;
   private recovery = false;
   readonly ready: Promise<void>;
 
@@ -160,6 +161,9 @@ export class AuthController {
           const session = this.session(latest);
           const recovery = this.recovery && !result.error && session ? { generation: latest.generation, userId: session.user.id } : undefined;
           store.put({ ...latest, callback: undefined, recovery }, 'canonical');
+          if (!result.error && session && result.data.session?.user.id === session.user.id && result.data.session.access_token === session.access_token) {
+            this.acceptedCallback = { generation: latest.generation, userId: session.user.id };
+          }
         }, 'readwrite');
       }
       } finally {
@@ -206,6 +210,15 @@ export class AuthController {
     if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
     return result;
+  }
+
+  /** Only a successfully accepted, still-current callback may bind a Google draft. */
+  async acceptedCallbackPrincipal() {
+    await this.ready;
+    if (this.failure || this.callbackNotice || !this.acceptedCallback) return null;
+    const state = await this.read();
+    return state.generation === this.acceptedCallback.generation && this.session(state)?.user.id === this.acceptedCallback.userId
+      ? this.acceptedCallback.userId : null;
   }
 
   async getSession() {

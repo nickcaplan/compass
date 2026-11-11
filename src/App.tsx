@@ -833,12 +833,14 @@ export default function App() {
   }
   function stashAuthDraft(binding: DraftBinding | null = currentAccount.current ? { accountId: currentAccount.current.id } : anonymousBinding.current) {
     cleanupExpiredDrafts();
-    if (!binding || !hasPlannerWork()) return;
+    if (!hasPlannerWork()) return true;
+    if (!binding) return false;
     try {
       const current = latestPlanner.current;
       const snap = { ...current, binding, stage: current.stage === 'generating' ? 'filling' : current.stage, ts: Date.now() };
       window.localStorage.setItem(bindingKey(binding), JSON.stringify(snap));
-    } catch { /* private mode */ }
+      return true;
+    } catch { return false; }
   }
   function beginEmail(email: string) {
     setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n);
@@ -883,7 +885,10 @@ export default function App() {
       const alternative: unknown = alternativeRaw ? JSON.parse(alternativeRaw) : null;
       if (isAuthDraft(alternative) && Date.now() - alternative.ts <= 60 * 60 * 1000 &&
         bindingMatches((alternative as typeof alternative & { binding?: unknown }).binding, user, null)) setEarlierDraftKey(alternativeKey);
-      if (hasPlannerWork()) return;
+      const live = latestPlanner.current;
+      const selectedSaved = live.savedEntry ? loadPlans().find(p => p.id === live.savedEntry!.id) : null;
+      const pristineSelection = selectedSaved && briefValues(live.brief) === briefValues(selectedSaved.brief);
+      if (hasPlannerWork() && !pristineSelection) return;
       const keys = [accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
       const candidates = keys.flatMap(key => {
         try {
@@ -894,11 +899,16 @@ export default function App() {
         } catch { return []; }
       }).sort((a, b) => b.snap.ts - a.snap.ts);
       for (const { snap } of candidates) {
-        for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
         const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
+        // A routed selection may resume only its own stored edit, never an
+        // unrelated account draft merely because its text is still pristine.
+        if (pristineSelection && (entry?.id !== live.savedEntry?.id || entry?.mode !== live.savedEntry?.mode)) continue;
+        for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
         const restoredEntry: { id: string; mode: 'view' | 'edit' } | null = entry && typeof entry.id === 'string' &&
           (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)
           ? { id: entry.id, mode: entry.mode } : null;
+        const savedOriginal = restoredEntry ? loadPlans().find(p => p.id === restoredEntry.id) : null;
+        editBaseline.current = restoredEntry?.mode === 'edit' ? savedOriginal?.brief ?? null : null;
         setSavedEntry(restoredEntry);
         const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
         const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
@@ -907,11 +917,11 @@ export default function App() {
         latestPlanner.current = { brief: snap.brief, submittedBrief: unchangedPlan ? snap.brief : snap.submittedBrief,
           savedEntry: restoredEntry, budgetText: snap.budgetText, stage: restoredStage };
         anonymousBinding.current = null;
-        // Reset mode can reload before completion. Keep restored work bound to
-        // its verified account instead of consuming its only durable copy.
-        if (authController.recovering) stashAuthDraft({ accountId: user.id });
+        // Reset mode and saved edits can reload before completion. Keep work
+        // bound to its verified account rather than consuming its only copy.
+        if (authController.recovering || restoredEntry?.mode === 'edit') stashAuthDraft({ accountId: user.id });
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
-        if (!recoveringPassword) { setPage('planner'); writePageUrl('planner'); }
+        if (!recoveringPassword) { setPage('planner'); navigation.address(restoredEntry ? { page: 'planner', planId: restoredEntry.id, edit: restoredEntry.mode === 'edit' } : { page: 'planner' }); }
         break;
       }
     } catch { /* corrupted or unavailable storage */ }
@@ -948,7 +958,7 @@ export default function App() {
     const onPageShow = (event: PageTransitionEvent) => { if (event.persisted) googlePending.current = false; };
     window.addEventListener('pageshow', onPageShow);
     const startupEpoch = authEpoch.current;
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (startupEpoch !== authEpoch.current && data.session?.user.id !== currentAccount.current?.id) return;
       if (authController.error) { recoveryPrincipal.current = null; setRecoveringPassword(false); }
       applyAuthUser(data.session?.user ?? null, false, true);
@@ -959,7 +969,10 @@ export default function App() {
       mayRestoreAuthDraft.current = Boolean(data.session);
       if (data.session) {
         if (callbackError) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
-        if (googleOAuthCallback && !googleCallbackPrincipal.current && authEpoch.current <= 1) googleCallbackPrincipal.current = data.session.user.id;
+        if (googleOAuthCallback && !googleCallbackPrincipal.current) {
+          const accepted = await authController.acceptedCallbackPrincipal();
+          if (accepted === data.session.user.id && currentAccount.current?.id === accepted) googleCallbackPrincipal.current = accepted;
+        }
         restoreAuthDraft();
         // Canonical metadata is read without mutating SDK-owned session storage.
         // A late lookup must not replace a new account or a more recent save.
@@ -986,7 +999,7 @@ export default function App() {
         mayRestoreAuthDraft.current = false;
         setRecoveringPassword(false);
         setStage((s) => (s === 'plan' ? 'gate' : s));
-        setSavedEntry(null);
+        // Account transitions clear their own selection in applyAuthUser.
       }
       if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin'); }
     });
@@ -1446,7 +1459,7 @@ export default function App() {
     }
     // At this point navigation is either unchanged or an approved discard.
     // Do not carry a hidden edit onto My plans and ask again on the next Open.
-    if (route.page !== 'planner' && route.page !== 'signin' && page === 'planner' && !viewingSaved) clearPlannerState();
+    if (route.page !== 'planner' && route.page !== 'signin' && (page === 'planner' || page === 'signin') && !viewingSaved) clearPlannerState();
     if (route.planId !== undefined) {
       const latest = loadPlans();
       const entry = latest.find(p => p.id === route.planId);
@@ -1477,11 +1490,12 @@ export default function App() {
     const previousPlanner = latestPlanner.current;
     const previousFlow = activeGoogleFlow();
     let flow: string | null = null;
-    if (currentAccount.current) stashAuthDraft();
+    let persisted = true;
+    if (currentAccount.current) persisted = stashAuthDraft();
     else {
       if (anonymousBinding.current) {
-        stashAuthDraft();
-        if (!('googleFlow' in anonymousBinding.current)) clearPlannerState();
+        persisted = stashAuthDraft();
+        if (persisted && !('googleFlow' in anonymousBinding.current)) clearPlannerState();
       }
       let retryFlow: string | null = null;
       if (previousFlow && !hasPlannerWork()) {
@@ -1494,11 +1508,11 @@ export default function App() {
       }
       flow = retryFlow ?? crypto.randomUUID();
       anonymousBinding.current = { googleFlow: flow };
-      try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { /* private mode */ }
-      stashAuthDraft(anonymousBinding.current);
+      try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { persisted = false; }
+      persisted = stashAuthDraft(anonymousBinding.current) && persisted;
     }
-    let failed = false;
-    try {
+    let failed = !persisted;
+    if (persisted) try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin + (demoMode ? '/?demo=1' : '') },
@@ -1508,7 +1522,7 @@ export default function App() {
     if (failed) {
       googlePending.current = false;
       if (epoch !== authEpoch.current) return;
-      setAuthNotice('Google log-in failed - please try again');
+      setAuthNotice(persisted ? 'Google log-in failed - please try again' : 'Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.');
       try {
         if (previousFlow) window.sessionStorage.setItem(AUTH_FLOW_KEY, previousFlow);
         else window.sessionStorage.removeItem(AUTH_FLOW_KEY);
@@ -2109,6 +2123,7 @@ export default function App() {
               <p className="pagesub">
                 {authEmail ? 'Add your details to see it. Your brief is kept.' : 'Log in to see it. Your brief is kept while you log in.'}
               </p>
+              {authNotice && <p role="alert" className="fieldnote">{authNotice}</p>}
               {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
               {savedBriefReadOnly ? <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button> :
                 <button type="button" className="ghost gate-secondary" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
