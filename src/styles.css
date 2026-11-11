@@ -568,3 +568,25 @@ input.ctl{color:var(--text)}
 
 /* Explain legacy saved briefs without a required answer, next to Regenerate. */
 .regenerate-required{margin-top:10px;color:var(--date-error);font-size:13px;font-weight:600;line-height:1.5}
+
+/* Desktop proposal only: scan campaign rows across the available canvas. */
+@media(min-width:1100px){
+ .pagecard[aria-label="My plans"]{max-width:none;padding:28px 30px}
+ .pagecard[aria-label="My plans"] .planlist{gap:12px}
+ .pagecard[aria-label="My plans"] .plancard{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:18px;min-height:138px;padding:20px}
+ .pagecard[aria-label="My plans"] .pc-main{grid-column:1;grid-row:1;padding-right:0;align-self:center}
+ .pagecard[aria-label="My plans"] .pc-main>b{font-size:16px;margin-bottom:12px}
+ .pagecard[aria-label="My plans"] .pc-actions{grid-column:2;grid-row:1;align-self:end;margin:48px 0 0}
+ .pagecard[aria-label="My plans"] .pc-actions .pc-edit,.pagecard[aria-label="My plans"] .pc-actions .pc-open{font-size:13px}
+ .pagecard[aria-label="My plans"] .pc-share{right:60px;top:10px}
+ .pagecard[aria-label="My plans"] .pc-delete{right:10px;top:10px}
+ .pagecard[aria-label="My plans"] .plancard>.chip.expired{position:absolute;top:16px;left:20px;margin:0}
+ .pagecard[aria-label="My plans"] .is-expired .pc-main{padding-top:32px}
+ .pagecard[aria-label="My plans"] .pc-link-field{grid-column:1/-1;grid-row:2;margin:0}
+}
+@media(min-width:1100px){.pagecard[aria-label="My plans"] .plancard>.chip.expired{right:auto;width:max-content;max-width:calc(100% - 140px)}}
+
+/* Saved objectives use the same palette as selected Planner objectives. */
+.pc-objective.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
+.pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
+.pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
