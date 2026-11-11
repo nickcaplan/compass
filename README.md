@@ -8,8 +8,11 @@ screen is illustrative, adapted from the example scenario in the Compass
 brief. There is no server-side planning engine or real rate or audience data.
 This branch uses Supabase Auth for Google sign-in and email/password
 accounts, including verification and password recovery. Name and optional
-company are stored as account profile metadata. Plans and pending briefs
-remain in this browser's localStorage, not in a server-side plans database.
+company are stored as account profile metadata. Saved plans remain in this
+browser's localStorage, not in a server-side plans database. Pending briefs
+are snapshotted around authentication transitions, not continuously as you
+type. These snapshots expire after one hour. Reloading before an authentication
+snapshot is created can lose an ordinary unsaved brief.
 Signing in does not sync plans across browsers or devices.
 
 This is an unmerged authentication branch. Its capabilities and preview

@@ -1,10 +1,10 @@
-import { createClient, type AuthChangeEvent, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, AuthRefreshDiscardedError, type AuthChangeEvent, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
 const URL = 'https://ctailpmcoyvaplwbwskf.supabase.co';
 const KEY = 'sb_publishable_J3Kaa7y4KExb-ICrCA1FIA_z4lYfhG7';
 const STORE = 'state';
 const SESSION_KEY = 'compass-session-v2';
-type State = { generation: number; values: Record<string, string>; callback?: string; recovery?: { generation: number; userId: string } };
+type State = { generation: number; values: Record<string, string>; callback?: string; pendingCallback?: string; recovery?: { generation: number; userId: string } };
 type Listener = (event: AuthChangeEvent, session: Session | null) => void;
 class StaleGeneration extends Error {}
 const stale = () => new StaleGeneration('Your session changed. Please try again.');
@@ -61,7 +61,7 @@ export class AuthController {
         tx.onabort = tx.onerror = () => reject(unavailable());
       });
     } catch (error) {
-      if (!(error instanceof StaleGeneration)) this.fail();
+      if (!(error instanceof StaleGeneration) && !(error instanceof AuthRefreshDiscardedError)) this.fail();
       throw error;
     }
   }
@@ -88,7 +88,17 @@ export class AuthController {
   private client(generation: number, callback = false) {
     const existing = this.clients.get(generation);
     if (existing) return existing;
-    const client = createClient(URL, KEY, { auth: {
+    const refreshExpected = new Map<string, string | undefined>();
+    const client = createClient(URL, KEY, { global: { fetch: async (input, init) => {
+      const refresh = String(input).includes('grant_type=refresh_token');
+      const before = refresh ? await this.read() : null;
+      const response = await fetch(input, init);
+      if (refresh && response.ok && before?.generation === generation) {
+        const body = await response.clone().json();
+        if (typeof body.access_token === 'string') refreshExpected.set(body.access_token, before.values[SESSION_KEY]);
+      }
+      return response;
+    } }, auth: {
       storageKey: `${SESSION_KEY}-g${generation}`, detectSessionInUrl: false, autoRefreshToken: true,
       // The SDK never broadcasts uncommitted or stale session events across tabs.
       // Cross-tab notifications are hints to read the canonical transaction only.
@@ -109,6 +119,13 @@ export class AuthController {
           key = key.replace(`${SESSION_KEY}-g${generation}`, SESSION_KEY);
           await this.transaction((state, store) => {
             if (state.generation !== generation) throw stale();
+            if (key === SESSION_KEY) {
+              const token = (JSON.parse(value) as Session).access_token;
+              if (refreshExpected.has(token)) {
+                const expected = refreshExpected.get(token); refreshExpected.delete(token);
+                if (state.values[SESSION_KEY] !== expected) throw new AuthRefreshDiscardedError();
+              }
+            }
             store.put({ ...state, values: { ...state.values, [key]: value } }, 'canonical');
           }, 'readwrite');
         },
@@ -137,6 +154,12 @@ export class AuthController {
       const state = await this.read();
       if (this.failure || (generation !== undefined && state.generation !== generation)) return;
       const session = this.session(state);
+      if (!session && state.values[SESSION_KEY]) {
+        // An expired access token is not a completed logout. Let the SDK
+        // settle refresh or remove the dead session before publishing null.
+        this.client(state.generation);
+        return;
+      }
       this.recovery = Boolean(session && state.recovery?.generation === state.generation && state.recovery.userId === session.user.id);
       if (this.recovery && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) event = 'PASSWORD_RECOVERY';
       for (const [old, client] of this.clients) if (old !== state.generation) { client.auth.dispose(); this.clients.delete(old); }
@@ -153,14 +176,14 @@ export class AuthController {
       try {
       const callback = new URLSearchParams(window.location.search).get('compassAuth');
       const state = await this.read();
-      if (!callback || callback !== state.callback) {
+      if (!callback || callback !== state.callback && callback !== state.pendingCallback) {
         this.callbackNotice = new Error('This link does not match a current request in this browser. Open it in the browser where you requested it, or request a fresh link.');
       } else {
         // Claim the one-time callback before network work. A second tab cannot
         // reuse its authority, and the bound generation cannot become newer.
         await this.transaction((latest, store) => {
-          if (latest.generation !== state.generation || latest.callback !== callback) throw stale();
-          store.put({ ...latest, callback: undefined }, 'canonical');
+          if (latest.generation !== state.generation || latest.callback !== callback && latest.pendingCallback !== callback) throw stale();
+          store.put({ ...latest, callback: undefined, pendingCallback: undefined }, 'canonical');
         }, 'readwrite');
         this.recovery = fragment.get('type') === 'recovery';
         const client = this.client(state.generation, this.recovery);
@@ -171,7 +194,7 @@ export class AuthController {
           if (latest.generation !== state.generation) throw stale();
           const session = this.session(latest);
           const recovery = this.recovery && !result.error && session ? { generation: latest.generation, userId: session.user.id } : undefined;
-          store.put({ ...latest, callback: undefined, recovery }, 'canonical');
+          store.put({ ...latest, callback: undefined, pendingCallback: undefined, recovery }, 'canonical');
           if (!result.error && session && result.data.session?.user.id === session.user.id && result.data.session.access_token === session.access_token) {
             this.acceptedCallback = { generation: latest.generation, userId: session.user.id };
           }
@@ -195,7 +218,7 @@ export class AuthController {
     this.callbackNotice = null;
     this.recovery = false;
     const state = await this.transaction((previous, store) => {
-      const next = { generation: previous.generation + 1, values: clear ? {} : previous.values, callback: preserveCallback ? previous.callback : callback };
+      const next = { generation: previous.generation + 1, values: clear ? {} : previous.values, callback: preserveCallback ? previous.callback : callback, pendingCallback: preserveCallback ? callback : undefined };
       store.put(next, 'canonical'); return { ...next, previousCallback: previous.callback };
     }, 'readwrite');
     this.channel?.postMessage({ generation: state.generation });
@@ -217,14 +240,15 @@ export class AuthController {
     const url = new window.URL(window.location.origin);
     if (new URLSearchParams(window.location.search).get('demo') === '1') url.searchParams.set('demo', '1');
     url.searchParams.set('compassAuth', token);
-    const result = await work(operation.auth, url.toString());
-    if (preserveFailed && !(result && typeof result === 'object' && 'error' in result && result.error)) {
+    const settlePending = async (success: boolean) => {
       await this.transaction((state, store) => {
-        // Keep an already delivered link usable while a resend is pending or
-        // fails. A newer intent or consumed old link must not be overwritten.
-        if (state.generation === operation.generation && state.callback === operation.previousCallback) store.put({...state, callback:token}, 'canonical');
+        if (state.generation === operation.generation && state.pendingCallback === token) store.put({...state, pendingCallback:undefined, callback:success ? token : state.callback}, 'canonical');
       }, 'readwrite');
-    }
+    };
+    let result: T;
+    try { result = await work(operation.auth, url.toString()); }
+    catch (error) { if (preserveFailed) await settlePending(false); throw error; }
+    if (preserveFailed) await settlePending(!(result && typeof result === 'object' && 'error' in result && result.error));
     if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
     return result;

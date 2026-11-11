@@ -735,7 +735,10 @@ export default function App() {
     }
     if (recoveringPassword && user && !recoveryPrincipal.current && !previous) recoveryPrincipal.current = user.id;
     if (previous && previous.id !== user?.id) {
-      stashAuthDraft({ accountId: previous.id });
+      if (!stashAuthDraft({ accountId: previous.id })) {
+        failedAccountDrafts.current.set(previous.id, latestPlanner.current);
+        setAuthNotice('Your previous account draft could not be saved. It is kept in this tab for that account. Do not close this tab until you log back in and save it.');
+      }
       clearPlannerState();
       anonymousBinding.current = null;
     } else if (!previous && user && hasPlannerWork() &&
@@ -746,6 +749,13 @@ export default function App() {
     }
     if (user && !googleOAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
     currentAccount.current = user;
+    const retained = user ? failedAccountDrafts.current.get(user.id) : null;
+    if (user && retained) {
+      setBrief(retained.brief); setSubmittedBrief(retained.submittedBrief); setBudgetText(retained.budgetText); setStage(retained.stage); setSavedEntry(retained.savedEntry);
+      editBaseline.current = retained.savedEntry?.mode === 'edit' ? loadPlans().find(p => p.id === retained.savedEntry!.id)?.brief ?? null : null;
+      latestPlanner.current = retained;
+      if (stashAuthDraft({accountId:user.id})) failedAccountDrafts.current.delete(user.id);
+    }
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
     const source = user?.id ?? null;
@@ -806,6 +816,7 @@ export default function App() {
     latestPlanner.current = { brief, submittedBrief, savedEntry, budgetText, stage };
   }, [brief, submittedBrief, savedEntry, budgetText, stage]);
   const anonymousBinding = useRef<DraftBinding | null>(null);
+  const failedAccountDrafts = useRef(new Map<string, typeof latestPlanner.current>());
   function activeGoogleFlow(): string | null {
     try { return window.sessionStorage.getItem(AUTH_FLOW_KEY); } catch { return null; }
   }
@@ -835,13 +846,18 @@ export default function App() {
     cleanupExpiredDrafts();
     if (!hasPlannerWork()) return true;
     if (!binding) return false;
+    return persistAuthDraft(binding, latestPlanner.current);
+  }
+  function persistAuthDraft(binding: DraftBinding, current: typeof latestPlanner.current) {
     try {
-      const current = latestPlanner.current;
       const snap = { ...current, binding, stage: current.stage === 'generating' ? 'filling' : current.stage, ts: Date.now() };
-      const key = 'accountId' in binding && current.savedEntry ? accountDraftKey(binding.accountId) + ':plan:' + encodeURIComponent(current.savedEntry.id) : bindingKey(binding);
+      const key = draftDestination(binding, current.savedEntry);
       window.localStorage.setItem(key, JSON.stringify(snap));
       return true;
     } catch { return false; }
+  }
+  function draftDestination(binding: DraftBinding, entry: typeof savedEntry) {
+    return 'accountId' in binding && entry ? accountDraftKey(binding.accountId) + ':plan:' + encodeURIComponent(entry.id) : bindingKey(binding);
   }
   function beginEmail(email: string) {
     setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n);
@@ -939,15 +955,22 @@ export default function App() {
       const snap: unknown = raw ? JSON.parse(raw) : null;
       if (!isAuthDraft(snap) || Date.now() - snap.ts > 60 * 60 * 1000 ||
         !bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, null)) return;
-      if (!stashAuthDraft({ accountId: user.id })) throw new Error('Draft storage unavailable');
-      // Swap versions so neither is discarded, including across a reload.
       const live = latestPlanner.current;
-      const current = { ...live, stage: live.stage === 'generating' ? 'filling' : live.stage, binding: { accountId: user.id }, ts: Date.now() };
-      window.localStorage.setItem(earlierDraftKey, JSON.stringify(current));
       const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
       const original = entry && typeof entry.id === 'string' ? loadPlans().find(p => p.id === entry.id) : null;
       const selection: {id: string; mode: 'view' | 'edit'} | null = original && (entry?.mode === 'edit' || entry?.mode === 'view') ? {id:original.id,mode:entry.mode} : null;
       const restoredStage = snap.stage === 'generating' ? 'filling' : snap.stage;
+      const incoming = { brief:snap.brief, submittedBrief:snap.submittedBrief, budgetText:snap.budgetText, stage:restoredStage, savedEntry:selection };
+      const destination = draftDestination({accountId:user.id}, selection);
+      if (draftDestination({accountId:user.id}, live.savedEntry) !== destination && !persistAuthDraft({accountId:user.id},live)) throw new Error('Draft storage unavailable');
+      const previousDestination = window.localStorage.getItem(destination);
+      if (!persistAuthDraft({accountId:user.id}, incoming)) throw new Error('Draft storage unavailable');
+      try {
+        window.localStorage.setItem(earlierDraftKey, JSON.stringify({...live,stage:live.stage==='generating'?'filling':live.stage,binding:{accountId:user.id},ts:Date.now()}));
+      } catch (error) {
+        try { if (previousDestination === null) window.localStorage.removeItem(destination); else window.localStorage.setItem(destination,previousDestination); } catch { /* Source still preserves incoming work. */ }
+        throw error;
+      }
       editBaseline.current = selection?.mode === 'edit' ? original!.brief : null;
       setBrief(snap.brief); setSubmittedBrief(snap.submittedBrief); setBudgetText(snap.budgetText);
       setStage(restoredStage); setSavedEntry(selection);
@@ -1285,6 +1308,7 @@ export default function App() {
     setSavedEntry(null);
     setJustSavedId(null);
     setConfirmFill(false);
+    setConfirmReset(false);
     setDeleteTarget(null);
     navigation.cancel();
     latestPlanner.current = { brief: EMPTY_BRIEF, submittedBrief: null, savedEntry: null, budgetText: '', stage: 'empty' };
@@ -1852,6 +1876,7 @@ export default function App() {
           ) : (
             <>
           <h2>{editingSaved ? 'Edit your brief' : 'Plan a campaign'}</h2>
+          {authNotice && /could not be saved|Could not keep both drafts/.test(authNotice) && <p className="fieldnote" role="alert">{authNotice}</p>}
           {earlierDraftKey && <div className="draft-choice" role="status">
             <p>Your other draft is also kept on this device. Your current answers have not changed.</p>
             <button type="button" className="ghost" onClick={openEarlierDraft}>Switch to other draft</button>
