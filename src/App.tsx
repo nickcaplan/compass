@@ -711,6 +711,7 @@ export default function App() {
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
   const initialSessionPending = useRef(true);
+  const [authInitializing, setAuthInitializing] = useState(true);
   const authEpoch = useRef(0);
   const profileRevision = useRef(0);
   const canonicalProfile = useRef<User | null>(null);
@@ -972,7 +973,7 @@ export default function App() {
           applyAuthUser(result.user);
         }).catch(() => { /* Keep the current profile gate; never infer completion on failure. */ });
       }
-    }).catch(error => { setAuthNotice(error instanceof Error ? error.message : 'Secure browser storage is unavailable. Log-in is paused.'); });
+    }).catch(error => { setAuthNotice(error instanceof Error ? error.message : 'Secure browser storage is unavailable. Log-in is paused.'); }).finally(() => setAuthInitializing(false));
     void authController.ready.then(() => { if (authController.error) { setAuthNotice(authController.error.message); recoveryPrincipal.current = null; setRecoveringPassword(false); } });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       applyAuthUser(session?.user ?? null, false, event === 'INITIAL_SESSION' || (event === 'TOKEN_REFRESHED' && initialSessionPending.current));
@@ -1741,6 +1742,7 @@ export default function App() {
           <button
             type="button"
             className="signin"
+            aria-busy={authInitializing}
             onClick={() => go('signin')}
             aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Sign in'}
           >
