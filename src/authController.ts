@@ -93,7 +93,18 @@ export class AuthController {
       // The SDK never broadcasts uncommitted or stale session events across tabs.
       // Cross-tab notifications are hints to read the canonical transaction only.
       storage: {
-        getItem: async key => { const state = await this.read(); const canonical = key.replace(`${SESSION_KEY}-g${generation}`, SESSION_KEY); return state.generation === generation ? state.values[canonical] ?? null : null; },
+        getItem: async key => {
+          try {
+            const state = await this.read();
+            const canonical = key.replace(`${SESSION_KEY}-g${generation}`, SESSION_KEY);
+            return state.generation === generation ? state.values[canonical] ?? null : null;
+          } catch {
+            // read() already fails the controller closed and notifies the UI.
+            // The SDK also reads from a detached initial-session task, so do
+            // not leak a rejected promise from that background reader.
+            return null;
+          }
+        },
         setItem: async (key, value) => {
           key = key.replace(`${SESSION_KEY}-g${generation}`, SESSION_KEY);
           await this.transaction((state, store) => {
