@@ -612,5 +612,5 @@ input.ctl{color:var(--text)}
 @media(min-width:1200px){.brief-first>.form>.demohint{margin:0}.brief-first>.form>.field{align-self:start}.brief-first>.form>.demofill{margin:0}.brief-first>.form>.hint{margin:0}}
 
 /* Keep completion feedback in the full-width desktop brief, not its hidden result. */
-.brief-progress{display:none}
-@media(min-width:1200px){.brief-first>.form>.brief-progress{display:flex;grid-column:1/-1;margin:4px 0 0}}
+.brief-progress,.brief-status{display:none}
+@media(min-width:1200px){.brief-first>.form>.brief-status{display:block}.brief-first>.form>.brief-progress{display:flex;grid-column:1/-1;margin:4px 0 0}}

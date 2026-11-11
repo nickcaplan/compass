@@ -712,6 +712,15 @@ export default function App() {
   );
   const viewingSaved = savedEntry !== null && savedEntry.mode === 'view' && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
+  // Mount the live region empty before the first answer, then retain zero updates.
+  const [briefProgressCount, setBriefProgressCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (viewingSaved || editingSaved || (stage !== 'empty' && stage !== 'filling')) {
+      setBriefProgressCount(null);
+      return;
+    }
+    setBriefProgressCount(previous => count > 0 || previous !== null ? count : null);
+  }, [count, stage, viewingSaved, editingSaved]);
   // A page kept open across midnight must not retain an expired Edit form.
   useEffect(() => {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
@@ -1442,8 +1451,11 @@ export default function App() {
             )}
           </div>
 
+          <span className="sr-only brief-status" role="status" aria-live="polite" aria-atomic="true">
+            {briefProgressCount === null ? '' : `${briefProgressCount} OF 6 ANSWERED`}
+          </span>
           {!viewingSaved && !editingSaved && stage === 'filling' && (
-            <div className="prog brief-progress" role="status">
+            <div className="prog brief-progress" aria-hidden="true">
               <div className="bar" aria-hidden="true">
                 <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />
               </div>
