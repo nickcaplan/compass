@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from 'node:util';
 import { seedPlannerFixture } from './planner-auth-fixture.mjs';
 import {observeJourney, reportJourneyFailure} from './fixtures/journey-diagnostics.mjs';
 import assert from 'node:assert/strict';

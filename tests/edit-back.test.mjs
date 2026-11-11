@@ -1,3 +1,4 @@
+import { seedPlannerFixture } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { stripVTControlCharacters } from 'node:util';
@@ -10,7 +11,7 @@ test('Edit Back returns to its entry page, keeps Forward and guards changed edit
   const url=process.env.HOSTED_URL||await new Promise(resolve=>{let out='';server.stdout.on('data',d=>{out+=stripVTControlCharacters(d.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m)resolve(m[0])})});
   browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
   for(const width of[390,1440])for(const theme of['light','dark'])for(const method of['browser','inpage']){
-   const context=await browser.createBrowserContext(),page=await context.newPage();await page.setViewport({width,height:900});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
+   const context=await browser.createBrowserContext(),page=await context.newPage();await seedPlannerFixture(page);await page.setViewport({width,height:900});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
    await page.goto(url+'?demo=1#/my-plans');await page.waitForSelector('.plancard');await page.waitForSelector('.toast',{hidden:true});await page.evaluate(t=>{localStorage.setItem('compass-theme',t);document.documentElement.dataset.theme=t},theme);
    await page.$$eval('.pc-actions button',bs=>bs.find(b=>/Open plan/.test(b.textContent)).click());await page.waitForSelector('.saved-plan-edit');const viewUrl=page.url();
    await page.evaluate(()=>document.fonts.ready);if(method==='browser'){const editButton=await page.$('.saved-plan-edit');await editButton.focus();assert.equal(await page.$eval('.saved-plan-edit',e=>document.activeElement===e),true);await page.keyboard.press('Enter')}else{await page.locator('.saved-plan-edit').click()}await page.waitForSelector('#f-name');const name=await page.$eval('#f-name',e=>e.value);

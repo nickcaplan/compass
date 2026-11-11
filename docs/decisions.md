@@ -311,3 +311,23 @@ Unselected Awareness, Consideration and Performance choices use the same
 outline and text treatment. Objective shades begin when selected; KPIs keep
 their objective colour coding. This supersedes distinct unselected Objective
 outlines only, not the selected or KPI shades.
+
+## Combined sign-in release integration (11 November 2026)
+
+The combined release replaces the separate #38/#50/#56 stack; preview mirror #57
+is never a release candidate. Refresh-safe routes from #37 are retained through
+the current shared plan router, with auth callback ownership kept separate.
+Profile edit preservation, explicit demo redirect flags and logout draft-restore
+revocation from that branch are present in the combined controller flow.
+
+Current-main PDF downloads, equal Edit/Open card actions, edit history, stale-plan
+warnings, red destructive confirmations and saved-plan objective colours are
+preserved. Plan-only browser regressions use an intercepted fixture account;
+auth regressions separately exercise signed-out gating and account transitions.
+No test drops its existing assertions to accommodate authentication.
+
+This integration does not change provider settings, authorize real account tests,
+sync browser-local saved plans to a server, or approve a production merge. A
+bounded real Google plus email signup/verification/reset check still needs an
+agreed account and audience before it is attempted. Old-version tabs must close
+and existing users log in again when the canonical auth controller is deployed.

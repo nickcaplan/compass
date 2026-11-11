@@ -293,7 +293,6 @@ function DownloadReportButton({ brief, plan }: { brief: Brief; plan: Plan }) {
   </span>;
 }
 
-const FULL_PRODUCT_NOTE = 'Not available yet';
 
 function pageFromUrl(): Page { return readPlanRoute().page; }
 
