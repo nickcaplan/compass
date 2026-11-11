@@ -29,10 +29,10 @@ test('email rate limits get distinct inline messages without an invented countdo
   const submit=()=>p.locator('form[aria-label="Email account"] .gen').click();
   // Wait until the alert shows the NEW message (a previous error can still be on screen at click time).
   const alertText=async(re)=>{await p.waitForFunction(src=>{const e=document.querySelector('form [role=alert]');return e&&new RegExp(src).test(e.textContent)},{},re.source);return p.$eval('form [role=alert]',e=>e.textContent)};
-  // 1. Project-wide email quota on reset: named as our limit, no invented countdown, email kept.
+  // 1. Reset outcomes remain conditional, including delivery quota errors.
   await p.locator('.email-forgot').click();await p.locator('#f-signin-email').fill('quota@example.com');
   nextError={error_code:'over_email_send_rate_limit',code:'over_email_send_rate_limit',msg:'email rate limit exceeded'};await submit();
-  let msg=await alertText(/email limit/i);assert.match(msg,/email limit/i);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
+  await p.waitForSelector('form [role=status]');let msg=await p.$eval('form [role=status]',e=>e.textContent);assert.match(msg,/If an account exists/);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
   // 2. Per-recipient cooldown: never pins server seconds that would go stale on screen.
   nextError={error_code:'over_email_send_rate_limit',code:'over_email_send_rate_limit',msg:'For security purposes, you can only request this after 37 seconds.'};await submit();
   await p.waitForSelector('form [role=status]');msg=await p.$eval('form [role=status]',e=>e.textContent);const cooldownNotice=msg;assert.match(msg,/If an account exists/);assert.doesNotMatch(msg,/we have sent|You requested an email/);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
@@ -63,7 +63,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   const recoveryUser={id:'rate-user',email:'rate@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Rate User',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'};const recoverySession={access_token:'rate-user-token',refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:recoveryUser};await p.evaluate(async s=>(await window.fixtureAuth.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify(s))),recoverySession);await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1#type=recovery'));await p.waitForSelector('.cancel-recovery');await p.locator('#f-signin-password').fill('rate-new-test-only');nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);
   await context.close();
  }finally{await browser?.close();server.kill()}
- // 4. Ordinary failures keep their existing copy (plain 400 on reset).
+ // 4. Account-dependent failures have the same conditional response.
  const server2=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser2;
  try{
   const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server2.once('error',reject);server2.once('exit',code=>reject(Error(`Preview exited ${code}`)));server2.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
@@ -78,6 +78,6 @@ test('email rate limits get distinct inline messages without an invented countdo
   });
   await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1'));await p.waitForSelector('#f-name');await p.locator('.signin').click();await p.waitForSelector('#f-signin-email');
   await p.locator('.email-forgot').click();await p.locator('#f-signin-email').fill('plain@example.com');await p.locator('form[aria-label="Email account"] .gen').click();
-  await p.waitForSelector('form [role=alert]');assert.match(await p.$eval('form [role=alert]',e=>e.textContent),/Could not request a reset email/);
+  await p.waitForSelector('form [role=status]');assert.match(await p.$eval('form [role=status]',e=>e.textContent),/If an account exists/);assert.equal(await p.$('form [role=alert]'),null);
  }finally{await browser2?.close();server2.kill()}
 });

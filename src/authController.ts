@@ -241,7 +241,7 @@ export class AuthController {
     return result;
   }
 
-  async redirect<T>(work: (auth: SupabaseClient['auth'], redirectTo: string) => Promise<T>, preserveFailed = false) {
+  async redirect<T>(work: (auth: SupabaseClient['auth'], redirectTo: string) => Promise<T>, preserveFailed = false, afterValidation?: (result: T) => void) {
     const token = crypto.randomUUID();
     const operation = await this.begin(false, token, preserveFailed);
     const url = new window.URL(window.location.origin);
@@ -258,6 +258,7 @@ export class AuthController {
     if (preserveFailed) await settlePending(!(result && typeof result === 'object' && 'error' in result && result.error));
     if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
+    afterValidation?.(result);
     return result;
   }
 

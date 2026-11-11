@@ -857,7 +857,7 @@ export default function App() {
     } catch { return false; }
   }
   function draftDestination(binding: DraftBinding, entry: typeof savedEntry) {
-    return 'accountId' in binding && entry ? accountDraftKey(binding.accountId) + ':plan:' + encodeURIComponent(entry.id) : bindingKey(binding);
+    return 'accountId' in binding && entry ? accountDraftKey(binding.accountId) + ':plan:' + encodeURIComponent(entry.id) + (entry.mode === 'view' ? ':view' : '') : bindingKey(binding);
   }
   function beginEmail(email: string) {
     setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n);
@@ -1411,6 +1411,7 @@ export default function App() {
     }
     if (persist([entry, ...latest])) {
       pinSaveRow();
+      invalidateWorkspaceDraft();
       setSavedEntry({ id: entry.id, mode: 'view' });
       setJustSavedId(entry.id);
       navigation.address({ page: 'planner', planId: entry.id });
@@ -1452,6 +1453,7 @@ export default function App() {
 
   function cancelEditSaved() {
     if (!savedEntry) return;
+    invalidateWorkspaceDraft();
     const latest = loadPlans();
     const original = latest.find((p) => p.id === savedEntry.id);
     if (!original) {

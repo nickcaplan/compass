@@ -5,8 +5,6 @@ import { supabase, authController, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './s
 
 const resetNotice = 'If an account exists for that email, check your inbox and spam folder for a reset link. If you requested one recently, please wait before trying again.';
 
-function recipientCooldown(err: AuthErrorLike): boolean { return /after \d+ seconds?/i.test(err?.message ?? ''); }
-
 type Mode = 'signin' | 'signup' | 'reset' | 'update';
 type AuthErrorLike = { code?: string; message?: string } | null;
 function authErrorMessage(err: AuthErrorLike, fallback: string): string {
@@ -43,13 +41,13 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
     event.preventDefault();
     if (busy) return;
     setError(null); setNotice(null);
-    if (!beforeEmail(email)) { setError('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.'); return; }
+    if (activeMode !== 'update' && !beforeEmail(email)) { setError('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.'); return; }
     setBusy(true);
     try {
       if (activeMode === 'reset') {
-        const result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
-        if (result.error && !recipientCooldown(result.error)) { setError(authErrorMessage(result.error, 'Could not request a reset email. Please try again.')); return; }
-        // Success and recipient cooldown expose the same truthful, conditional status.
+        await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
+        // Provider outcomes, including account-dependent delivery failures,
+        // expose the same truthful, conditional status.
         // This is UI privacy only; the provider API still exposes its own errors.
         setNotice(resetNotice);
       } else if (activeMode === 'signup') {
