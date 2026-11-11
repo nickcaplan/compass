@@ -759,7 +759,7 @@ export default function App() {
   useEffect(() => {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
   });
-  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
+  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && briefValues(brief) !== briefValues(submittedBrief);
   const missingForRegeneration = editingSaved ? [
     !(brief.markets?.length) && 'Market',
     !brief.objectives.length && 'Objective',
