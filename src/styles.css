@@ -540,6 +540,7 @@ input.ctl{color:var(--text)}
 .ctl[aria-invalid="true"]{border:2px solid var(--date-error);box-shadow:0 0 0 1px var(--date-error)}
 .date-error{color:var(--date-error);font-weight:600}
 
+.stale-plan-note{margin:0 0 20px;padding:12px 14px;border:1px solid var(--accent-line);border-radius:10px;background:rgba(254,202,10,.05);color:var(--text);font-size:13px;line-height:1.5}
 /* Destructive confirmation only, never the Edit or primary plan actions. */
 .confirm .btn.destructive{background:#B42332;color:#fff;border:1px solid #B42332;box-shadow:none}
 .confirm .btn.destructive:hover{background:#971D2A;border-color:#971D2A}

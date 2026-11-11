@@ -759,7 +759,7 @@ export default function App() {
   useEffect(() => {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
   });
-  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
+  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && briefValues(brief) !== briefValues(submittedBrief);
   const missingForRegeneration = editingSaved ? [
     !(brief.markets?.length) && 'Market',
     !brief.objectives.length && 'Objective',
@@ -1605,6 +1605,9 @@ export default function App() {
                   : 'Recommended plan'}</h2>
                 {viewingSaved || editingSaved ? <div className="cap">{editingSaved ? 'SAVED PLAN - EDITING BRIEF' : 'SAVED PLAN - READ ONLY'}</div> : <DemoCap />}
               </div>
+              {editsNotGenerated && (
+                <p className="stale-plan-note" role="status">Your brief has changed. These figures are from your previous plan. Regenerate your plan to include your latest changes before saving.</p>
+              )}
               <div className="metrics">
                 {plan.metrics.map((m) => (
                   <div className="metric" key={m.k}>
@@ -1667,9 +1670,6 @@ export default function App() {
                   </>
                 ) : editingSaved ? (
                   <>
-                    {editsNotGenerated && (
-                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
-                    )}
                     <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save changes
@@ -1681,9 +1681,6 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    {editsNotGenerated && (
-                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
-                    )}
                     <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save plan
