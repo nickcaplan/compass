@@ -52,3 +52,10 @@ committed to.
 - THH brand: Poppins and Roboto, THH yellow, the real THH logo.
 - The plan content scales sensibly when the budget or dates change, and stays
   internally consistent (spend adds up to the budget entered).
+
+## Style and review requirements
+
+- Use ordinary ASCII hyphens for prose dashes, not en dashes or em dashes (confirmed 31 October 2026).
+- Match objective/KPI colours across Planner and My plans, keep ordinary saved-card metadata neutral and use red for destructive Delete confirmation. Active cards have equal Edit/Open actions; expired plans are read-only. Save success stays with the action, and missing Regenerate answers are explained beside it. Detailed decisions and source PRs are in [decisions.md](decisions.md).
+- Before calling a visible change ready, inspect hosted phone/desktop, light/dark and enlarged-text states. Make separate whole-journey and whole-page passes: controls, repeated actions, loading/errors, then hierarchy, spacing, readability and consistency. Passing tests or finding no overlap is not a design verdict (confirmed 5 November 2026).
+- Check performance after changes (confirmed 2 November 2026). For loading or animation changes, compare like-for-like phone/desktop cold/warm measurements before and after, flag measured slowdowns before merge and check production after deployment. A missing baseline is unmeasured, not zero impact.

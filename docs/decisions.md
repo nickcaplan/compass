@@ -182,3 +182,17 @@ Unselected Awareness, Consideration and Performance choices use the same
 outline and text treatment. Objective shades begin when selected; KPIs keep
 their objective colour coding. This supersedes distinct unselected Objective
 outlines only, not the selected or KPI shades.
+
+## 2026-11-11 - Colour hierarchy and saved-plan actions
+
+Objective and related KPI colours match in the Planner and saved-plan summaries ([#63](https://github.com/nickcaplan/compass/pull/63), requested 3-4 November). My plans keeps ordinary metadata neutral; only objectives retain their accents ([#76](https://github.com/nickcaplan/compass/pull/76)). The existing 10 November rule for identical unselected Objective chips still applies. Destructive Delete plan confirmation uses red, not the primary yellow ([#84](https://github.com/nickcaplan/compass/pull/84)).
+
+Active saved cards offer equal-sized Edit and Open actions: Edit is primary yellow, Open is neutral. Expired saved plans have no Edit action and remain read-only through direct links and history; Share and PDF stay available. If an editing plan expires, return to read-only without saving its edits ([#81](https://github.com/nickcaplan/compass/pull/81), [#80](https://github.com/nickcaplan/compass/pull/80)). This does not adopt the separate unmerged dark-outline or Planner-layout proposals.
+
+## 2026-11-11 - Save feedback stays with the action
+
+Confirm successful saves on the action itself with a green tick and Saved state, not a top success toast (requested 1 November). New and edited saves enter the read-only view with View all plans. Keep the tapped action row visually steady rather than letting the shorter page jump. Storage failures still need error feedback ([#17](https://github.com/nickcaplan/compass/pull/17), [#19](https://github.com/nickcaplan/compass/pull/19), [#23](https://github.com/nickcaplan/compass/pull/23), [#61](https://github.com/nickcaplan/compass/pull/61)).
+
+## 2026-11-11 - Explain disabled Regenerate locally
+
+List missing required answers beside the disabled Regenerate button and clear the hint when corrected. Name every missing answer; do not silently infer Market or change validation. Complete unchanged saved briefs can still regenerate ([#96](https://github.com/nickcaplan/compass/pull/96)). The earlier removal of the generic audience helper is not a ban on relevant validation feedback.
