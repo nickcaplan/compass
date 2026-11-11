@@ -9,7 +9,7 @@ test('publisher explanations span the complete row without disturbing stats', {t
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
  try{
   const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('Preview not ready')),10000);server.once('error',reject);server.stdout.on('data',chunk=>{out+=stripVTControlCharacters(chunk.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
-  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
   const page=await browser.newPage();await seedPlannerFixture(page);await page.goto(url+'?demo=1');await page.locator('.demofill').click();await page.waitForSelector('.planin .act',{timeout:20000});await page.evaluate(()=>document.fonts.ready);
   for(const width of [320,375,390,414,640,768,820,980,981,1000,1199,1200,1440,1920])for(const theme of ['light','dark']){
    await page.setViewport({width,height:900});await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);

@@ -14,7 +14,7 @@ test('fourth review keeps draft sources until writes succeed and fences failed-r
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
  try{
  const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('Preview unavailable')),10000);server.once('error',reject);server.stdout.on('data',b=>{out+=stripVTControlCharacters(b.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
- browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+ browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
  for(const width of [390,1440]){
  const context=await browser.createBrowserContext(),p=await context.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});let failLogin=false;
  await p.setRequestInterception(true);p.on('request',r=>{if(!r.url().includes('supabase.co'))return r.continue();const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS'};if(r.method()==='OPTIONS')return r.respond({status:204,headers});return r.respond({status:failLogin&&r.url().includes('/token')?400:200,headers,contentType:'application/json',body:JSON.stringify(r.url().includes('/token')?(failLogin?{msg:'Invalid login credentials'}:session('a')):user('a'))})});

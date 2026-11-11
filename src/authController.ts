@@ -4,7 +4,7 @@ const URL = 'https://ctailpmcoyvaplwbwskf.supabase.co';
 const KEY = 'sb_publishable_J3Kaa7y4KExb-ICrCA1FIA_z4lYfhG7';
 const STORE = 'state';
 const SESSION_KEY = 'compass-session-v2';
-type State = { generation: number; values: Record<string, string>; callback?: string; pendingCallback?: string; recovery?: { generation: number; userId: string } };
+type State = { generation: number; values: Record<string, string>; callback?: string; pendingCallback?: string; callbackClaim?: string; recovery?: { generation: number; userId: string } };
 type Listener = (event: AuthChangeEvent, session: Session | null) => void;
 class StaleGeneration extends Error {}
 const stale = () => new StaleGeneration('Your session changed. Please try again.');
@@ -187,20 +187,30 @@ export class AuthController {
       } else {
         // Claim the one-time callback before network work. A second tab cannot
         // reuse its authority, and the bound generation cannot become newer.
+        const claim = crypto.randomUUID();
         await this.transaction((latest, store) => {
           if (latest.generation !== state.generation || latest.callback !== callback && latest.pendingCallback !== callback) throw stale();
-          store.put({ ...latest, callback: undefined, pendingCallback: undefined }, 'canonical');
+          store.put({ ...latest, callback: undefined, pendingCallback: undefined, callbackClaim: claim }, 'canonical');
         }, 'readwrite');
         this.recovery = fragment.get('type') === 'recovery';
         const client = this.client(state.generation, this.recovery);
-        const result = await client.auth.setSession({ access_token: fragment.get('access_token')!, refresh_token: fragment.get('refresh_token') ?? '' });
+        const result = await client.auth.setSession({ access_token: fragment.get('access_token')!, refresh_token: fragment.get('refresh_token') ?? '' }).catch(async error => {
+          await this.transaction((latest, store) => {
+            if (latest.generation === state.generation && latest.callbackClaim === claim && latest.values[SESSION_KEY] === state.values[SESSION_KEY])
+              store.put({ ...latest, callback, callbackClaim: undefined }, 'canonical');
+          }, 'readwrite');
+          throw error;
+        });
         if (result.error || (await this.read()).generation !== state.generation) this.recovery = false;
         if (result.error) this.callbackNotice = new Error('This log-in or reset link is invalid or has expired.');
         await this.transaction((latest, store) => {
-          if (latest.generation !== state.generation) throw stale();
+          if (latest.generation !== state.generation || latest.callbackClaim !== claim) throw stale();
           const session = this.session(latest);
           const recovery = this.recovery && !result.error && session ? { generation: latest.generation, userId: session.user.id } : undefined;
-          store.put({ ...latest, callback: undefined, pendingCallback: undefined, recovery }, 'canonical');
+          // Keep exclusive ownership until validation settles. A failed lookup
+          // with no accepted session may retry the same delivered link.
+          const accepted = session?.access_token === fragment.get('access_token');
+          store.put({ ...latest, callback: result.error && !accepted ? callback : undefined, pendingCallback: undefined, callbackClaim: undefined, recovery }, 'canonical');
           if (!result.error && session && result.data.session?.user.id === session.user.id && result.data.session.access_token === session.access_token) {
             this.acceptedCallback = { generation: latest.generation, userId: session.user.id };
           }

@@ -10,7 +10,7 @@ void import('./App.tsx').then(({ default: App }) => {
 }).catch(() => {
   root.render(<main className="wrap"><section className="card pagecard" role="alert">
     <h1>Compass could not start</h1>
-    <p>Check that browser storage is available, then reload. Your saved data has been left untouched.</p>
+    <p>Check your connection and that browser storage is available, then reload. The application may not have finished downloading. Your saved data has been left untouched.</p>
     <button type="button" className="btn" onClick={() => window.location.reload()}>Reload Compass</button>
   </section></main>);
 });

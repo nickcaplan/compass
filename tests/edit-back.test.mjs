@@ -9,7 +9,7 @@ test('Edit Back returns to its entry page, keeps Forward and guards changed edit
  const server=process.env.HOSTED_URL?null:spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
  try {
   const url=process.env.HOSTED_URL||await new Promise(resolve=>{let out='';server.stdout.on('data',d=>{out+=stripVTControlCharacters(d.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m)resolve(m[0])})});
-  browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
   for(const width of[390,1440])for(const theme of['light','dark'])for(const method of['browser','inpage']){
    const context=await browser.createBrowserContext(),page=await context.newPage();await seedPlannerFixture(page);await page.setViewport({width,height:900});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
    await page.goto(url+'?demo=1#/my-plans');await page.waitForSelector('.plancard');await page.waitForSelector('.toast',{hidden:true});await page.evaluate(t=>{localStorage.setItem('compass-theme',t);document.documentElement.dataset.theme=t},theme);

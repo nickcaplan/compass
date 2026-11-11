@@ -19,7 +19,7 @@ test('same-browser plan URLs survive refresh, history, cancellation and unavaila
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
  try{
  const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('preview timeout')),10000);server.stdout.on('data',c=>{out+=stripVTControlCharacters(c.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
- browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+ browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
  for(const width of [390,1440])for(const theme of ['light','dark']){
  const context=await browser.createBrowserContext();const page=await context.newPage();await seedPlannerFixture(page);page.setDefaultTimeout(8000);await page.setViewport({width,height:900});
  await page.goto(url+'?demo=1');await page.evaluate((entries)=>{localStorage.setItem('compass-saved-plans',JSON.stringify(entries));localStorage.setItem('compass-demo-seeded-v2','1')},entries);await page.reload();

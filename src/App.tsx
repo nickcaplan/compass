@@ -1508,12 +1508,12 @@ export default function App() {
     setToast(null);
     const sameWorkspace = route.page === 'planner' && !route.reload && route.planId === savedEntry?.id && Boolean(route.edit) === editingSaved;
     if (route.page !== 'signin' && !sameWorkspace && replacementReason() !== null) invalidateWorkspaceDraft();
-    if (route.page === 'planner' && route.planId === undefined && (viewingSaved || editingSaved)) {
+    if (route.page === 'planner' && route.planId === undefined && (savedBriefReadOnly || editingSaved)) {
       clearPlannerState();
     }
     // At this point navigation is either unchanged or an approved discard.
     // Do not carry a hidden edit onto My plans and ask again on the next Open.
-    if (route.page !== 'planner' && route.page !== 'signin' && (page === 'planner' || page === 'signin') && !viewingSaved) clearPlannerState();
+    if (route.page !== 'planner' && route.page !== 'signin' && (page === 'planner' || page === 'signin') && !savedBriefReadOnly) clearPlannerState();
     if (route.planId !== undefined) {
       const latest = loadPlans();
       const entry = latest.find(p => p.id === route.planId);
@@ -1716,7 +1716,7 @@ export default function App() {
 
   function openPlannerWorkspace() {
     // Reading a saved plan is complete; drafts, unsaved results and edits resume.
-    if (viewingSaved) {
+    if (savedBriefReadOnly) {
       clearPlannerState();
       navigation.navigate({ page: 'planner' });
       return;
@@ -1827,7 +1827,7 @@ export default function App() {
 
       {page === 'planner' && !unavailablePlan && (
         <>
-      {viewingSaved || editingSaved ? (
+      {savedBriefReadOnly || editingSaved ? (
         <header className="saved-page-head">
           <div className="saved-page-navigation">
             <button type="button" className="saved-back" onClick={() => editingSaved ? backFromEdit() : go('plans')}><IconBack />{editingSaved && window.history.state?.compassEditFrom === 'view' ? 'Back to plan' : 'View all plans'}</button>
