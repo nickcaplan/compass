@@ -1442,6 +1442,14 @@ export default function App() {
             )}
           </div>
 
+          {!viewingSaved && !editingSaved && stage === 'filling' && (
+            <div className="prog brief-progress" role="status">
+              <div className="bar" aria-hidden="true">
+                <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />
+              </div>
+              <div className="t">{count} OF 6 ANSWERED</div>
+            </div>
+          )}
           <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
