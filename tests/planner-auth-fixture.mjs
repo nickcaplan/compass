@@ -9,9 +9,11 @@ export const fixtureUser = {
   created_at: '2026-01-01T00:00:00Z',
 };
 export function handleFixtureAuthRequest(request) {
-  if (new URL(request.url()).hostname !== 'ctailpmcoyvaplwbwskf.supabase.co') return false;
+  const url = new URL(request.url());
+  if (url.hostname !== 'ctailpmcoyvaplwbwskf.supabase.co') return false;
   const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,PUT,OPTIONS' };
   if (request.method() === 'OPTIONS') void request.respond({ status: 204, headers });
+  else if (request.method() === 'POST' && url.pathname.endsWith('/token') && url.searchParams.get('grant_type') === 'refresh_token') void request.respond({ status:200, headers, contentType:'application/json', body:JSON.stringify({access_token:'planner-fixture-token',refresh_token:'planner-fixture-refresh',token_type:'bearer',expires_in:3600,user:fixtureUser}) });
   else void request.respond({ status: 200, headers, contentType: 'application/json', body: JSON.stringify(fixtureUser) });
   return true;
 }

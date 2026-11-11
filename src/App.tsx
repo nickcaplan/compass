@@ -1021,7 +1021,7 @@ export default function App() {
         }).catch(() => { /* Keep the current profile gate; never infer completion on failure. */ });
       }
     }).catch(error => { setAuthNotice(error instanceof Error ? error.message : 'Secure browser storage is unavailable. Log-in is paused.'); }).finally(() => setAuthInitializing(false));
-    void authController.ready.then(() => { if (authController.error) { setAuthNotice(authController.error.message); recoveryPrincipal.current = null; setRecoveringPassword(false); if (emailAuthCallback || googleOAuthCallback) { setPage('signin'); writePageUrl('signin'); } } });
+    void authController.ready.then(() => { navigation.settleAuth(); if (authController.error) { setAuthNotice(authController.error.message); recoveryPrincipal.current = null; setRecoveringPassword(false); if (emailAuthCallback || googleOAuthCallback) { setPage('signin'); writePageUrl('signin'); } } });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       applyAuthUser(session?.user ?? null, false, event === 'INITIAL_SESSION' || (event === 'TOKEN_REFRESHED' && initialSessionPending.current));
       if (!authController.recovering) { recoveryPrincipal.current = null; setRecoveringPassword(false); }

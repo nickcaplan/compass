@@ -101,6 +101,7 @@ export function usePlanNavigation(apply: (route: PlanRoute) => void, blocks: (ro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return {
+    settleAuth: () => { const route = readPlanRoute(); write(route, true); },
     navigate,
     pending,
     cancel: () => setPending(null),

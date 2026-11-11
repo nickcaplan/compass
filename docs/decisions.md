@@ -219,7 +219,8 @@ so a reload keeps the reset form while a new intent or successful completion
 removes that mode. The callback URL is cleaned even when verification fails.
 Runtime storage failure is fail-closed until reload, including pending writes.
 
-The pinned auth-js 2.118.0 default refresh path remains unchanged: no deprecated
+The validated Supabase SDK is pinned to2.119.0 in package.json and the lockfile.
+Its default refresh path remains unchanged: no deprecated
 custom lock, external lock wrapper or internal SDK patch. Two-tab regressions
 exercise concurrent same-generation refresh with a delayed successful rotation
 and an already-used-token rejection. Generation fences cover replacement and
