@@ -58,9 +58,9 @@ test('unfinished drafts stay with their account or bound anonymous flow across l
   // Recovery reload keeps the validated edit selection, not only its text.
   await p.evaluate(async ({key,s,d})=>{await window.fixtureAuth.setItem(key,JSON.stringify(s));const plans=JSON.parse(localStorage.getItem('compass-saved-plans'));window.fixtureEditId=plans[0].id;localStorage.setItem('compass-auth-draft:account:account-a',JSON.stringify({...d,savedEntry:{id:plans[0].id,mode:'edit'}}));},{key,s:session('account-a'),d:snap('Recovery saved edit',{accountId:'account-a'})});
   await fixtureNavigation(p,url+'?demo=1#type=recovery');
-  await p.waitForFunction(()=>JSON.parse(localStorage.getItem('compass-auth-draft:account:account-a'))?.savedEntry?.mode==='edit');
+  await p.waitForFunction(()=>Object.keys(localStorage).filter(k=>k.startsWith('compass-auth-draft:account:account-a:plan:')).map(k=>JSON.parse(localStorage.getItem(k))).find(s=>s.savedEntry?.mode==='edit')?.savedEntry?.mode==='edit');
   await p.reload();await p.waitForSelector('.cancel-recovery');
-  assert.deepEqual(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:account:account-a')).savedEntry),await p.evaluate(()=>({id:window.fixtureEditId??JSON.parse(localStorage.getItem('compass-saved-plans'))[0].id,mode:'edit'})));
+  assert.deepEqual(await p.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('compass-auth-draft:account:account-a:plan:')).map(k=>JSON.parse(localStorage.getItem(k))).find(s=>s.savedEntry?.mode==='edit').savedEntry),await p.evaluate(()=>({id:window.fixtureEditId??JSON.parse(localStorage.getItem('compass-saved-plans'))[0].id,mode:'edit'})));
   // A Google return can restore only its originating tab's one-time flow.
   const googleCtx=await browser.createBrowserContext(),g=await googleCtx.newPage();g.setDefaultTimeout(7000);
   await g.setRequestInterception(true);g.on('request',req=>{if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};return req.respond({status:req.method()==='OPTIONS'?204:200,headers,contentType:'application/json',body:req.method()==='OPTIONS'?'':JSON.stringify({...user('account-b'),app_metadata:{provider:'email',providers:['email','google']}})})});

@@ -29,7 +29,7 @@ function authErrorMessage(err: AuthErrorLike, fallback: string): string {
 
 export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail, recoveryUserId, isRecoveryCurrent }: {
   recoveryUserId: string | null; isRecoveryCurrent: (id: string) => boolean;
-  idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string) => void;
+  idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string) => boolean;
 }) {
   const [mode, setMode] = useState<Mode>('signin');
   const activeMode = recovery ? 'update' : mode;
@@ -42,7 +42,9 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
-    setError(null); setNotice(null); setBusy(true); beforeEmail(email);
+    setError(null); setNotice(null);
+    if (!beforeEmail(email)) { setError('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.'); return; }
+    setBusy(true);
     try {
       if (activeMode === 'reset') {
         const result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });

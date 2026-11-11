@@ -838,23 +838,27 @@ export default function App() {
     try {
       const current = latestPlanner.current;
       const snap = { ...current, binding, stage: current.stage === 'generating' ? 'filling' : current.stage, ts: Date.now() };
-      window.localStorage.setItem(bindingKey(binding), JSON.stringify(snap));
+      const key = 'accountId' in binding && current.savedEntry ? accountDraftKey(binding.accountId) + ':plan:' + encodeURIComponent(current.savedEntry.id) : bindingKey(binding);
+      window.localStorage.setItem(key, JSON.stringify(snap));
       return true;
     } catch { return false; }
   }
   function beginEmail(email: string) {
     setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n);
-    if (currentAccount.current) { stashAuthDraft(); return; }
+    if (currentAccount.current) return stashAuthDraft();
     const binding: DraftBinding = { email: email.trim().toLowerCase() };
     const previous = anonymousBinding.current;
     if (previous && ('email' in previous ? previous.email !== binding.email : true)) {
-      stashAuthDraft(previous);
+      if (!stashAuthDraft(previous)) {
+        setAuthNotice('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.');
+        return false;
+      }
       clearPlannerState();
     }
     // The first submitted address owns this anonymous attempt, even if it fails.
     anonymousBinding.current = binding;
     try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
-    stashAuthDraft(binding);
+    return stashAuthDraft(binding);
   }
   const mayRestoreAuthDraft = useRef(false);
   function restoreAuthDraft(allowSignIn = false) {
@@ -889,7 +893,7 @@ export default function App() {
       const selectedSaved = live.savedEntry ? loadPlans().find(p => p.id === live.savedEntry!.id) : null;
       const pristineSelection = selectedSaved && briefValues(live.brief) === briefValues(selectedSaved.brief);
       if (hasPlannerWork() && !pristineSelection) return;
-      const keys = [accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
+      const keys = [...Object.keys(window.localStorage).filter(key => key.startsWith(accountDraftKey(user.id) + ':plan:')), accountDraftKey(user.id), ...(user.email ? [emailDraftKey(user.email)] : []), ...(flow ? [googleDraftKey(flow)] : [])];
       const candidates = keys.flatMap(key => {
         try {
           const raw = window.localStorage.getItem(key);
@@ -898,12 +902,12 @@ export default function App() {
             bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, flow) ? [{ key, snap }] : [];
         } catch { return []; }
       }).sort((a, b) => b.snap.ts - a.snap.ts);
-      for (const { snap } of candidates) {
+      for (const { key, snap } of candidates) {
         const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
         // A routed selection may resume only its own stored edit, never an
         // unrelated account draft merely because its text is still pristine.
         if (pristineSelection && (entry?.id !== live.savedEntry?.id || entry?.mode !== live.savedEntry?.mode)) continue;
-        for (const candidate of candidates) window.localStorage.removeItem(candidate.key);
+        window.localStorage.removeItem(key);
         const restoredEntry: { id: string; mode: 'view' | 'edit' } | null = entry && typeof entry.id === 'string' &&
           (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)
           ? { id: entry.id, mode: entry.mode } : null;
@@ -935,16 +939,22 @@ export default function App() {
       const snap: unknown = raw ? JSON.parse(raw) : null;
       if (!isAuthDraft(snap) || Date.now() - snap.ts > 60 * 60 * 1000 ||
         !bindingMatches((snap as typeof snap & { binding?: unknown }).binding, user, null)) return;
-      stashAuthDraft({ accountId: user.id });
+      if (!stashAuthDraft({ accountId: user.id })) throw new Error('Draft storage unavailable');
       // Swap versions so neither is discarded, including across a reload.
       const live = latestPlanner.current;
       const current = { ...live, stage: live.stage === 'generating' ? 'filling' : live.stage, binding: { accountId: user.id }, ts: Date.now() };
       window.localStorage.setItem(earlierDraftKey, JSON.stringify(current));
+      const entry = (snap as typeof snap & { savedEntry?: { id?: unknown; mode?: unknown } }).savedEntry;
+      const original = entry && typeof entry.id === 'string' ? loadPlans().find(p => p.id === entry.id) : null;
+      const selection: {id: string; mode: 'view' | 'edit'} | null = original && (entry?.mode === 'edit' || entry?.mode === 'view') ? {id:original.id,mode:entry.mode} : null;
+      const restoredStage = snap.stage === 'generating' ? 'filling' : snap.stage;
+      editBaseline.current = selection?.mode === 'edit' ? original!.brief : null;
       setBrief(snap.brief); setSubmittedBrief(snap.submittedBrief); setBudgetText(snap.budgetText);
-      setStage(snap.stage === 'generating' ? 'filling' : snap.stage); setSavedEntry(null);
-      latestPlanner.current = { brief: snap.brief, submittedBrief: snap.submittedBrief, budgetText: snap.budgetText, stage: snap.stage, savedEntry: null };
+      setStage(restoredStage); setSavedEntry(selection);
+      latestPlanner.current = { brief: snap.brief, submittedBrief: snap.submittedBrief, budgetText: snap.budgetText, stage: restoredStage, savedEntry: selection };
+      navigation.address(selection ? {page:'planner',planId:selection.id,edit:selection.mode==='edit'} : {page:'planner'});
       stashAuthDraft({ accountId: user.id });
-    } catch { /* Storage failure leaves the current work unchanged. */ }
+    } catch { setAuthNotice('Could not keep both drafts in this browser. Your current answers are still here. Free some browser storage and try again.'); }
   }
 
   useEffect(() => {
@@ -1285,13 +1295,27 @@ export default function App() {
     startFresh();
   }
 
+  function invalidateWorkspaceDraft() {
+    const user = currentAccount.current;
+    const binding = user ? {accountId:user.id} : anonymousBinding.current;
+    if (!binding) return;
+    const selected = latestPlanner.current.savedEntry;
+    try {
+      for (const key of Object.keys(window.localStorage)) {
+        if (!key.startsWith(AUTH_DRAFT_KEY + ':')) continue;
+        let snap;
+        try { snap = JSON.parse(window.localStorage.getItem(key) ?? 'null'); } catch { continue; }
+        const owned = user ? bindingMatches(snap?.binding, user, null) : JSON.stringify(snap?.binding) === JSON.stringify(binding);
+        if (owned && (snap?.savedEntry?.id ?? null) === (selected?.id ?? null) && !key.endsWith(':earlier-google')) window.localStorage.removeItem(key);
+      }
+    } catch { /* Private storage may be unavailable. */ }
+  }
+
   function startFresh() {
     setConfirmReset(false);
+    invalidateWorkspaceDraft();
     try {
       window.localStorage.removeItem(AUTH_DRAFT_KEY);
-      const owner = currentAccount.current;
-      if (owner) window.localStorage.removeItem(accountDraftKey(owner.id));
-      if (anonymousBinding.current) window.localStorage.removeItem(bindingKey(anonymousBinding.current));
       window.sessionStorage.removeItem(AUTH_FLOW_KEY);
     } catch { /* private mode */ }
     anonymousBinding.current = null;
@@ -1454,6 +1478,8 @@ export default function App() {
     clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
+    const sameWorkspace = route.page === 'planner' && !route.reload && route.planId === savedEntry?.id && Boolean(route.edit) === editingSaved;
+    if (route.page !== 'signin' && !sameWorkspace && replacementReason() !== null) invalidateWorkspaceDraft();
     if (route.page === 'planner' && route.planId === undefined && (viewingSaved || editingSaved)) {
       clearPlannerState();
     }
@@ -1618,7 +1644,7 @@ export default function App() {
           isRecoveryCurrent={id => recoveryPrincipal.current === id && currentAccount.current?.id === id} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); stashAuthDraft({ accountId: user.id });
           try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
           anonymousBinding.current = null;
-          setRecoveringPassword(false); setAuthNotice(null); go('planner'); }} />
+          setRecoveringPassword(false); setAuthNotice(null); const selection = latestPlanner.current.savedEntry; navigation.navigate(selection ? {page:'planner',planId:selection.id,edit:selection.mode==='edit'} : {page:'planner'}); }} />
         {recoveringPassword && (
           <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
             Cancel password reset
@@ -1652,7 +1678,6 @@ export default function App() {
   async function cancelRecovery() {
     // Local scope: cancelling a reset must not sign the visitor out on other devices.
     await signOut('Password reset cancelled - log in with your current password.', 'local');
-    setRecoveringPassword(false);
   }
 
   function openPlan(entry: SavedPlan) {

@@ -178,18 +178,18 @@ export class AuthController {
   }
 
   /** New intent retires every older operation, including in other tabs. */
-  private async begin(clear = false, callback?: string) {
+  private async begin(clear = false, callback?: string, preserveCallback = false) {
     await this.ready;
     if (this.failure) throw this.failure;
     this.callbackNotice = null;
     this.recovery = false;
     const state = await this.transaction((previous, store) => {
-      const next = { generation: previous.generation + 1, values: clear ? {} : previous.values, callback };
-      store.put(next, 'canonical'); return next;
+      const next = { generation: previous.generation + 1, values: clear ? {} : previous.values, callback: preserveCallback ? previous.callback : callback };
+      store.put(next, 'canonical'); return { ...next, previousCallback: previous.callback };
     }, 'readwrite');
     this.channel?.postMessage({ generation: state.generation });
     await this.publish('SIGNED_IN', state.generation);
-    return { generation: state.generation, auth: this.client(state.generation).auth };
+    return { generation: state.generation, previousCallback: state.previousCallback, auth: this.client(state.generation).auth };
   }
 
   async run<T>(work: (auth: SupabaseClient['auth']) => Promise<T>, clear = false) {
@@ -200,13 +200,20 @@ export class AuthController {
     return result;
   }
 
-  async redirect<T>(work: (auth: SupabaseClient['auth'], redirectTo: string) => Promise<T>) {
+  async redirect<T>(work: (auth: SupabaseClient['auth'], redirectTo: string) => Promise<T>, preserveFailed = false) {
     const token = crypto.randomUUID();
-    const operation = await this.begin(false, token);
+    const operation = await this.begin(false, token, preserveFailed);
     const url = new window.URL(window.location.origin);
     if (new URLSearchParams(window.location.search).get('demo') === '1') url.searchParams.set('demo', '1');
     url.searchParams.set('compassAuth', token);
     const result = await work(operation.auth, url.toString());
+    if (preserveFailed && !(result && typeof result === 'object' && 'error' in result && result.error)) {
+      await this.transaction((state, store) => {
+        // Keep an already delivered link usable while a resend is pending or
+        // fails. A newer intent or consumed old link must not be overwritten.
+        if (state.generation === operation.generation && state.callback === operation.previousCallback) store.put({...state, callback:token}, 'canonical');
+      }, 'readwrite');
+    }
     if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
     return result;

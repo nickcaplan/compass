@@ -50,7 +50,7 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         await page.waitForSelector('.metrics');
         // Inspect the immediate synchronous stash, before any navigation or reload
         // can repair latestPlanner via the layout effect.
-        const entry = await page.evaluate(() => JSON.parse(localStorage.getItem('compass-auth-draft:account:saved-link-fixture')).savedEntry);
+        const entry = await page.evaluate(mode => JSON.parse(localStorage.getItem('compass-auth-draft:account:saved-link-fixture'+(mode==='missing'?'':':plan:saved-entry'))).savedEntry, mode);
         assert.deepEqual(entry, mode === 'missing' ? null : { id: 'saved-entry', mode });
         await page.reload();
         await page.waitForSelector('.metrics');

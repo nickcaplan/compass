@@ -39,6 +39,7 @@ async function generateExample(page) {
 // unexpired stored session without a network call, so this needs no live
 // Supabase project or credentials.
 async function signInTestUser(page) {
+  await page.setRequestInterception(true);page.on('request',r=>r.url().includes('supabase.co')?r.abort():r.continue());
   await installAuthFixture(page);
   await page.evaluateOnNewDocument(async () => {
     const session = {

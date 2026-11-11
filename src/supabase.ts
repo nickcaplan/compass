@@ -15,7 +15,7 @@ export const supabase = { auth: {
   onAuthStateChange: authController.onAuthStateChange.bind(authController),
   signInWithPassword: (...args: Parameters<Auth['signInWithPassword']>) => authController.run(auth => auth.signInWithPassword(...args)),
   signUp: (...args: Parameters<Auth['signUp']>) => authController.redirect((auth, url) => auth.signUp({ ...args[0], options: { ...args[0].options, emailRedirectTo: url } })),
-  resetPasswordForEmail: (...args: Parameters<Auth['resetPasswordForEmail']>) => authController.redirect((auth, url) => auth.resetPasswordForEmail(args[0], { ...args[1], redirectTo: url })),
+  resetPasswordForEmail: (...args: Parameters<Auth['resetPasswordForEmail']>) => authController.redirect((auth, url) => auth.resetPasswordForEmail(args[0], { ...args[1], redirectTo: url }), true),
   signInWithOAuth: (...args: Parameters<Auth['signInWithOAuth']>) => authController.redirect((auth, url) => auth.signInWithOAuth({ ...args[0], options: { ...args[0].options, redirectTo: url } })),
   signOut: (...args: Parameters<Auth['signOut']>) => authController.signOut(args[0]?.scope),
 } };
