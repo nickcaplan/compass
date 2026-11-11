@@ -13,7 +13,7 @@ test('Edit Back returns to its entry page, keeps Forward and guards changed edit
    const context=await browser.createBrowserContext(),page=await context.newPage();await page.setViewport({width,height:900});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
    await page.goto(url+'?demo=1#/my-plans');await page.waitForSelector('.plancard');await page.waitForSelector('.toast',{hidden:true});await page.evaluate(t=>{localStorage.setItem('compass-theme',t);document.documentElement.dataset.theme=t},theme);
    await page.$$eval('.pc-actions button',bs=>bs.find(b=>/Open plan/.test(b.textContent)).click());await page.waitForSelector('.saved-plan-edit');const viewUrl=page.url();
-   await page.locator('.saved-plan-edit').click();await page.waitForSelector('#f-name');const name=await page.$eval('#f-name',e=>e.value);
+   await page.evaluate(()=>document.fonts.ready);if(method==='browser'){const editButton=await page.$('.saved-plan-edit');await editButton.focus();assert.equal(await page.$eval('.saved-plan-edit',e=>document.activeElement===e),true);await page.keyboard.press('Enter')}else{await page.locator('.saved-plan-edit').click()}await page.waitForSelector('#f-name');const name=await page.$eval('#f-name',e=>e.value);
    if(!process.env.BEFORE)assert.equal(page.url(),viewUrl+'/edit');
    if(method==='browser')await page.goBack();else await page.locator('.saved-back').click();
    if(process.env.BEFORE){await page.waitForSelector('.plancard')}else{await page.waitForSelector('.bsum');assert.equal(page.url(),viewUrl);assert.equal(await page.$('#f-name'),null);assert.equal(await page.$('[role=alertdialog]'),null)}
