@@ -1,3 +1,4 @@
+import { seedPlannerFixture } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {stripVTControlCharacters} from 'node:util';
@@ -20,7 +21,7 @@ test('same-browser plan URLs survive refresh, history, cancellation and unavaila
  const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('preview timeout')),10000);server.stdout.on('data',c=>{out+=stripVTControlCharacters(c.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
  for(const width of [390,1440])for(const theme of ['light','dark']){
- const context=await browser.createBrowserContext();const page=await context.newPage();page.setDefaultTimeout(8000);await page.setViewport({width,height:900});
+ const context=await browser.createBrowserContext();const page=await context.newPage();await seedPlannerFixture(page);page.setDefaultTimeout(8000);await page.setViewport({width,height:900});
  await page.goto(url+'?demo=1');await page.evaluate((entries)=>{localStorage.setItem('compass-saved-plans',JSON.stringify(entries));localStorage.setItem('compass-demo-seeded-v2','1')},entries);await page.reload();
  // Start without a hash so the router's initial replaceState is an explicit readiness signal.
  await page.evaluate(t=>{localStorage.setItem('compass-theme',t);history.replaceState(null,'',location.pathname+location.search)},theme);await page.reload();await hash(page,'#/planner');
@@ -66,6 +67,6 @@ test('same-browser plan URLs survive refresh, history, cancellation and unavaila
  await context.close();
  }
  const fresh=await browser.newPage();await fresh.goto(url+'?demo=1#/planner/campaign-one');await fresh.waitForSelector('[aria-label="Plan unavailable"]');
- await fresh.evaluateOnNewDocument(()=>{Storage.prototype.getItem=()=>{throw Error('blocked')}});await fresh.reload();await fresh.waitForSelector('[aria-label="Plan unavailable"]');assert.match(await fresh.$eval('[aria-label="Plan unavailable"]',e=>e.textContent),/left untouched/);
+ await fresh.evaluateOnNewDocument(()=>{const get=Storage.prototype.getItem;Storage.prototype.getItem=function(key){if(key==='compass-saved-plans')throw Error('blocked');return get.call(this,key)}});await fresh.reload();await fresh.waitForSelector('[aria-label="Plan unavailable"]');assert.match(await fresh.$eval('[aria-label="Plan unavailable"]',e=>e.textContent),/left untouched/);
  }finally{await browser?.close();server.kill()}
 });

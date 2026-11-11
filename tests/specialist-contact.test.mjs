@@ -1,3 +1,4 @@
+import { seedPlannerFixture, handleFixtureAuthRequest } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {stripVTControlCharacters} from 'node:util';
@@ -24,12 +25,14 @@ test('specialist link preserves presentation and opens only the verified contact
  });
  await client.send('Target.setAutoAttach',{autoAttach:true,waitForDebuggerOnStart:true,flatten:true});
  for(const width of[390,1440]){
-  const page=await browser.newPage();await page.setViewport({width,height:900});
+  const context=await browser.createBrowserContext();const page=await context.newPage();await page.setViewport({width,height:900});
   // Required CI proves the link with fallback fonts; loaded-font visuals are
   // checked separately against the deployed preview.
+  await seedPlannerFixture(page, false);
   await page.setRequestInterception(true);
   page.on('request',request=>{
-   const host=new URL(request.url()).hostname;
+   if (handleFixtureAuthRequest(request)) return;
+    const host=new URL(request.url()).hostname;
    if(host==='fonts.googleapis.com'||host==='fonts.gstatic.com')void request.abort();
    else void request.continue();
   });
@@ -52,7 +55,7 @@ test('specialist link preserves presentation and opens only the verified contact
   // Enter must open the expected external URL in a new tab, with no payload.
   const targetPromise=browser.waitForTarget(t=>t.opener()===page.target());await page.keyboard.press('Enter');const target=await targetPromise;const popup=await target.page();
   await popup.waitForSelector('h1');assert.equal(await popup.title(),'Contact navigation fixture');assert.equal(new URL(popup.url()).origin,'https://thehybridhouse.co.uk');assert.equal(new URL(popup.url()).pathname,'/contact/');assert.equal(new URL(popup.url()).search,'');
-  assert.equal(await page.$('.toast'),null);await popup.close();await page.close();
+  assert.equal(await page.$('.toast'),null);await popup.close();await context.close();
  }
  }finally{await browser?.close();server.kill()}
 });

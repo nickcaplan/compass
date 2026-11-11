@@ -26,7 +26,7 @@ type Pending = { route: PlanRoute; delta?: number; ready: boolean };
 
 // Index our own entries so cancelling Back/Forward restores the original entry,
 // not a duplicate that traps the user or silently destroys Forward history.
-export function usePlanNavigation(apply: (route: PlanRoute) => void, blocks: (route: PlanRoute) => boolean) {
+export function usePlanNavigation(apply: (route: PlanRoute) => void, blocks: (route: PlanRoute) => boolean, authCallback = false) {
   const callbacks = useRef({ apply, blocks });
   useLayoutEffect(() => { callbacks.current = { apply, blocks }; });
   const current = useRef(readPlanRoute());
@@ -54,9 +54,11 @@ export function usePlanNavigation(apply: (route: PlanRoute) => void, blocks: (ro
   useEffect(() => {
     const stateIndex = window.history.state?.compassNavigation;
     index.current = typeof stateIndex === 'number' ? stateIndex : 0;
-    write(current.current, true);
-    callbacks.current.apply(current.current);
+    // Auth owns initial callback routing and token cleanup. Do not reset its page.
+    if (!authCallback) { write(current.current, true); callbacks.current.apply(current.current); }
     const onHistory = () => {
+      // Redirect tokens/errors belong to auth, including same-document callbacks.
+      if (window.location.hash && !window.location.hash.startsWith('#/')) return;
       if (seen.current === window.location.href) return;
       seen.current = window.location.href;
       const target = readPlanRoute();
