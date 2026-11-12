@@ -1643,6 +1643,7 @@ export default function App() {
       const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
         method: 'PUT', headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: { full_name: profileName.trim(), company: profileCompany.trim(), compass_profile_complete: true } }),
+        signal: AbortSignal.timeout(20_000),
       });
       const user = await response.json() as User;
       if (epoch !== authEpoch.current || currentAccount.current?.id !== id) return;
