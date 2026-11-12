@@ -6,7 +6,8 @@ import puppeteer from 'puppeteer-core';
 import {seedSession,readSession} from './helpers/auth-fixtures.mjs';
 const user=id=>({id,email:id+'@example.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{full_name:id,compass_profile_complete:true},created_at:'2026-01-01'});
 const session=id=>({access_token:'fixture-'+id,refresh_token:'fixture-refresh',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:user(id)});
-const brief=name=>({name,objectives:['awareness'],markets:['uk'],kpis:['Reach'],audiences:['Scientist / Researcher'],budget:10000,start:'2026-12-01',end:'2027-02-01'});
+const futureDate=days=>new Date(Date.now()+days*864e5).toISOString().slice(0,10);
+const brief=name=>({name,objectives:['awareness'],markets:['uk'],kpis:['Reach'],audiences:['Scientist / Researcher'],budget:10000,start:futureDate(30),end:futureDate(120)});
 const snap=(name,binding,entry=null)=>({brief:brief(name),submittedBrief:brief(name),stage:'plan',budgetText:'10000',savedEntry:entry,binding,ts:Date.now()});
 async function click(p,label){await p.waitForFunction(l=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim()===l),{},label);await p.evaluate(l=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===l).click(),label)}
 const until=async fn=>{const deadline=Date.now()+6000;while(!fn()){if(Date.now()>deadline)throw Error('Fixture condition timed out');await new Promise(r=>setTimeout(r,10))}};

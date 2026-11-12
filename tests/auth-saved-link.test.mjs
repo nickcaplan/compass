@@ -44,13 +44,14 @@ test('email login immediately preserves a restored saved-plan link in its accoun
           localStorage.setItem('compass-saved-plans', JSON.stringify([{ id: 'saved-entry', savedAt: '2026-11-01T12:00:00Z', brief: mode==='edit'?savedBrief:brief }]));
           localStorage.setItem('compass-auth-draft:account:saved-link-fixture', JSON.stringify({ binding: { accountId: 'saved-link-fixture' }, brief, submittedBrief: brief, stage: 'plan', budgetText: '10000', savedEntry: { id, mode: mode === 'missing' ? 'view' : mode }, ts: Date.now() }));
         }, mode);
+        await page.evaluate(()=>{window.snapshotWrites=[];const original=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k.startsWith('compass-auth-draft:account:'))window.snapshotWrites.push(JSON.parse(v));return original.call(this,k,v)}});
         await page.locator('#f-signin-email').fill(user.email);
         await page.locator('#f-signin-password').fill('fixture-password-only');
         await page.locator('form[aria-label="Email account"] .gen').click();
         await page.waitForSelector('.metrics');
         // Inspect the immediate synchronous stash, before any navigation or reload
         // can repair latestPlanner via the layout effect.
-        const entry = await page.evaluate(mode => JSON.parse(localStorage.getItem('compass-auth-draft:account:saved-link-fixture'+(mode==='missing'?'':':plan:saved-entry'+(mode==='view'?':view':'')))).savedEntry, mode);
+        const entry = await page.evaluate(() => window.snapshotWrites[0].savedEntry);
         assert.deepEqual(entry, mode === 'missing' ? null : { id: 'saved-entry', mode });
         await page.reload();
         await page.waitForSelector('.metrics');

@@ -744,17 +744,24 @@ export default function App() {
     } else if (!previous && user && hasPlannerWork() &&
       !(hydrating && !anonymousBinding.current) &&
       !bindingMatches(anonymousBinding.current, user, null)) {
-      // An unrelated login must not adopt an abandoned anonymous brief.
+      // Save the latest bound version before isolating it from an unrelated login.
+      const binding = anonymousBinding.current;
+      if (binding && !stashAuthDraft(binding)) {
+        failedBoundDrafts.current.set(bindingKey(binding), { binding, planner: latestPlanner.current });
+        setAuthNotice('Your earlier draft could not be saved. It is kept in this tab for its original login. Do not close this tab until you return to that login and save it.');
+      } else if (binding) failedBoundDrafts.current.delete(bindingKey(binding));
       clearPlannerState();
+      anonymousBinding.current = null;
     }
     if (user && !googleOAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
     currentAccount.current = user;
-    const retained = user && previous?.id !== user.id ? failedAccountDrafts.current.get(user.id) : null;
+    const boundRecovery = user && previous?.id !== user.id ? [...failedBoundDrafts.current.entries()].find(([,value]) => bindingMatches(value.binding, user, null)) : null;
+    const retained = user && previous?.id !== user.id ? failedAccountDrafts.current.get(user.id) ?? boundRecovery?.[1].planner : null;
     if (user && retained) {
       setBrief(retained.brief); setSubmittedBrief(retained.submittedBrief); setBudgetText(retained.budgetText); setStage(retained.stage); setSavedEntry(retained.savedEntry);
       editBaseline.current = retained.savedEntry?.mode === 'edit' ? loadPlans().find(p => p.id === retained.savedEntry!.id)?.brief ?? null : null;
       latestPlanner.current = retained;
-      if (stashAuthDraft({accountId:user.id})) failedAccountDrafts.current.delete(user.id);
+      if (stashAuthDraft({accountId:user.id})) { failedAccountDrafts.current.delete(user.id); if (boundRecovery && retained === boundRecovery[1].planner) failedBoundDrafts.current.delete(boundRecovery[0]); }
     }
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
@@ -816,6 +823,7 @@ export default function App() {
     latestPlanner.current = { brief, submittedBrief, savedEntry, budgetText, stage };
   }, [brief, submittedBrief, savedEntry, budgetText, stage]);
   const anonymousBinding = useRef<DraftBinding | null>(null);
+  const failedBoundDrafts = useRef(new Map<string, { binding: DraftBinding; planner: typeof latestPlanner.current }>());
   const failedAccountDrafts = useRef(new Map<string, typeof latestPlanner.current>());
   function activeGoogleFlow(): string | null {
     try { return window.sessionStorage.getItem(AUTH_FLOW_KEY); } catch { return null; }
@@ -1331,7 +1339,7 @@ export default function App() {
         let snap;
         try { snap = JSON.parse(window.localStorage.getItem(key) ?? 'null'); } catch { continue; }
         const owned = user ? bindingMatches(snap?.binding, user, null) : JSON.stringify(snap?.binding) === JSON.stringify(binding);
-        if (owned && (snap?.savedEntry?.id ?? null) === (selected?.id ?? null) && !key.endsWith(':earlier-google')) window.localStorage.removeItem(key);
+        if (owned && (snap?.savedEntry?.id ?? null) === (selected?.id ?? null) && (selected?.mode !== 'view' || snap?.savedEntry?.mode === 'view') && !key.endsWith(':earlier-google')) window.localStorage.removeItem(key);
       }
     } catch { /* Private storage may be unavailable. */ }
   }
@@ -1565,6 +1573,8 @@ export default function App() {
       try { window.sessionStorage.setItem(AUTH_FLOW_KEY, flow); } catch { persisted = false; }
       persisted = stashAuthDraft(anonymousBinding.current) && persisted;
     }
+    const startupPlanner = latestPlanner.current;
+    const startupPlannerValue = JSON.stringify(startupPlanner);
     let failed = !persisted;
     if (persisted) try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -1577,6 +1587,8 @@ export default function App() {
       googlePending.current = false;
       if (epoch !== authEpoch.current) return;
       setAuthNotice(persisted ? 'Google log-in failed - please try again' : 'Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.');
+      // Do not roll back text entered while provider startup was pending.
+      if (JSON.stringify(latestPlanner.current) !== startupPlannerValue) return;
       try {
         if (previousFlow) window.sessionStorage.setItem(AUTH_FLOW_KEY, previousFlow);
         else window.sessionStorage.removeItem(AUTH_FLOW_KEY);

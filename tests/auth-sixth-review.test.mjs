@@ -6,7 +6,8 @@ import puppeteer from 'puppeteer-core';
 import {seedSession} from './helpers/auth-fixtures.mjs';
 const user={id:'a',email:'a@example.com',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{full_name:'A',compass_profile_complete:true},created_at:'2026-01-01'};
 const session={access_token:'fixture-a',refresh_token:'fixture',token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,user};
-const brief=name=>({name,objectives:['awareness'],markets:['uk'],kpis:['Reach'],audiences:['Scientist / Researcher'],budget:10000,start:'2026-12-01',end:'2027-02-01'});
+const futureDate=days=>new Date(Date.now()+days*864e5).toISOString().slice(0,10);
+const brief=name=>({name,objectives:['awareness'],markets:['uk'],kpis:['Reach'],audiences:['Scientist / Researcher'],budget:10000,start:futureDate(30),end:futureDate(120)});
 const snap=(name,entry=null)=>({brief:brief(name),submittedBrief:brief(name),stage:'plan',budgetText:'10000',savedEntry:entry,binding:{accountId:'a'},ts:Date.now()});
 async function click(p,label){await p.waitForFunction(l=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim()===l),{},label);await p.evaluate(l=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===l).click(),label)}
 test('sixth review preserves saved edits against read-only departure, retires explicit discard and saves, and updates recovery under quota',{timeout:60000},async()=>{

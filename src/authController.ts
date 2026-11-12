@@ -316,7 +316,7 @@ export class AuthController {
     const response = await fetch(`${URL}/auth/v1/logout?scope=${scope}`, { method: 'POST', headers: { apikey: KEY, Authorization: `Bearer ${token}` } });
     if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
-    return { error: response.ok || response.status === 401 || response.status === 403 ? null : new Error('Remote logout failed') };
+    return { error: response.ok || scope === 'local' && (response.status === 401 || response.status === 403) ? null : new Error('Remote logout failed') };
   }
 
   async capture() { await this.ready; if (this.failure) throw this.failure; return (await this.read()).generation; }
