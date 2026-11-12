@@ -51,5 +51,5 @@ test('WCAG AA, keyboard focus and200% text on every route and Planner state',{ti
    const clipped=await page.$$eval('button',es=>es.filter(e=>e.clientWidth&&e.textContent.trim()&&e.scrollWidth>e.clientWidth+1).map(e=>e.textContent.trim()));assert.deepEqual(clipped,[],`${label}:200% clipped actions`);
    await context.close();
   }
- }finally{await browser?.close();server?.kill()}
+ }finally{try{await browser?.close()}finally{server?.kill()}}
 });
