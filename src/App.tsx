@@ -113,6 +113,7 @@ type ConfirmDialogProps = {
   title: string;
   body: string;
   confirmLabel: string;
+  destructive?: boolean;
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -121,7 +122,7 @@ type ConfirmDialogProps = {
 // Styled replacement for native browser confirms: overlay dialog with the
 // safe option focused by default, Escape or backdrop click to cancel, and
 // Tab trapped between the two actions.
-function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCancel, destructive = false }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const cancelCb = useRef(onCancel);
@@ -167,7 +168,7 @@ function ConfirmDialog({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
         <b>{title}</b>
         <p>{body}</p>
         <div className="row">
-          <button type="button" className="btn" onClick={onConfirm}>
+          <button type="button" className={`btn${destructive ? ' destructive' : ''}`} onClick={onConfirm}>
             {confirmLabel}
           </button>
           <button type="button" className="ghost" ref={cancelRef} onClick={() => cancelCb.current()}>
@@ -758,7 +759,15 @@ export default function App() {
   useEffect(() => {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
   });
-  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
+  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && briefValues(brief) !== briefValues(submittedBrief);
+  const missingForRegeneration = editingSaved ? [
+    !(brief.markets?.length) && 'Market',
+    !brief.objectives.length && 'Objective',
+    !brief.kpis.length && 'KPI',
+    !brief.audiences.some(a => AUDIENCES.includes(a)) && 'Audience',
+    !(brief.budget !== null && brief.budget > 0) && 'Budget',
+    !(weeks > 0 && !startNotFuture(brief.start)) && 'valid future campaign dates',
+  ].filter((answer): answer is string => Boolean(answer)) : [];
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -965,7 +974,7 @@ export default function App() {
     copyRequest.current += 1;
     window.clearTimeout(linkCopyTimer.current);
     setLinkCopy('idle');
-    navigation.address({ page: 'planner' });
+    navigation.navigate({ page: 'planner' }, false, true);
     window.scrollTo(0, 0);
   }
 
@@ -1116,7 +1125,7 @@ export default function App() {
     clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
-    if (route.page === 'planner' && route.planId === undefined && viewingSaved) {
+    if (route.page === 'planner' && route.planId === undefined && (viewingSaved || editingSaved)) {
       clearPlannerState();
     }
     // At this point navigation is either unchanged or an approved discard.
@@ -1476,9 +1485,12 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
+          {missingForRegeneration.length > 0 && stage !== 'generating' && (
+            <p id="regenerate-required" className="regenerate-required" role="status">{new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' }).format(missingForRegeneration)} must be selected.</p>
+          )}
             </>
           )}
         </section>
@@ -1593,6 +1605,9 @@ export default function App() {
                   : 'Recommended plan'}</h2>
                 {viewingSaved || editingSaved ? <div className="cap">{editingSaved ? 'SAVED PLAN - EDITING BRIEF' : 'SAVED PLAN - READ ONLY'}</div> : <DemoCap />}
               </div>
+              {editsNotGenerated && (
+                <p className="stale-plan-note" role="status">Your brief has changed. These figures are from your previous plan. Regenerate your plan to include your latest changes before saving.</p>
+              )}
               <div className="metrics">
                 {plan.metrics.map((m) => (
                   <div className="metric" key={m.k}>
@@ -1655,9 +1670,6 @@ export default function App() {
                   </>
                 ) : editingSaved ? (
                   <>
-                    {editsNotGenerated && (
-                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
-                    )}
                     <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save changes
@@ -1669,9 +1681,6 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    {editsNotGenerated && (
-                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
-                    )}
                     <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save plan
@@ -1757,10 +1766,6 @@ export default function App() {
               <div className="planlist">
               {savedPlans.filter((plan) => planFilter === 'all' || campaignEnded(plan.brief.end) === (planFilter === 'expired')).map((sp) => {
                 const wks = campaignWeeks(sp.brief.start, sp.brief.end);
-                const objLabels = sp.brief.objectives
-                  .map((id) => OBJECTIVES.find((o) => o.id === id)?.label ?? '')
-                  .filter((l) => l !== '')
-                  .join(' + ');
                 return (
                   <div className={`plancard${campaignEnded(sp.brief.end) ? ' is-expired' : ''}`} key={sp.id}>
                     <button type="button" className="ghost pc-share" aria-label={`${cardCopyId === sp.id && linkCopy === 'copied' ? 'Plan link copied' : 'Copy plan link'}: ${sp.brief.name || 'Untitled campaign'} - only works in this browser`} title="Copy plan link - only works in this browser" onClick={() => copyPlanLink(sp.id, true)}>
@@ -1778,7 +1783,10 @@ export default function App() {
                         {monthsRangeLabel(sp.brief.start, sp.brief.end) ? ` · ${monthsRangeLabel(sp.brief.start, sp.brief.end)}` : ''}
                       </b>
                       <div className="chips">
-                        {objLabels && <span className="chip pc-objective">{objLabels}</span>}
+                        {sp.brief.objectives.map(id => {
+                          const objective = OBJECTIVES.find(o => o.id === id);
+                          return objective ? <span className={`chip pc-objective obj-${id}`} key={id}>{objective.label}</span> : null;
+                        })}
                         <span className="chip pc-market" aria-label={`Market: ${marketLabels(sp.brief.markets) || 'Not specified'}`}>{marketLabels(sp.brief.markets) || 'Not specified'}</span>
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
@@ -1940,6 +1948,7 @@ export default function App() {
           title="Delete this saved plan?"
           body={`"${deleteTarget.brief.name || 'Untitled campaign'}" will be permanently deleted. This cannot be undone.`}
           confirmLabel="Delete plan"
+          destructive
           cancelLabel="Keep plan"
           onConfirm={() => {
             deletePlan(deleteTarget.id);
