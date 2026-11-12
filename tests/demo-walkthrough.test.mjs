@@ -110,8 +110,13 @@ test('example walkthrough generates automatically and respects interruptions', {
     await page.waitForSelector('[role=alertdialog]');
     await page.locator('.confirm .btn').click();
     await page.waitForSelector('[role=alertdialog]', {hidden:true});
-    await clickButton(page, 'Fill it in for me');
-    await clickButton(page, 'My plans');
+    // Keep navigation inside the intentional one-second fill pause. Two remote
+    // locator clicks can exceed it on a loaded runner and test a later state.
+    await page.evaluate(async () => {
+      [...document.querySelectorAll('button')].find(e => e.textContent.trim() === 'Fill it in for me').click();
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      [...document.querySelectorAll('button')].find(e => e.textContent.trim() === 'My plans').click();
+    });
     await page.waitForSelector('[role="alertdialog"]');
     await delay(1300);
     assert.equal(await page.$('.planin .metrics'), null);
