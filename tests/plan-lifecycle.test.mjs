@@ -14,15 +14,11 @@ const chromePath = process.platform === 'darwin'
 async function clickButton(page, label) {
   // The mobile toast temporarily overlays navigation; wait for it to clear.
   await page.waitForSelector('.toast', { hidden: true });
-  const handle = await page.evaluateHandle((text) =>
-    [...document.querySelectorAll('button')].find((button) => button.textContent.trim().replace(/\s*→$/, '') === text), label);
-  try {
-    const button = handle.asElement();
-    assert.ok(button, `Button not found: ${label}`);
-    await button.click();
-  } finally {
-    await handle.dispose();
-  }
+  // Locator waits for a stable bounding box after font/layout changes.
+  // A raw handle click can hit the card when the button moves on a busy runner.
+  const found = await page.evaluate(text => {const button=[...document.querySelectorAll('button')].find(button=>button.textContent.trim().replace(/\s*→$/, '')===text);if(!button)return false;document.querySelector('[data-test-click]')?.removeAttribute('data-test-click');button.setAttribute('data-test-click','target');return true},label);
+  assert.ok(found, `Button not found: ${label}`);
+  await page.locator('[data-test-click="target"]').click();
 }
 
 async function openSavedPlan(page) {
