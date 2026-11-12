@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import type { FormEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
@@ -33,7 +33,8 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
   const [mode, setMode] = useState<Mode>('signin');
   const activeMode = recovery ? 'update' : mode;
   const scope = `${activeMode}:${recoveryUserId ?? ''}`;
-  const currentScope = useRef(scope); currentScope.current = scope;
+  const currentScope = useRef(scope);
+  useLayoutEffect(() => { currentScope.current = scope; }, [scope]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [revealedMode, setRevealedMode] = useState<Mode | null>(null);

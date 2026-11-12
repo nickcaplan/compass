@@ -5,7 +5,7 @@ const URL = 'https://ctailpmcoyvaplwbwskf.supabase.co';
 const KEY = 'sb_publishable_J3Kaa7y4KExb-ICrCA1FIA_z4lYfhG7';
 const STORE = 'state';
 const SESSION_KEY = 'compass-session-v2';
-type State = { generation: number; values: Record<string, string>; callback?: string; pendingCallback?: string; callbackClaim?: string; recovery?: { generation: number; userId: string } };
+type State = { generation: number; values: Record<string, string>; callback?: string; pendingCallback?: string; retainedCallbacks?: string[]; callbackClaim?: string; recovery?: { generation: number; userId: string } };
 type Listener = (event: AuthChangeEvent, session: Session | null) => void;
 class StaleGeneration extends Error {}
 const stale = () => new StaleGeneration('Your session changed. Please try again.');
@@ -186,14 +186,14 @@ export class AuthController {
       await navigator.locks.request('compass-callback-validation', { ifAvailable: true }, async lock => {
       if (!lock) { this.callbackNotice = new Error('This link is being checked in another tab. Try again after that check finishes.'); return; }
       const state = await this.read();
-      if (!callback || callback !== state.callback && callback !== state.pendingCallback) {
+      if (!callback || callback !== state.callback && callback !== state.pendingCallback && !state.retainedCallbacks?.includes(callback)) {
         this.callbackNotice = new Error('This link does not match a current request in this browser. Open it in the browser where you requested it, or request a fresh link.');
       } else {
         // Claim the one-time callback before network work. A second tab cannot
         // reuse its authority, and the bound generation cannot become newer.
         const claim = crypto.randomUUID();
         await this.transaction((latest, store) => {
-          if (latest.generation !== state.generation || latest.callback !== callback && latest.pendingCallback !== callback) throw stale();
+          if (latest.generation !== state.generation || latest.callback !== callback && latest.pendingCallback !== callback && !latest.retainedCallbacks?.includes(callback)) throw stale();
           store.put({ ...latest, callbackClaim: claim }, 'canonical');
         }, 'readwrite');
         this.recovery = fragment.get('type') === 'recovery';
@@ -218,6 +218,7 @@ export class AuthController {
           store.put({ ...latest,
             callback: consumed && latest.callback === callback ? undefined : latest.callback,
             pendingCallback: consumed && latest.pendingCallback === callback ? undefined : latest.pendingCallback,
+            retainedCallbacks: consumed && session ? undefined : consumed ? latest.retainedCallbacks?.filter(token => token !== callback) : latest.retainedCallbacks,
             callbackClaim: undefined, recovery }, 'canonical');
           if (!result.error && session && result.data.session?.user.id === session.user.id && result.data.session.access_token === session.access_token) {
             this.acceptedCallback = { generation: latest.generation, userId: session.user.id };
@@ -247,12 +248,12 @@ export class AuthController {
     this.recovery = false;
     const state = await this.transaction((previous, store) => {
       if (expectedGeneration !== undefined && previous.generation !== expectedGeneration) throw stale();
-      const next = { generation: previous.generation + 1, values: clear ? {} : previous.values, callback: preserveCallback ? previous.callback : callback, pendingCallback: preserveCallback ? callback : undefined };
-      store.put(next, 'canonical'); return { ...next, previousCallback: previous.callback, previousPendingCallback: previous.pendingCallback };
+      const next = { generation: previous.generation + 1, values: clear ? {} : previous.values, callback: preserveCallback ? previous.callback : callback, pendingCallback: preserveCallback ? callback : undefined, retainedCallbacks: preserveCallback ? [...new Set([...(previous.retainedCallbacks ?? []), ...(previous.pendingCallback ? [previous.pendingCallback] : [])])] : undefined };
+      store.put(next, 'canonical'); return { ...next, previousCallback: previous.callback, previousPendingCallback: previous.pendingCallback, previousRetainedCallbacks: previous.retainedCallbacks };
     }, 'readwrite');
     this.channel?.postMessage({ generation: state.generation });
     await this.publish('SIGNED_IN', state.generation);
-    return { generation: state.generation, previousCallback: state.previousCallback, previousPendingCallback: state.previousPendingCallback, auth: this.client(state.generation).auth };
+    return { generation: state.generation, previousCallback: state.previousCallback, previousPendingCallback: state.previousPendingCallback, previousRetainedCallbacks: state.previousRetainedCallbacks, auth: this.client(state.generation).auth };
   }
 
   async run<T>(work: (auth: SupabaseClient['auth']) => Promise<T>, clear = false) {
@@ -267,7 +268,7 @@ export class AuthController {
     } finally {
       if (failed && !clear) await this.transaction((state, store) => {
         if (state.generation === operation.generation && !this.session(state) && !state.callback && !state.pendingCallback)
-          store.put({ ...state, callback: operation.previousCallback, pendingCallback: operation.previousPendingCallback }, 'canonical');
+          store.put({ ...state, callback: operation.previousCallback, pendingCallback: operation.previousPendingCallback, retainedCallbacks: operation.previousRetainedCallbacks }, 'canonical');
       }, 'readwrite');
     }
   }
@@ -294,7 +295,7 @@ export class AuthController {
     catch (error) {
       await this.transaction((state, store) => {
         if (state.generation === operation.generation && state.callback === token)
-          store.put({ ...state, callback: operation.previousCallback, pendingCallback: operation.previousPendingCallback }, 'canonical');
+          store.put({ ...state, callback: operation.previousCallback, pendingCallback: operation.previousPendingCallback, retainedCallbacks: operation.previousRetainedCallbacks }, 'canonical');
       }, 'readwrite');
       throw error;
     }
