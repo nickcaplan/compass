@@ -16,15 +16,10 @@ const chromePath = process.platform === 'darwin'
 async function clickButton(page, label) {
   // The mobile toast temporarily overlays navigation; wait for it to clear.
   await page.waitForSelector('.toast', { hidden: true });
-  const handle = await page.evaluateHandle((text) =>
-    [...document.querySelectorAll('button')].find((button) => button.textContent.trim().replace(/\s*→$/, '') === text), label);
-  try {
-    const button = handle.asElement();
-    assert.ok(button, `Button not found: ${label}`);
-    await button.click();
-  } finally {
-    await handle.dispose();
-  }
+  // Wait for stable geometry before the physical click: web fonts can shift it.
+  const findButton = new Function(
+    `return [...document.querySelectorAll('button')].find(button => button.textContent.trim().replace(/\\s*→$/, '') === ${JSON.stringify(label)})`);
+  await page.locator(findButton).click();
 }
 
 test('example walkthrough generates automatically and respects interruptions', { timeout: 60000 }, async () => {
