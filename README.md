@@ -40,6 +40,14 @@ Deploys as a Render static site: build command `npm run build`, publish
 directory `dist`. The production demo serves the main branch at
 https://compass-demo.websitesbynick.co.uk/ behind Cloudflare.
 
+Pull request previews on Cloudflare Pages are opt in to save build minutes:
+add the `preview` label to the PR and the opt-in preview workflow mirrors the
+PR head to a `preview/pr-<number>` branch, which Cloudflare builds. The
+preview URL is `https://preview-pr-<number>.compass-5ic.pages.dev` and the
+build appears as a check on the PR. Removing the label or closing the PR
+deletes the preview branch. Pushes to ordinary branches no longer build
+previews.
+
 ## Layout
 
 - `src/App.tsx` - the four-state walkthrough (explainer, brief building,
