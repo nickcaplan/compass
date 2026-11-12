@@ -1060,7 +1060,7 @@ export default function App() {
     if (page === 'planner' && authUser) restoreAuthDraft();
     // Only a route/session transition may consume the pending snapshot.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, authUser?.id]);
+  }, [page, authUser?.id, savedEntry?.id, savedEntry?.mode]);
 
   // Reveal a plan only after authentication and first-time profile completion.
   useEffect(() => {
@@ -1349,6 +1349,7 @@ export default function App() {
   }
 
   function startFresh() {
+    mayRestoreAuthDraft.current = false;
     setConfirmReset(false);
     invalidateWorkspaceDraft();
     try {
@@ -1519,7 +1520,7 @@ export default function App() {
     window.clearTimeout(toastTimer.current);
     setToast(null);
     const sameWorkspace = route.page === 'planner' && !route.reload && route.planId === savedEntry?.id && Boolean(route.edit) === editingSaved;
-    if (route.page !== 'signin' && !sameWorkspace && replacementReason() !== null) invalidateWorkspaceDraft();
+    if (route.page !== 'signin' && !sameWorkspace && hasPlannerWork() && replacementReason() !== null) invalidateWorkspaceDraft();
     if (route.page === 'planner' && route.planId === undefined && (savedBriefReadOnly || editingSaved)) {
       clearPlannerState();
     }
@@ -1690,18 +1691,14 @@ export default function App() {
         </div>
         <div className="divider"><span>or</span></div></>}
         <EmailAuth key={`${idPrefix}:${authUser?.id ?? 'anonymous'}:${recoveringPassword}`} idPrefix={idPrefix} recovery={recoveringPassword}
-          recoveryUserId={recoveryPrincipal.current}
+          onCancelRecovery={() => { void cancelRecovery(); }} recoveryUserId={recoveryPrincipal.current}
           isRecoveryCurrent={id => recoveryPrincipal.current === id && currentAccount.current?.id === id} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); const restored = restoreAuthDraft(true); const persisted = stashAuthDraft({ accountId: user.id });
           if (persisted) {
             try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
             anonymousBinding.current = null;
           }
           setRecoveringPassword(false); setAuthNotice(persisted ? null : 'Could not keep your account draft in this browser. Your original email draft is still kept. Free some browser storage and try again.'); const selection = latestPlanner.current.savedEntry; const route = selection ? {page:'planner' as const,planId:selection.id,edit:selection.mode==='edit'} : {page:'planner' as const}; if (restored) { setPage('planner'); navigation.address(route); } else navigation.navigate(route); }} />
-        {recoveringPassword && (
-          <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
-            Cancel password reset
-          </button>
-        )}
+
       </>
     );
   }

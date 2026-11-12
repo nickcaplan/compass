@@ -20,7 +20,7 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         if (match) { clearTimeout(timer); resolve(match[0]); }
       });
     });
-    browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+    browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH ?? (process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'), headless: true, args: ['--no-sandbox'] });
     for (const width of [390, 1440]) {
       for (const mode of ['view', 'edit', 'missing']) {
         const context = await browser.createBrowserContext();

@@ -25,8 +25,8 @@ function authErrorMessage(err: AuthErrorLike, fallback: string): string {
   return fallback;
 }
 
-export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail, recoveryUserId, isRecoveryCurrent }: {
-  recoveryUserId: string | null; isRecoveryCurrent: (id: string) => boolean;
+export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail, recoveryUserId, isRecoveryCurrent, onCancelRecovery }: {
+  onCancelRecovery: () => void; recoveryUserId: string | null; isRecoveryCurrent: (id: string) => boolean;
   idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string, reset?: boolean) => boolean | 'cancelled';
 }) {
   const [mode, setMode] = useState<Mode>('signin');
@@ -116,5 +116,6 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
       <button type="submit" className="gen" disabled={busy}>{busy ? 'Please wait...' : activeMode === 'signup' ? 'Create account' : activeMode === 'reset' ? 'Send reset link' : activeMode === 'update' ? 'Save new password' : 'Log in with email'} <span>&rarr;</span></button>
       {activeMode === 'signin' && <button type="button" className="email-forgot" disabled={busy} onClick={() => changeMode('reset')}>Forgot password?</button>}
     </form>
+    {recovery && <button type="button" className="ghost cancel-recovery" disabled={busy} onClick={onCancelRecovery}>Cancel password reset</button>}
   </>;
 }
