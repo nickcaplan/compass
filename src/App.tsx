@@ -868,8 +868,9 @@ export default function App() {
   function draftDestination(binding: DraftBinding, entry: typeof savedEntry) {
     return 'accountId' in binding && entry ? accountDraftKey(binding.accountId) + ':plan:' + encodeURIComponent(entry.id) + (entry.mode === 'view' ? ':view' : '') : bindingKey(binding);
   }
-  function beginEmail(email: string) {
+  function beginEmail(email: string, reset = false) {
     setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n);
+    if (reset) return true;
     if (currentAccount.current) return stashAuthDraft();
     const binding: DraftBinding = { email: email.trim().toLowerCase() };
     const previous = anonymousBinding.current;
@@ -878,9 +879,9 @@ export default function App() {
         setAuthNotice('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.');
         return false;
       }
-      clearPlannerState();
+      if (hasPlannerWork() && !window.confirm('Use this brief with ' + binding.email + '? Your earlier email attempt will keep its saved copy.')) return 'cancelled' as const;
     }
-    // The first submitted address owns this anonymous attempt, even if it fails.
+    // The submitted address owns this anonymous attempt, even if it fails.
     anonymousBinding.current = binding;
     try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
     return stashAuthDraft(binding);

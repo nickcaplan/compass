@@ -38,7 +38,7 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         await installAuthFixture(page);await page.goto(url + '?demo=1#/sign-in');
         await page.waitForSelector('#f-signin-email');
         await page.evaluate(mode => {
-          const brief = { name: 'Restored saved campaign', objectives: ['awareness'], markets: ['uk'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 10000, start: '2026-12-01', end: '2027-02-01' };
+          const brief = { name: 'Restored saved campaign', objectives: ['awareness'], markets: ['uk'], kpis: ['Reach'], audiences: ['Scientist / Researcher'], budget: 10000, start: new Date(Date.now()+30*864e5).toISOString().slice(0,10), end: new Date(Date.now()+120*864e5).toISOString().slice(0,10) };
           const id = mode === 'missing' ? 'removed-entry' : 'saved-entry';
           const savedBrief = {...brief, name:'Original saved campaign'};
           localStorage.setItem('compass-saved-plans', JSON.stringify([{ id: 'saved-entry', savedAt: '2026-11-01T12:00:00Z', brief: mode==='edit'?savedBrief:brief }]));

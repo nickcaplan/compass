@@ -181,8 +181,8 @@ export class AuthController {
     if (fragment.has('access_token')) {
       try {
       const callback = new URLSearchParams(window.location.search).get('compassAuth');
-      if (!navigator.locks) throw new Error('This browser cannot safely validate a log-in link.');
-      await navigator.locks.request('compass-callback-' + callback, { ifAvailable: true }, async lock => {
+      if (!navigator.locks) { this.callbackNotice = new Error('This browser cannot safely validate a log-in link. Try a browser with Web Locks support.'); throw this.callbackNotice; }
+      await navigator.locks.request('compass-callback-validation', { ifAvailable: true }, async lock => {
       if (!lock) { this.callbackNotice = new Error('This link is being checked in another tab. Try again after that check finishes.'); return; }
       const state = await this.read();
       if (!callback || callback !== state.callback && callback !== state.pendingCallback) {
@@ -200,7 +200,7 @@ export class AuthController {
         const result = await client.auth.setSession({ access_token: fragment.get('access_token')!, refresh_token: fragment.get('refresh_token') ?? '' }).catch(async error => {
           await this.transaction((latest, store) => {
             if (latest.generation === state.generation && latest.callbackClaim === claim && latest.values[SESSION_KEY] === state.values[SESSION_KEY])
-              store.put({ ...latest, callback, callbackClaim: undefined }, 'canonical');
+              store.put({ ...latest, callbackClaim: undefined }, 'canonical');
           }, 'readwrite');
           throw error;
         });
@@ -213,7 +213,11 @@ export class AuthController {
           // Keep exclusive ownership until validation settles. A failed lookup
           // with no accepted session may retry the same delivered link.
           const accepted = session?.access_token === fragment.get('access_token');
-          store.put({ ...latest, callback: result.error && !accepted ? callback : undefined, pendingCallback: undefined, callbackClaim: undefined, recovery }, 'canonical');
+          const consumed = !result.error || accepted;
+          store.put({ ...latest,
+            callback: consumed && latest.callback === callback ? undefined : latest.callback,
+            pendingCallback: consumed && latest.pendingCallback === callback ? undefined : latest.pendingCallback,
+            callbackClaim: undefined, recovery }, 'canonical');
           if (!result.error && session && result.data.session?.user.id === session.user.id && result.data.session.access_token === session.access_token) {
             this.acceptedCallback = { generation: latest.generation, userId: session.user.id };
           }

@@ -27,7 +27,7 @@ function authErrorMessage(err: AuthErrorLike, fallback: string): string {
 
 export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail, recoveryUserId, isRecoveryCurrent }: {
   recoveryUserId: string | null; isRecoveryCurrent: (id: string) => boolean;
-  idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string) => boolean;
+  idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string, reset?: boolean) => boolean | 'cancelled';
 }) {
   const [mode, setMode] = useState<Mode>('signin');
   const activeMode = recovery ? 'update' : mode;
@@ -41,7 +41,9 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
     event.preventDefault();
     if (busy) return;
     setError(null); setNotice(null);
-    if (activeMode !== 'update' && !beforeEmail(email)) { setError('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.'); return; }
+    const prepared = activeMode === 'update' ? true : beforeEmail(email, activeMode === 'reset');
+    if (prepared === 'cancelled') return;
+    if (!prepared) { setError('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.'); return; }
     setBusy(true);
     try {
       if (activeMode === 'reset') {

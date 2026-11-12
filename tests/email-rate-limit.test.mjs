@@ -8,7 +8,7 @@ test('email rate limits get distinct inline messages without an invented countdo
  try{
   const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
-  const context=await browser.createBrowserContext();const p=await context.newPage();p.setDefaultTimeout(8000);await p.setViewport({width:390,height:844});
+  const context=await browser.createBrowserContext();const p=await context.newPage();p.on('dialog',d=>d.accept());p.setDefaultTimeout(8000);await p.setViewport({width:390,height:844});
   // nextError: the error payload the next auth call should fail with.
   let nextError=null; let requestCount=0; let delayMs=0;
   await p.setRequestInterception(true);p.on('request',req=>{
@@ -43,7 +43,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   msg=await alertText(/Too many attempts from this network/);assert.match(msg,/Too many attempts from this network/);assert.doesNotMatch(msg,/\d+ (seconds|minutes)/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'throttle@example.com');
   // Draft and password survive all three failures. No real provider requests are used.
   assert.equal(await p.$eval('#f-signin-password',e=>e.value),'example-test-only');
-  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:quota@example.com')).brief.name),draftName);
+  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:throttle@example.com')).brief.name),draftName);
   // Returning to reset clears the error, preserves email, and allows a retry.
   await p.evaluate(()=>document.querySelector('.email-modes button').click());
   assert.equal(await p.$('form [role=alert]'),null);
@@ -57,7 +57,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   await p.waitForSelector('form [role=status]');
   assert.equal(await p.$eval('form [role=status]',e=>e.textContent),cooldownNotice,'Success and cooldown have identical conditional status');assert.equal(requestCount,countBefore+1);assert.equal(await p.$('form [role=alert]'),null);
   assert.equal(await p.$eval('#f-signin-email',e=>e.value),'throttle@example.com');
-  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:quota@example.com')).brief.name),draftName);
+  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-auth-draft:email:throttle@example.com')).brief.name),draftName);
   // All mapper callers are covered, including sign-in and principal-pinned update.
   await p.evaluate(()=>document.querySelector('.email-modes button').click());await p.locator('#f-signin-password').fill('test-only-password');nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);
   const recoveryUser={id:'rate-user',email:'rate@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Rate User',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'};const recoverySession={access_token:'rate-user-token',refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:recoveryUser};await p.evaluate(async s=>(await window.fixtureAuth.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify(s))),recoverySession);await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1#type=recovery'));await p.waitForSelector('.cancel-recovery');await p.locator('#f-signin-password').fill('rate-new-test-only');nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);
@@ -68,7 +68,7 @@ test('email rate limits get distinct inline messages without an invented countdo
  try{
   const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server2.once('error',reject);server2.once('exit',code=>reject(Error(`Preview exited ${code}`)));server2.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
   browser2=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
-  const p=await browser2.newPage();p.setDefaultTimeout(8000);await p.setViewport({width:390,height:844});
+  const p=await browser2.newPage();p.on('dialog',d=>d.accept());p.setDefaultTimeout(8000);await p.setViewport({width:390,height:844});
   await p.setRequestInterception(true);p.on('request',req=>{
    if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();
    const headers={'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS','access-control-allow-headers':'*'};
@@ -76,7 +76,7 @@ test('email rate limits get distinct inline messages without an invented countdo
    if(req.url().includes('/recover'))return req.respond({status:400,headers,contentType:'application/json',body:JSON.stringify({msg:'Invalid email address'})});
    return req.respond({status:200,headers,contentType:'application/json',body:'{}'});
   });
-  await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1'));await p.waitForSelector('#f-name');await p.locator('.signin').click();await p.waitForSelector('#f-signin-email');
+  await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1'));await p.waitForSelector('#f-name');await p.waitForSelector('.signin[aria-busy=false]');await p.locator('.signin').click();await p.waitForSelector('#f-signin-email');
   await p.locator('.email-forgot').click();await p.locator('#f-signin-email').fill('plain@example.com');await p.locator('form[aria-label="Email account"] .gen').click();
   await p.waitForSelector('form [role=status]');assert.match(await p.$eval('form [role=status]',e=>e.textContent),/If an account exists/);assert.equal(await p.$('form [role=alert]'),null);
  }finally{await browser2?.close();server2.kill()}
