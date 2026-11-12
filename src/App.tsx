@@ -2034,7 +2034,7 @@ export default function App() {
                   aria-label="Start date"
                   aria-invalid={startNotFuture(brief.start) || undefined}
                   aria-describedby={startNotFuture(brief.start) ? "start-date-error" : undefined}
-                  className="ctl"
+                  className={`ctl${!brief.start ? " date-empty" : ""}`}
                   type="date"
                   onFocus={clearCue}
                   onPointerDown={clearCue}
@@ -2060,7 +2060,7 @@ export default function App() {
                   aria-label="End date"
                   aria-invalid={endBeforeStart(brief.start, brief.end) || undefined}
                   aria-describedby={endBeforeStart(brief.start, brief.end) ? "end-date-error" : undefined}
-                  className="ctl"
+                  className={`ctl${!brief.end ? " date-empty" : ""}`}
                   type="date"
                   onFocus={clearCue}
                   onPointerDown={clearCue}

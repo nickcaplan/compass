@@ -9,7 +9,7 @@
   --text:#F4F3EF;
   --text2:#C9C7D1;
   --muted:#8E8C96;
-  --faint:#6E6C78;
+  --faint:#85838F;
   --line:rgba(255,255,255,.09);
   --line-soft:rgba(255,255,255,.1);
   --line-mid:rgba(255,255,255,.18);
@@ -49,7 +49,7 @@
   --text:#17171C;
   --text2:#3A3942;
   --muted:#5D5B68;
-  --faint:#7B7987;
+  --faint:#656370;
   --line:rgba(20,20,25,.12);
   --line-soft:rgba(20,20,25,.14);
   --line-mid:rgba(20,20,25,.25);
@@ -610,3 +610,8 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
 .pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
+/* Small field and preview labels stay below the bold card-title hierarchy. */
+.form label,.outline .ok{font-weight:600}
+/* Native date segments are not ::placeholder text. Keep the empty cue regular. */
+input[type="date"].date-empty{font-weight:400;color:var(--faint)}
+input[type="date"].date-empty::-webkit-datetime-edit{font-weight:400;color:var(--faint)}
