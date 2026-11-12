@@ -29,6 +29,7 @@ type Pending = { route: PlanRoute; delta?: number; ready: boolean };
 export function usePlanNavigation(apply: (route: PlanRoute) => void, blocks: (route: PlanRoute) => boolean, authCallback = false) {
   const callbacks = useRef({ apply, blocks });
   useLayoutEffect(() => { callbacks.current = { apply, blocks }; });
+  const initialAuthError = useRef(new URLSearchParams(window.location.hash.slice(1)).has('error_description') || new URLSearchParams(window.location.hash.slice(1)).has('error'));
   const current = useRef(readPlanRoute());
   const index = useRef(0);
   const restoring = useRef(false);
@@ -55,7 +56,7 @@ export function usePlanNavigation(apply: (route: PlanRoute) => void, blocks: (ro
     const stateIndex = window.history.state?.compassNavigation;
     index.current = typeof stateIndex === 'number' ? stateIndex : 0;
     // Auth owns initial callback routing and token cleanup. Do not reset its page.
-    if (!authCallback) { write(current.current, true); callbacks.current.apply(current.current); }
+    if (!authCallback && !initialAuthError.current) { write(current.current, true); callbacks.current.apply(current.current); }
     const onHistory = () => {
       // Redirect tokens/errors belong to auth, including same-document callbacks.
       if (window.location.hash && !window.location.hash.startsWith('#/')) return;

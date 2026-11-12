@@ -953,7 +953,7 @@ export default function App() {
         anonymousBinding.current = null;
         window.sessionStorage.removeItem(AUTH_FLOW_KEY);
         if (!recoveringPassword) { setPage('planner'); navigation.address(restoredEntry ? { page: 'planner', planId: restoredEntry.id, edit: restoredEntry.mode === 'edit' } : { page: 'planner' }); }
-        break;
+        return true;
       }
     } catch { /* corrupted or unavailable storage */ }
   }
@@ -1685,12 +1685,12 @@ export default function App() {
         <div className="divider"><span>or</span></div></>}
         <EmailAuth key={`${idPrefix}:${authUser?.id ?? 'anonymous'}:${recoveringPassword}`} idPrefix={idPrefix} recovery={recoveringPassword}
           recoveryUserId={recoveryPrincipal.current}
-          isRecoveryCurrent={id => recoveryPrincipal.current === id && currentAccount.current?.id === id} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); restoreAuthDraft(true); const persisted = stashAuthDraft({ accountId: user.id });
+          isRecoveryCurrent={id => recoveryPrincipal.current === id && currentAccount.current?.id === id} beforeEmail={beginEmail} onAuthenticated={user => { applyAuthUser(user); const restored = restoreAuthDraft(true); const persisted = stashAuthDraft({ accountId: user.id });
           if (persisted) {
             try { if (anonymousBinding.current && bindingMatches(anonymousBinding.current, user, null)) window.localStorage.removeItem(bindingKey(anonymousBinding.current)); } catch { /* private mode */ }
             anonymousBinding.current = null;
           }
-          setRecoveringPassword(false); setAuthNotice(persisted ? null : 'Could not keep your account draft in this browser. Your original email draft is still kept. Free some browser storage and try again.'); const selection = latestPlanner.current.savedEntry; navigation.navigate(selection ? {page:'planner',planId:selection.id,edit:selection.mode==='edit'} : {page:'planner'}); }} />
+          setRecoveringPassword(false); setAuthNotice(persisted ? null : 'Could not keep your account draft in this browser. Your original email draft is still kept. Free some browser storage and try again.'); const selection = latestPlanner.current.savedEntry; const route = selection ? {page:'planner' as const,planId:selection.id,edit:selection.mode==='edit'} : {page:'planner' as const}; if (restored) { setPage('planner'); navigation.address(route); } else navigation.navigate(route); }} />
         {recoveringPassword && (
           <button type="button" className="ghost cancel-recovery" onClick={() => { void cancelRecovery(); }}>
             Cancel password reset
@@ -1701,6 +1701,7 @@ export default function App() {
   }
 
   async function signOut(notice = 'Logged out', scope?: 'local' | 'global') {
+    const departingId = currentAccount.current?.id;
     let failed = false;
     try {
       const { error } = await supabase.auth.signOut(scope ? { scope } : undefined);
@@ -1716,8 +1717,8 @@ export default function App() {
     applyAuthUser(null);
     anonymousBinding.current = null;
     try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
-    setAuthNotice(null);
-    // applyAuthUser has already stashed and cleared the prior account's planner.
+    // A failed departure snapshot lives only in this tab. Keep its warning.
+    if (departingId && failedAccountDrafts.current.has(departingId)) return;
     setAuthNotice(failed ? 'Log-out encountered an error. Other sessions may still be active.' : notice);
   }
 
