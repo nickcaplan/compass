@@ -36,17 +36,23 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
   const currentScope = useRef(scope); currentScope.current = scope;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const needsConfirmation = activeMode === 'signup' || activeMode === 'update';
+  const mismatch = needsConfirmation && confirmation.length > 0 && confirmation !== password;
+  const passwordsMatch = password.length > 0 && confirmation === password;
   const [revealedMode, setRevealedMode] = useState<Mode | null>(null);
   const passwordVisible = revealedMode === activeMode;
   const [revealScope, setRevealScope] = useState(scope);
-  if (revealScope !== scope) { setRevealScope(scope); setRevealedMode(null); }
+  if (revealScope !== scope) { setRevealScope(scope); setRevealedMode(null); setConfirmationVisible(false); setConfirmation(''); setPassword(''); }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  function changeMode(next: Mode) { setMode(next); setError(null); setNotice(null); setPassword(''); setRevealedMode(null); }
+  function changeMode(next: Mode) { setMode(next); setError(null); setNotice(null); setPassword(''); setConfirmation(''); setConfirmationVisible(false); setRevealedMode(null); }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
+    if (needsConfirmation && !passwordsMatch) { setError('Your passwords must match before you continue.'); return; }
     setError(null); setNotice(null);
     const prepared = activeMode === 'update' ? true : beforeEmail(email, activeMode === 'reset');
     if (prepared === 'cancelled') return;
@@ -79,7 +85,7 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
       } else if (activeMode === 'signup') {
         const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') } });
         if (result.error) { setError(result.error.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' : authErrorMessage(result.error, 'Could not create your account. Try logging in if you already have one.')); return; }
-        setPassword(''); setRevealedMode(null);
+        setPassword(''); setConfirmation(''); setConfirmationVisible(false); setRevealedMode(null);
         if (result.data.session) onAuthenticated(result.data.session.user);
         else setNotice('Check your inbox to confirm your email, then return to log in. If you already have an account, log in instead.');
       } else if (activeMode === 'update') {
@@ -114,11 +120,11 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         if (result.data.user.id !== id) { stopped(true); return; }
         await authController.finishRecovery(generation, id);
         if (!(await authController.isCurrent(generation))) { stopped(true); return; }
-        setPassword(''); setRevealedMode(null); onAuthenticated(result.data.user);
+        setPassword(''); setConfirmation(''); setConfirmationVisible(false); setRevealedMode(null); onAuthenticated(result.data.user);
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (result.error || !result.data.user) { setError(authErrorMessage(result.error, 'Could not log in. Check your email and password, and confirm your email if you just signed up.')); return; }
-        setPassword(''); setRevealedMode(null); onAuthenticated(result.data.user);
+        setPassword(''); setConfirmation(''); setConfirmationVisible(false); setRevealedMode(null); onAuthenticated(result.data.user);
       }
     } catch (failure) { if (currentScope.current === scope) setError(passwordAccepted ? 'Your password may have been updated, but the result could not be confirmed. Log in again to check it.' : failure instanceof Error && /Reset request timed out/.test(failure.message) ? 'The reset request took too long. A reset email may still arrive. Check your inbox and spam before requesting another link.' : 'Could not connect. Please try again.'); }
     finally { setBusy(false); }
@@ -144,9 +150,19 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         </div>
         {activeMode !== 'signin' && <p className="hint">Use at least 8 characters.</p>}
       </div>}
+      {needsConfirmation && <div className="field">
+        <label htmlFor={`${idPrefix}-confirm-password`}>Confirm {activeMode === 'update' ? 'new password' : 'password'}</label>
+        <div className="password-control">
+          <input id={`${idPrefix}-confirm-password`} className="ctl" type={confirmationVisible ? 'text' : 'password'} autoComplete="new-password" required minLength={8} disabled={busy} value={confirmation} aria-invalid={mismatch || undefined} aria-describedby={`${idPrefix}-password-match`} onChange={e => { setConfirmation(e.target.value); setError(null); }} />
+          <button type="button" className="password-reveal" aria-label={confirmationVisible ? 'Hide confirmed password' : 'Show confirmed password'} aria-pressed={confirmationVisible} aria-controls={`${idPrefix}-confirm-password`} disabled={busy} onClick={() => setConfirmationVisible(!confirmationVisible)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{confirmationVisible && <path d="m3 3 18 18" />}</svg>
+          </button>
+        </div>
+        <p id={`${idPrefix}-password-match`} className={mismatch ? 'fieldnote' : 'hint'} role="status">{mismatch ? 'Passwords do not match.' : passwordsMatch ? 'Passwords match.' : 'Enter the same password again.'}</p>
+      </div>}
       {error && <p className="fieldnote" role="alert">{error}</p>}
       {notice && <p className="email-notice" role="status">{notice}</p>}
-      <button type="submit" className="gen" disabled={busy}>{busy ? 'Please wait...' : activeMode === 'signup' ? 'Create account' : activeMode === 'reset' ? 'Send reset link' : activeMode === 'update' ? 'Save new password' : 'Log in with email'} <span>&rarr;</span></button>
+      <button type="submit" className="gen" disabled={busy || (needsConfirmation && !passwordsMatch)}>{busy ? 'Please wait...' : activeMode === 'signup' ? 'Create account' : activeMode === 'reset' ? 'Send reset link' : activeMode === 'update' ? 'Save new password' : 'Log in with email'} <span>&rarr;</span></button>
       {activeMode === 'signin' && <button type="button" className="email-forgot" disabled={busy} onClick={() => changeMode('reset')}>Forgot password?</button>}
     </form>
     {recovery && <button type="button" className="ghost cancel-recovery" disabled={busy} onClick={onCancelRecovery}>Cancel password reset</button>}

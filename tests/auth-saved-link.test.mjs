@@ -46,7 +46,7 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         }, mode);
         await page.evaluate(()=>{window.snapshotWrites=[];const original=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k.startsWith('compass-auth-draft:account:'))window.snapshotWrites.push(JSON.parse(v));return original.call(this,k,v)}});
         await page.locator('#f-signin-email').fill(user.email);
-        await page.locator('#f-signin-password').fill('fixture-password-only');
+        await page.locator('#f-signin-password').fill('fixture-password-only');if(await page.$('input[id$="-confirm-password"]'))await page.locator('input[id$="-confirm-password"]').fill('fixture-password-only');
         await page.locator('form[aria-label="Email account"] .gen').click();
         await page.waitForSelector('.metrics');
         // Inspect the immediate synchronous stash, before any navigation or reload
