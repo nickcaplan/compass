@@ -1,3 +1,4 @@
+import { profileInitials } from './profileInitials';
 import { downloadPlanPdf } from './planPdf';
 import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDraftKey, bindingMatches } from './authDraft';
 import type { DraftBinding } from './authDraft';
@@ -1848,7 +1849,7 @@ export default function App() {
             aria-label={authEmail ? `Account - logged in as ${authEmail}` : 'Sign in'}
           >
             {authEmail ? (
-              <span className="avatar" aria-hidden="true">{authEmail.charAt(0).toUpperCase()}</span>
+              <span className="avatar" aria-hidden="true">{profileInitials(authUser?.user_metadata.full_name, authEmail)}</span>
             ) : (
               'Sign in'
             )}
