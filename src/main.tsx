@@ -5,7 +5,10 @@ import './styles.css';
 const root = createRoot(document.getElementById('root')!);
 // The auth SDK reads browser storage while importing. Keep startup failures
 // visible instead of leaving a blank page; never clear storage to recover.
-void import('./App.tsx').then(({ default: App }) => {
+const entry = new URLSearchParams(location.search).get('inventory') === '1'
+  ? import('./InventoryReview.tsx')
+  : import('./App.tsx');
+void entry.then(({ default: App }) => {
   root.render(<StrictMode><App /></StrictMode>);
 }).catch(() => {
   root.render(<main className="wrap"><section className="card pagecard" role="alert">

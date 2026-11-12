@@ -1,0 +1,13 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {browseInventory,buildRecommendation} from './inventory-adapter.mjs';
+const d=JSON.parse(fs.readFileSync(new URL('../../src/inventory.mock.json',import.meta.url)));
+test('all rows imported with provenance and unique IDs',()=>{assert.equal(d.records.length,1745);assert.equal(new Set(d.records.map(r=>r.id)).size,1745);assert.ok(d.records.every(r=>r.source_excel_row>=2&&r.raw['Source File']));});
+test('unclassified aliases combine without losing raw source',()=>{assert.equal(d.records.filter(r=>r.tactic==='Other / Review').length,1470);assert.ok(d.records.some(r=>r.raw.Tactic==='Other'));});
+test('GBP absent, preferred off, mock label retained',()=>{assert.ok(d.records.every(r=>r.gbp_cost===null&&!r.preferred&&r.mock&&!r.production_eligible));});
+test('market exact matching does not include Global',()=>{const groups=browseInventory(d,{markets:['UK'],objectives:['Awareness','Consideration','Performance']});assert.ok(groups.length>0);assert.ok(groups.flatMap(g=>g.options).every(r=>r.market==='UK'));});
+test('unknown/empty market fails closed',()=>{assert.deepEqual(browseInventory(d,{markets:['Europe'],objectives:['Awareness']}),[]);assert.deepEqual(browseInventory(d),[]);});
+test('objective exact matching and quarantine enforced',()=>{const g=browseInventory(d,{markets:['UK'],objectives:['Awareness']});assert.ok(g.flatMap(x=>x.options).every(r=>r.objective==='Awareness'&&!r.structural_issues.length));});
+test('one description per tactic group',()=>{const g=browseInventory(d,{markets:['UK'],objectives:['Consideration']});assert.equal(g.length,new Set(g.map(x=>x.tactic)).size);assert.ok(g.every(x=>x.description));});
+test('unapproved audience/currency rules never yield recommendation',()=>{const p=buildRecommendation(d,{markets:['UK'],objectives:['Awareness'],audiences:['Scientist / Researcher'],budget:10000});assert.equal(p.status,'needs_business_rules');assert.deepEqual(p.groups,[]);assert.ok(p.reviewGroups.length);});
