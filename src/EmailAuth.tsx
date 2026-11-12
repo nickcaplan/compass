@@ -38,6 +38,8 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
   const [password, setPassword] = useState('');
   const [revealedMode, setRevealedMode] = useState<Mode | null>(null);
   const passwordVisible = revealedMode === activeMode;
+  const [revealScope, setRevealScope] = useState(scope);
+  if (revealScope !== scope) { setRevealScope(scope); setRevealedMode(null); }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);

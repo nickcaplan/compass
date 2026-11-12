@@ -25,6 +25,10 @@ test('in-field password reveal is keyboard accessible and resets between auth mo
     // Leave it visible so changing mode must conceal it.
     await p.keyboard.press('Space');
    }
+   // A new recovery intent after leaving update mode starts concealed too.
+   await seedSession(p,null);await p.waitForSelector('.cancel-recovery',{hidden:true});
+   await seedSession(p,{access_token:'fixture',refresh_token:'fixture',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'reveal-new',email:'new@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'New Person',compass_profile_complete:true},created_at:'2026-01-01'}},{notify:false});
+   await p.evaluate(async()=>{const db=await new Promise(resolve=>{const r=indexedDB.open('compass-auth-v2');r.onsuccess=()=>resolve(r.result)});await new Promise(resolve=>{const tx=db.transaction('state','readwrite'),store=tx.objectStore('state'),r=store.get('canonical');r.onsuccess=()=>store.put({...r.result,recovery:{generation:r.result.generation,userId:'reveal-new'}},'canonical');tx.oncomplete=resolve});db.close();const c=new BroadcastChannel('compass-auth-v2');c.postMessage({});c.close()});await p.waitForSelector('.cancel-recovery');await p.waitForFunction(()=>document.querySelector('.password-control input')?.type==='password');
    await context.close();
   }
  }finally{await browser?.close();server.kill()}
