@@ -10,7 +10,7 @@ test('email login immediately preserves a restored saved-plan link in its accoun
   const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'] });
   let browser;
   try {
-    const url = await new Promise((resolve, reject) => {
+    const local = await new Promise((resolve, reject) => {
       let output = '';
       const timer = setTimeout(() => reject(Error('Preview not ready')), 10000);
       server.once('error', reject);
@@ -20,6 +20,7 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         if (match) { clearTimeout(timer); resolve(match[0]); }
       });
     });
+    const url = new URL(process.env.HOSTED_URL || local).href;
     browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH ?? (process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'), headless: true, args: ['--no-sandbox'] });
     for (const width of [390, 1440]) {
       for (const mode of ['view', 'edit', 'missing']) {
