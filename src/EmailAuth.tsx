@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { FormEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
@@ -10,6 +10,7 @@ type AuthErrorLike = { code?: string; message?: string; status?: number } | null
 function authErrorMessage(err: AuthErrorLike, fallback: string): string {
   const msg = err?.message ?? '';
   const code = err?.code ?? '';
+  if (/Reset request timed out/i.test(msg)) return 'The reset request took too long. A reset email may still arrive. Check your inbox and spam before requesting another link.';
   // Server-provided per-recipient cooldown. Checked first: Supabase reuses
   // over_email_send_rate_limit for both the project quota and this cooldown, so
   // only the message tells them apart. Deliberately no pinned seconds: the
@@ -31,6 +32,8 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
 }) {
   const [mode, setMode] = useState<Mode>('signin');
   const activeMode = recovery ? 'update' : mode;
+  const scope = `${activeMode}:${recoveryUserId ?? ''}`;
+  const currentScope = useRef(scope); currentScope.current = scope;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,9 +48,20 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
     if (prepared === 'cancelled') return;
     if (!prepared) { setError('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.'); return; }
     setBusy(true);
+    let passwordAccepted = false;
     try {
       if (activeMode === 'reset') {
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
+        const deadline = new AbortController();
+        let timer: ReturnType<typeof setTimeout>;
+        const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => {
+          deadline.abort(); reject(new TypeError('Reset request timed out'));
+        }, 20_000); });
+        let resetError: Awaited<ReturnType<typeof supabase.auth.resetPasswordForEmail>>['error'];
+        try {
+          ({ error: resetError } = await Promise.race([
+            supabase.auth.resetPasswordForEmail(email.trim(), undefined, deadline.signal), timeout,
+          ]));
+        } finally { clearTimeout(timer!); }
         // Recipient cooldowns and account-dependent outcomes stay private.
         // Network, server, IP and project-quota failures are not account facts.
         const cooldown = /after \d+ seconds?/i.test(resetError?.message ?? '');
@@ -69,18 +83,22 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         // otherwise looks up whichever session is active after its internal await.
         const generation = await authController.capture();
         const id = recoveryUserId;
-        if (!id || !isRecoveryCurrent(id)) return;
+        const stopped = (accepted = false) => {
+          if (currentScope.current === scope) setError(accepted ? 'Your password may have been updated, but your session changed. Log in again to check it.' : 'Your session changed. Log in again, or request a fresh reset link.');
+        };
+        if (!id || !isRecoveryCurrent(id)) { stopped(); return; }
         const { data, error: sessionError } = await supabase.auth.getSession();
-        if (!isRecoveryCurrent(id) || !(await authController.isCurrent(generation))) return;
+        if (!isRecoveryCurrent(id) || !(await authController.isCurrent(generation))) { stopped(); return; }
         if (sessionError) { setError('Could not update your password. Try again, or request a fresh reset link if this one has expired.'); return; }
-        if (data.session?.user.id !== id) return;
+        if (data.session?.user.id !== id) { stopped(); return; }
         const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
           method: 'PUT',
           headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ password }),
         });
+        passwordAccepted = response.ok;
         const body = await response.json();
-        if (!isRecoveryCurrent(id) || !(await authController.isCurrent(generation))) return;
+        if (!isRecoveryCurrent(id) || !(await authController.isCurrent(generation))) { stopped(response.ok); return; }
         const result = { data: { user: response.ok ? body as User : null },
           error: response.ok ? null : { code: body.code ?? body.error_code, message: body.msg ?? body.message } };
         if (result.error || !result.data.user) {
@@ -89,16 +107,16 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
             authErrorMessage(result.error, 'Could not update your password. Try again, or request a fresh reset link if this one has expired.'));
           return;
         }
-        if (result.data.user.id !== id) return;
+        if (result.data.user.id !== id) { stopped(true); return; }
         await authController.finishRecovery(generation, id);
-        if (!(await authController.isCurrent(generation))) return;
+        if (!(await authController.isCurrent(generation))) { stopped(true); return; }
         setPassword(''); onAuthenticated(result.data.user);
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (result.error || !result.data.user) { setError(authErrorMessage(result.error, 'Could not log in. Check your email and password, and confirm your email if you just signed up.')); return; }
         setPassword(''); onAuthenticated(result.data.user);
       }
-    } catch { setError('Could not connect. Please try again.'); }
+    } catch (failure) { if (currentScope.current === scope) setError(passwordAccepted ? 'Your password may have been updated, but the result could not be confirmed. Log in again to check it.' : failure instanceof Error && /Reset request timed out/.test(failure.message) ? 'The reset request took too long. A reset email may still arrive. Check your inbox and spam before requesting another link.' : 'Could not connect. Please try again.'); }
     finally { setBusy(false); }
   }
   return <>

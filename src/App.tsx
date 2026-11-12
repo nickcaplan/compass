@@ -1734,7 +1734,10 @@ export default function App() {
     anonymousBinding.current = null;
     try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
     // A failed departure snapshot lives only in this tab. Keep its warning.
-    if (restoringAnonymous || departingId && failedAccountDrafts.current.has(departingId)) return;
+    if (restoringAnonymous || departingId && failedAccountDrafts.current.has(departingId)) {
+      if (failed) setAuthNotice(current => `${current ? current + ' ' : ''}Log-out encountered an error. Other sessions may still be active.`);
+      return;
+    }
     setAuthNotice(failed ? 'Log-out encountered an error. Other sessions may still be active.' : notice);
   }
 

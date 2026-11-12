@@ -1,3 +1,4 @@
+import { resetFetch } from './resetFetch';
 import { createClient, AuthRefreshDiscardedError, isAuthRetryableFetchError, type AuthChangeEvent, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
 const URL = 'https://ctailpmcoyvaplwbwskf.supabase.co';
@@ -93,7 +94,7 @@ export class AuthController {
     const client = createClient(URL, KEY, { global: { fetch: async (input, init) => {
       const refresh = String(input).includes('grant_type=refresh_token');
       const before = refresh ? await this.read() : null;
-      const response = await fetch(input, init);
+      const response = await resetFetch(input, init);
       if (refresh && !response.ok && before?.generation === generation) failedRefreshExpected = {value:before.values[SESSION_KEY]};
       if (refresh && response.ok && before?.generation === generation) {
         const body = await response.clone().json();
@@ -289,7 +290,14 @@ export class AuthController {
     if (preserveFailed && !isAuthRetryableFetchError(deliveryError)) await settlePending(!deliveryError);
     if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
-    afterValidation?.(result);
+    try { afterValidation?.(result); }
+    catch (error) {
+      await this.transaction((state, store) => {
+        if (state.generation === operation.generation && state.callback === token)
+          store.put({ ...state, callback: operation.previousCallback, pendingCallback: operation.previousPendingCallback }, 'canonical');
+      }, 'readwrite');
+      throw error;
+    }
     return result;
   }
 
