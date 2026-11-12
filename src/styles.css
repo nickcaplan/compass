@@ -594,3 +594,5 @@ h1,.empty h3,.planhead h2,.metric .k,.num .k{overflow-wrap:anywhere}
 .pc-actions{flex-wrap:wrap}
 .pc-actions .pc-edit,.pc-actions .pc-open{flex:1 1 calc(50% - 5px);min-width:max-content;width:auto}
 .is-expired .pc-actions .pc-open{flex-basis:100%}
+/* Keep the provider mark in text flow so enlarged labels cannot overlap it. */
+.sso svg{position:static;flex-shrink:0}
