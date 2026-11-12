@@ -590,3 +590,5 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
 .pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
+/* Small field and preview labels stay below the bold card-title hierarchy. */
+.form label,.outline .ok{font-weight:600}
