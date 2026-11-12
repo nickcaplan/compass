@@ -1,3 +1,5 @@
+import { stripVTControlCharacters } from 'node:util';
+import { seedPlannerFixture } from './planner-auth-fixture.mjs';
 import {observeJourney, reportJourneyFailure} from './fixtures/journey-diagnostics.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -21,15 +23,15 @@ test('Generated-plan PDF placeholder preserves layout, text and dismissal', { ti
       server.once('error', error => { clearTimeout(timeout); reject(error); });
       server.once('exit', code => { clearTimeout(timeout); reject(new Error(`Preview exited early: ${code}`)); });
       server.stdout.on('data', chunk => {
-        output += chunk.toString().replace(/\x1b\[[0-9;]*m/g, '');
-        const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
+        output += chunk.toString();
+        const match = stripVTControlCharacters(output).match(/http:\/\/127\.0\.0\.1:\d+\//);
         if (match) { clearTimeout(timeout); resolve(match[0]); }
       });
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) {
       const context = await browser.createBrowserContext();const page = await context.newPage(); await observeJourney(page);await page.setViewport({width,height:900});
-      await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill');
+      await seedPlannerFixture(page);await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.avatar');await page.waitForSelector('.demofill');
       await page.evaluate(() => document.fonts.ready);
       // Exercise the PDF journey via keyboard so font/layout movement cannot
       // redirect a coordinate click to the surrounding form on a busy runner.
