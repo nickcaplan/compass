@@ -747,7 +747,10 @@ export default function App() {
       !bindingMatches(anonymousBinding.current, user, null)) {
       // Save the latest bound version before isolating it from an unrelated login.
       const binding = anonymousBinding.current;
-      if (binding && !stashAuthDraft(binding)) {
+      if (!binding) {
+        anonymousRecovery.current = latestPlanner.current;
+        setAuthNotice('Your earlier anonymous brief is kept in this tab, separate from this account. Log out to restore it. Do not close this tab.');
+      } else if (!stashAuthDraft(binding)) {
         failedBoundDrafts.current.set(bindingKey(binding), { binding, planner: latestPlanner.current });
         setAuthNotice('Your earlier draft could not be saved. It is kept in this tab for its original login. Do not close this tab until you return to that login and save it.');
       } else if (binding) failedBoundDrafts.current.delete(bindingKey(binding));
@@ -763,6 +766,13 @@ export default function App() {
       editBaseline.current = retained.savedEntry?.mode === 'edit' ? loadPlans().find(p => p.id === retained.savedEntry!.id)?.brief ?? null : null;
       latestPlanner.current = retained;
       if (stashAuthDraft({accountId:user.id})) { failedAccountDrafts.current.delete(user.id); if (boundRecovery && retained === boundRecovery[1].planner) failedBoundDrafts.current.delete(boundRecovery[0]); }
+    }
+    if (!user && previous && anonymousRecovery.current) {
+      const retained = anonymousRecovery.current;
+      anonymousRecovery.current = null;
+      setBrief(retained.brief); setSubmittedBrief(retained.submittedBrief); setBudgetText(retained.budgetText); setStage(retained.stage); setSavedEntry(retained.savedEntry);
+      latestPlanner.current = retained;
+      setAuthNotice('Your earlier anonymous brief is restored. It is kept in this tab.');
     }
     setAuthUser(user);
     setAuthEmail(user?.email ?? null);
@@ -825,6 +835,7 @@ export default function App() {
   }, [brief, submittedBrief, savedEntry, budgetText, stage]);
   const anonymousBinding = useRef<DraftBinding | null>(null);
   const failedBoundDrafts = useRef(new Map<string, { binding: DraftBinding; planner: typeof latestPlanner.current }>());
+  const anonymousRecovery = useRef<typeof latestPlanner.current | null>(null);
   const failedAccountDrafts = useRef(new Map<string, typeof latestPlanner.current>());
   function activeGoogleFlow(): string | null {
     try { return window.sessionStorage.getItem(AUTH_FLOW_KEY); } catch { return null; }
@@ -1705,6 +1716,7 @@ export default function App() {
 
   async function signOut(notice = 'Logged out', scope?: 'local' | 'global') {
     const departingId = currentAccount.current?.id;
+    const restoringAnonymous = Boolean(anonymousRecovery.current);
     let failed = false;
     try {
       const { error } = await supabase.auth.signOut(scope ? { scope } : undefined);
@@ -1721,7 +1733,7 @@ export default function App() {
     anonymousBinding.current = null;
     try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ }
     // A failed departure snapshot lives only in this tab. Keep its warning.
-    if (departingId && failedAccountDrafts.current.has(departingId)) return;
+    if (restoringAnonymous || departingId && failedAccountDrafts.current.has(departingId)) return;
     setAuthNotice(failed ? 'Log-out encountered an error. Other sessions may still be active.' : notice);
   }
 
