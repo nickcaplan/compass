@@ -247,19 +247,28 @@ export class AuthController {
     const state = await this.transaction((previous, store) => {
       if (expectedGeneration !== undefined && previous.generation !== expectedGeneration) throw stale();
       const next = { generation: previous.generation + 1, values: clear ? {} : previous.values, callback: preserveCallback ? previous.callback : callback, pendingCallback: preserveCallback ? callback : undefined };
-      store.put(next, 'canonical'); return { ...next, previousCallback: previous.callback };
+      store.put(next, 'canonical'); return { ...next, previousCallback: previous.callback, previousPendingCallback: previous.pendingCallback };
     }, 'readwrite');
     this.channel?.postMessage({ generation: state.generation });
     await this.publish('SIGNED_IN', state.generation);
-    return { generation: state.generation, previousCallback: state.previousCallback, auth: this.client(state.generation).auth };
+    return { generation: state.generation, previousCallback: state.previousCallback, previousPendingCallback: state.previousPendingCallback, auth: this.client(state.generation).auth };
   }
 
   async run<T>(work: (auth: SupabaseClient['auth']) => Promise<T>, clear = false) {
     const operation = await this.begin(clear);
-    const result = await work(operation.auth);
-    if (this.failure) throw this.failure;
-    if ((await this.read()).generation !== operation.generation) throw stale();
-    return result;
+    let failed = true;
+    try {
+      const result = await work(operation.auth);
+      if (this.failure) throw this.failure;
+      if ((await this.read()).generation !== operation.generation) throw stale();
+      failed = Boolean(result && typeof result === 'object' && 'error' in result && result.error);
+      return result;
+    } finally {
+      if (failed && !clear) await this.transaction((state, store) => {
+        if (state.generation === operation.generation && !this.session(state) && !state.callback && !state.pendingCallback)
+          store.put({ ...state, callback: operation.previousCallback, pendingCallback: operation.previousPendingCallback }, 'canonical');
+      }, 'readwrite');
+    }
   }
 
   async redirect<T>(work: (auth: SupabaseClient['auth'], redirectTo: string) => Promise<T>, preserveFailed = false, afterValidation?: (result: T) => void) {

@@ -6,7 +6,7 @@ import puppeteer from 'puppeteer-core';
 import {seedSession,readSession} from './helpers/auth-fixtures.mjs';
 const user=id=>({id,email:id+'@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:id,compass_profile_complete:true},created_at:'2026-01-01'});
 const session=id=>({user:user(id),access_token:'fixture-'+id,refresh_token:'fixture-refresh-'+id,expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer'});
-const until=async(fn)=>{const end=Date.now()+5000;while(!fn()){if(Date.now()>end)throw Error('Held request not reached');await new Promise(r=>setTimeout(r,10));}};
+const until=async(fn,label)=>{const end=Date.now()+5000;while(!fn()){if(Date.now()>end)throw Error('Held '+label+' request not reached');await new Promise(r=>setTimeout(r,10));}};
 
 test('signup, refresh, logout and same-account return reject superseded completions', {timeout:60000},async()=>{
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
@@ -22,7 +22,7 @@ for(const method of ['redirect','getSession','signOut','isCurrent']){const origi
   if(method==='refresh'){await seedSession(a,{...session('a'),expires_at:Math.floor(Date.now()/1000)-10},{notify:false});armed=true;await a.reload();}
   if(method==='logout'){await seedSession(a,session('a'));await a.waitForFunction(()=>!!document.querySelector('.avatar'));await a.locator('.signin').click();armed=true;await a.evaluate(()=>[...document.querySelectorAll('button')].find(e=>e.textContent.trim()==='Log out').click());}
   if(method==='same-account-profile'){await seedSession(a,{...session('a'),user:{...user('a'),user_metadata:{}}});await a.reload();await a.locator('.signin').click();await a.waitForSelector('#f-signin-profile-name');await a.locator('#f-signin-profile-name').fill('Old attempt');armed=true;await a.locator('form .gen').click();}
-  await until(()=>release);
+  await until(()=>release,method);
   const replacement=method==='same-account-profile'?{...session('a'),access_token:'new-a-token',user:{...user('a'),user_metadata:{}}}:session('b');
   await seedSession(b,null);await seedSession(b,replacement);await a.evaluate(()=>{window.fixtureReleased=true});await release();await a.bringToFront();await a.waitForFunction(profile=>profile?window.fixtureProfileSettled:window.fixtureSettled,{},method==='same-account-profile');assert.equal((await readSession(a)).access_token,replacement.access_token,method+' stale storage write rejected');
   if(method==='same-account-profile'){assert.equal((await readSession(a)).user.user_metadata.compass_profile_complete,undefined);await a.waitForSelector('#f-signin-profile-name');assert.notEqual(await a.$eval('#f-signin-profile-name',e=>e.value),'Stale server completion','Late response must not replace the live profile draft');assert.match(await a.$eval('form[aria-label="Complete your profile"]',e=>e.textContent),/Add your details/);}

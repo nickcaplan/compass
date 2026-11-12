@@ -870,7 +870,7 @@ export default function App() {
   }
   function beginEmail(email: string, reset = false) {
     setAuthNotice(n => n === 'Logged out' || n === 'Password reset cancelled - log in with your current password.' ? null : n);
-    if (reset) return true;
+    if (reset) return currentAccount.current || anonymousBinding.current ? stashAuthDraft() : true;
     if (currentAccount.current) return stashAuthDraft();
     const binding: DraftBinding = { email: email.trim().toLowerCase() };
     const previous = anonymousBinding.current;
@@ -937,9 +937,10 @@ export default function App() {
           (entry.mode === 'view' || entry.mode === 'edit') && loadPlans().some(p => p.id === entry.id)
           ? { id: entry.id, mode: entry.mode } : null;
         const savedOriginal = restoredEntry ? loadPlans().find(p => p.id === restoredEntry.id) : null;
+        const readOnlyBrief = restoredEntry?.mode === 'view' ? savedOriginal?.brief : null;
         const unchangedPlan = snap.submittedBrief !== null && JSON.stringify(snap.brief) === JSON.stringify(snap.submittedBrief);
         const restoredStage = snap.stage === 'filling' && unchangedPlan ? 'gate' : snap.stage;
-        const restored = { brief:snap.brief, submittedBrief:unchangedPlan ? snap.brief : snap.submittedBrief, savedEntry:restoredEntry, budgetText:snap.budgetText, stage:restoredStage };
+        const restored = { brief:readOnlyBrief ?? snap.brief, submittedBrief:readOnlyBrief ?? (unchangedPlan ? snap.brief : snap.submittedBrief), savedEntry:restoredEntry, budgetText:readOnlyBrief ? String(readOnlyBrief.budget) : snap.budgetText, stage:readOnlyBrief ? 'plan' as const : restoredStage };
         const durable = authController.recovering || restoredEntry?.mode === 'edit';
         if (durable && !persistAuthDraft({accountId:user.id},restored)) {
           setAuthNotice('Could not keep your restored draft in this browser. Its original copy is still kept. Free some browser storage and try again.');
@@ -994,7 +995,8 @@ export default function App() {
   useEffect(() => {
     cleanupExpiredDrafts();
     if (emailAuthCallback) { try { window.sessionStorage.removeItem(AUTH_FLOW_KEY); } catch { /* private mode */ } }
-    const callbackError = new URLSearchParams(window.location.hash.slice(1)).get('error_description');
+    const callbackParams = new URLSearchParams(window.location.hash.slice(1));
+    const callbackError = callbackParams.get('error_description') || callbackParams.get('error');
     if (callbackError) {
       // An anonymous Google cancellation may retry its own per-tab draft.
       // getSession below revokes this handle if any account is established.
