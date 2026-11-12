@@ -1,0 +1,35 @@
+name: Opt-in preview
+
+# Cloudflare Pages builds previews for `preview/*` branches only, so a pull
+# request gets a preview when someone adds the `preview` label: this workflow
+# mirrors the PR head to preview/pr-<number>, refreshes it while the label
+# stays on, and removes it when the label comes off or the PR closes.
+# Production deploys from main are unaffected.
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize, reopened, closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: preview-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview')
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Publish the PR head as the preview branch
+        if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview')
+        run: git push --force origin HEAD:refs/heads/preview/pr-${{ github.event.pull_request.number }}
+      - name: Remove the preview branch
+        if: github.event.action == 'closed' || (github.event.action == 'unlabeled' && github.event.label.name == 'preview')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/preview/pr-${{ github.event.pull_request.number }}" || true

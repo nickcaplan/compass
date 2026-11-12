@@ -540,6 +540,57 @@ input.ctl{color:var(--text)}
 .ctl[aria-invalid="true"]{border:2px solid var(--date-error);box-shadow:0 0 0 1px var(--date-error)}
 .date-error{color:var(--date-error);font-weight:600}
 
+.stale-plan-note{margin:0 0 20px;padding:12px 14px;border:1px solid var(--accent-line);border-radius:10px;background:rgba(254,202,10,.05);color:var(--text);font-size:13px;line-height:1.5}
+/* Destructive confirmation only, never the Edit or primary plan actions. */
+.confirm .btn.destructive{background:#B42332;color:#fff;border:1px solid #B42332;box-shadow:none}
+.confirm .btn.destructive:hover{background:#971D2A;border-color:#971D2A}
+.confirm .btn.destructive:focus-visible{outline:2px solid var(--text);outline-offset:3px}
+/* Equal card actions: Edit is the primary action, Open is secondary. */
+.pc-actions{gap:10px}
+.pc-actions .pc-edit,.pc-actions .pc-open{display:flex;align-items:center;justify-content:center;gap:6px;flex:1 1 0;min-width:0;width:0;min-height:46px;padding:11px 10px;font-size:12px;white-space:nowrap;border-radius:12px;border:1px solid transparent}
+.pc-actions .pc-open{border-color:var(--line)}
+.pc-actions .pc-edit svg,.pc-actions .pc-open svg{width:12px;height:12px;flex:none}
+.is-expired .pc-actions .pc-open{width:100%}
+
+.plancard .pc-main{padding-right:98px}
+.pc-share{position:absolute;top:10px;right:60px;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:12px}
+.pc-share:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.pc-link-field{margin-top:48px;width:100%}
+@media(max-width:360px){.plancard{padding-top:64px}.plancard.is-expired{padding-top:18px}.plancard .pc-main{padding-right:0}.plancard.is-expired .pc-main{padding-top:12px}.plancard>.chip.expired{margin-right:98px;min-height:28px}}
+
+/* Card utility icons share one size, stroke and colour treatment. */
+.pc-share,.pc-delete{color:var(--muted)}
+.pc-share svg,.pc-delete svg{width:16px;height:16px;stroke-width:1.8}
+.pc-share:hover,.pc-delete:hover{color:var(--text)}
+
+/* Unselected Objective choices are peers; colour coding begins on selection. */
+[aria-labelledby=g-objective] .pill.off{border-color:var(--muted);color:var(--muted);background:none}
+
+/* Explain legacy saved briefs without a required answer, next to Regenerate. */
+.regenerate-required{margin-top:10px;color:var(--date-error);font-size:13px;font-weight:600;line-height:1.5}
+
+/* Desktop proposal only: scan campaign rows across the available canvas. */
+@media(min-width:1100px){
+ .pagecard[aria-label="My plans"]{max-width:none;padding:28px 30px}
+ .pagecard[aria-label="My plans"] .planlist{gap:12px}
+ .pagecard[aria-label="My plans"] .plancard{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:18px;min-height:138px;padding:20px}
+ .pagecard[aria-label="My plans"] .pc-main{grid-column:1;grid-row:1;padding-right:0;align-self:center}
+ .pagecard[aria-label="My plans"] .pc-main>b{font-size:16px;margin-bottom:12px}
+ .pagecard[aria-label="My plans"] .pc-actions{grid-column:2;grid-row:1;align-self:end;margin:48px 0 0}
+ .pagecard[aria-label="My plans"] .pc-actions .pc-edit,.pagecard[aria-label="My plans"] .pc-actions .pc-open{font-size:13px}
+ .pagecard[aria-label="My plans"] .pc-share{right:60px;top:10px}
+ .pagecard[aria-label="My plans"] .pc-delete{right:10px;top:10px}
+ .pagecard[aria-label="My plans"] .plancard>.chip.expired{position:absolute;top:16px;left:20px;margin:0}
+ .pagecard[aria-label="My plans"] .is-expired .pc-main{padding-top:32px}
+ .pagecard[aria-label="My plans"] .pc-link-field{grid-column:1/-1;grid-row:2;margin:0}
+}
+@media(min-width:1100px){.pagecard[aria-label="My plans"] .plancard>.chip.expired{right:auto;width:max-content;max-width:calc(100% - 140px)}}
+
+/* Saved objectives use the same palette as selected Planner objectives. */
+.pc-objective.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
+.pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
+.pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
+
 /* Preserve compact labels while providing finger-sized navigation hit areas. */
 .navlinks button:not(.signin){min-height:44px;display:inline-flex;align-items:center;justify-content:center}
 .themebtn{width:44px;height:44px}
