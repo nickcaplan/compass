@@ -95,8 +95,8 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
   }
   return <>
     {!recovery && <div className="email-modes" aria-label="Email account options">
-      <button type="button" className={mode === 'signin' ? 'selected' : ''} disabled={busy} onClick={() => changeMode('signin')}>Log in</button>
-      <button type="button" className={mode === 'signup' ? 'selected' : ''} disabled={busy} onClick={() => changeMode('signup')}>Create account</button>
+      <button type="button" className={mode === 'signin' ? 'selected' : ''} aria-pressed={mode === 'signin'} disabled={busy} onClick={() => changeMode('signin')}>Log in</button>
+      <button type="button" className={mode === 'signup' ? 'selected' : ''} aria-pressed={mode === 'signup'} disabled={busy} onClick={() => changeMode('signup')}>Create account</button>
     </div>}
     <form onSubmit={submit} aria-label="Email account">
       <h3 className="email-heading">{activeMode === 'signup' ? 'Create your account' : activeMode === 'reset' ? 'Reset your password' : activeMode === 'update' ? 'Choose a new password' : 'Log in with email'}</h3>

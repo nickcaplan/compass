@@ -16,8 +16,11 @@ export const supabase = { auth: {
   signInWithPassword: (...args: Parameters<Auth['signInWithPassword']>) => authController.run(auth => auth.signInWithPassword(...args)),
   signUp: (...args: Parameters<Auth['signUp']>) => authController.redirect((auth, url) => auth.signUp({ ...args[0], options: { ...args[0].options, emailRedirectTo: url } }), true),
   resetPasswordForEmail: (...args: Parameters<Auth['resetPasswordForEmail']>) => authController.redirect((auth, url) => auth.resetPasswordForEmail(args[0], { ...args[1], redirectTo: url }), true),
-  signInWithOAuth: (...args: Parameters<Auth['signInWithOAuth']>) => authController.redirect((auth, url) => auth.signInWithOAuth({ ...args[0], options: { ...args[0].options, redirectTo: url, skipBrowserRedirect: true } }), false, result => {
-    if (!args[0].options?.skipBrowserRedirect && !result.error && result.data.url) window.location.assign(result.data.url);
+  signInWithOAuth: (credentials: Parameters<Auth['signInWithOAuth']>[0], beforeRedirect?: () => boolean) => authController.redirect((auth, url) => auth.signInWithOAuth({ ...credentials, options: { ...credentials.options, redirectTo: url, skipBrowserRedirect: true } }), false, result => {
+    if (!credentials.options?.skipBrowserRedirect && !result.error && result.data.url) {
+      if (beforeRedirect && !beforeRedirect()) throw new Error('Could not preserve the latest brief before Google log-in.');
+      window.location.assign(result.data.url);
+    }
   }),
   signOut: (...args: Parameters<Auth['signOut']>) => authController.signOut(args[0]?.scope),
 } };

@@ -1,4 +1,4 @@
-import { createClient, AuthRefreshDiscardedError, type AuthChangeEvent, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, AuthRefreshDiscardedError, isAuthRetryableFetchError, type AuthChangeEvent, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
 const URL = 'https://ctailpmcoyvaplwbwskf.supabase.co';
 const KEY = 'sb_publishable_J3Kaa7y4KExb-ICrCA1FIA_z4lYfhG7';
@@ -181,6 +181,9 @@ export class AuthController {
     if (fragment.has('access_token')) {
       try {
       const callback = new URLSearchParams(window.location.search).get('compassAuth');
+      if (!navigator.locks) throw new Error('This browser cannot safely validate a log-in link.');
+      await navigator.locks.request('compass-callback-' + callback, { ifAvailable: true }, async lock => {
+      if (!lock) { this.callbackNotice = new Error('This link is being checked in another tab. Try again after that check finishes.'); return; }
       const state = await this.read();
       if (!callback || callback !== state.callback && callback !== state.pendingCallback) {
         this.callbackNotice = new Error('This link does not match a current request in this browser. Open it in the browser where you requested it, or request a fresh link.');
@@ -190,7 +193,7 @@ export class AuthController {
         const claim = crypto.randomUUID();
         await this.transaction((latest, store) => {
           if (latest.generation !== state.generation || latest.callback !== callback && latest.pendingCallback !== callback) throw stale();
-          store.put({ ...latest, callback: undefined, pendingCallback: undefined, callbackClaim: claim }, 'canonical');
+          store.put({ ...latest, callbackClaim: claim }, 'canonical');
         }, 'readwrite');
         this.recovery = fragment.get('type') === 'recovery';
         const client = this.client(state.generation, this.recovery);
@@ -216,6 +219,7 @@ export class AuthController {
           }
         }, 'readwrite');
       }
+      });
       } finally {
         const url = new window.URL(window.location.href); url.hash = ''; url.searchParams.delete('compassAuth');
         window.history.replaceState(null, '', url.pathname + url.search);
@@ -264,8 +268,9 @@ export class AuthController {
     };
     let result: T;
     try { result = await work(operation.auth, url.toString()); }
-    catch (error) { if (preserveFailed) await settlePending(false); throw error; }
-    if (preserveFailed) await settlePending(!(result && typeof result === 'object' && 'error' in result && result.error));
+    catch (error) { if (preserveFailed && !isAuthRetryableFetchError(error) && !(error instanceof TypeError)) await settlePending(false); throw error; }
+    const deliveryError = result && typeof result === 'object' && 'error' in result ? result.error : null;
+    if (preserveFailed && !isAuthRetryableFetchError(deliveryError)) await settlePending(!deliveryError);
     if (this.failure) throw this.failure;
     if ((await this.read()).generation !== operation.generation) throw stale();
     afterValidation?.(result);
@@ -289,7 +294,11 @@ export class AuthController {
     const latest = await this.read();
     if (this.failure) throw this.failure;
     if (latest.generation !== state.generation) { state = latest; }
-    else if (result.error) return { data: { session: null }, error: result.error };
+    else if (result.error) {
+      const canonical = this.session(latest);
+      if (!canonical || !canonical.expires_at || canonical.expires_at <= Date.now() / 1000) return { data: { session: null }, error: result.error };
+      state = latest;
+    }
     else state = latest;
     return { data: { session: this.session(state) }, error: null };
   }

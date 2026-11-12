@@ -7,7 +7,8 @@ import puppeteer from 'puppeteer-core';
 const key='sb-ctailpmcoyvaplwbwskf-auth-token';
 const user=id=>({id,email:id+'@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:id,compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'});
 const session=id=>({access_token:'test',refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:user(id)});
-const brief=name=>({name,objectives:['awareness'],kpis:['Reach'],audiences:['Procurement'],seniority:['Manager'],budget:10000,start:'2026-12-01',end:'2027-02-01'});
+const futureDate=days=>new Date(Date.now()+days*864e5).toISOString().slice(0,10);
+const brief=name=>({name,objectives:['awareness'],kpis:['Reach'],audiences:['Procurement'],seniority:['Manager'],budget:10000,start:futureDate(30),end:futureDate(120)});
 const snap=(name,binding)=>({brief:brief(name),submittedBrief:null,budgetText:'10000',stage:'filling',ts:Date.now(),binding});
 async function click(p,label){await p.waitForFunction(l=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim()===l),{},label);await p.evaluate(l=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===l).click(),label)}
 async function login(p,id){await p.waitForSelector('#f-signin-email');await p.locator('#f-signin-email').fill(id+'@example.com');await p.locator('#f-signin-password').fill('test-only-password');await p.locator('form[aria-label="Email account"] .gen').click();await p.waitForSelector('#f-name');}

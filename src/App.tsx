@@ -701,6 +701,7 @@ export default function App() {
   const [profileName, setProfileName] = useState('');
   const [profileCompany, setProfileCompany] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
+  const profileSaveOwner = useRef<symbol | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [recoveringPassword, setRecoveringPassword] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery');
@@ -721,7 +722,7 @@ export default function App() {
   const [earlierDraftKey, setEarlierDraftKey] = useState<string | null>(null);
   function applyAuthUser(user: User | null, reseed = false, hydrating = false) {
     const previous = currentAccount.current;
-    if (previous?.id !== user?.id) { authEpoch.current++; canonicalProfile.current = null; }
+    if (previous?.id !== user?.id) { authEpoch.current++; canonicalProfile.current = null; profileSaveOwner.current = null; setProfileSaving(false); }
     if (user && canonicalProfile.current?.id === user.id && !reseed)
       user = { ...user, user_metadata: canonicalProfile.current.user_metadata };
     if (previous && previous.id !== user?.id) {
@@ -1065,7 +1066,7 @@ export default function App() {
   }, [stage, canViewPlan]);
 
   useEffect(() => {
-    if (recoveringPassword && page !== 'signin') { setPage('signin'); writePageUrl('signin'); }
+    if (recoveringPassword && page !== 'signin') { setPage('signin'); if (!new URLSearchParams(window.location.hash.slice(1)).has('access_token')) writePageUrl('signin'); }
   }, [recoveringPassword, page]);
 
   // Re-evaluate time-based labels (e.g. the Expired chip) when the tab
@@ -1580,7 +1581,7 @@ export default function App() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin + (demoMode ? '/?demo=1' : '') },
-      });
+      }, () => epoch === authEpoch.current && stashAuthDraft());
       failed = Boolean(error);
     } catch { failed = true; }
     if (failed) {
@@ -1607,6 +1608,8 @@ export default function App() {
     const epoch = authEpoch.current;
     const id = currentAccount.current?.id;
     if (!id) return;
+    const saveOwner = Symbol();
+    profileSaveOwner.current = saveOwner;
     setProfileSaving(true);
     setProfileError(null);
     let generation: number | null = null;
@@ -1638,7 +1641,7 @@ export default function App() {
     } catch {
       if (epoch === authEpoch.current && (generation === null || await authController.isCurrent(generation))) setProfileError('Could not save your details. Please try again.');
     } finally {
-      setProfileSaving(false);
+      if (profileSaveOwner.current === saveOwner) { profileSaveOwner.current = null; setProfileSaving(false); }
     }
   }
 
