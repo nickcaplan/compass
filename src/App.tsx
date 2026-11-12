@@ -1914,7 +1914,7 @@ export default function App() {
           ) : (
             <>
           <h2>{editingSaved ? 'Edit your brief' : 'Plan a campaign'}</h2>
-          {authNotice && /could not be saved|Could not keep/.test(authNotice) && <p className="fieldnote" role="alert">{authNotice}</p>}
+          {authNotice && /could not be saved|Could not keep|anonymous brief is (kept|restored)/.test(authNotice) && <p className="fieldnote" role="alert">{authNotice}</p>}
           {earlierDraftKey && <div className="draft-choice" role="status">
             <p>Your other draft is also kept on this device. Your current answers have not changed.</p>
             <button type="button" className="ghost" onClick={openEarlierDraft}>Switch to other draft</button>

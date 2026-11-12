@@ -6,7 +6,7 @@ import { supabase, authController, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './s
 const resetNotice = 'If an account exists for that email, check your inbox and spam folder for a reset link. If you requested one recently, please wait before trying again.';
 
 type Mode = 'signin' | 'signup' | 'reset' | 'update';
-type AuthErrorLike = { code?: string; message?: string } | null;
+type AuthErrorLike = { code?: string; message?: string; status?: number } | null;
 function authErrorMessage(err: AuthErrorLike, fallback: string): string {
   const msg = err?.message ?? '';
   const code = err?.code ?? '';
@@ -47,9 +47,15 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
     setBusy(true);
     try {
       if (activeMode === 'reset') {
-        await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
-        // Provider outcomes, including account-dependent delivery failures,
-        // expose the same truthful, conditional status.
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') });
+        // Recipient cooldowns and account-dependent outcomes stay private.
+        // Network, server, IP and project-quota failures are not account facts.
+        const cooldown = /after \d+ seconds?/i.test(resetError?.message ?? '');
+        const independentFailure = resetError && !cooldown && (
+          !resetError.status || resetError.status >= 500 || resetError.code === 'over_request_rate_limit' ||
+          resetError.code === 'over_email_send_rate_limit' || /email rate limit|request rate limit|too many requests/i.test(resetError.message)
+        );
+        if (independentFailure) { setError(authErrorMessage(resetError, 'Could not send a reset link. Please try again.')); return; }
         // This is UI privacy only; the provider API still exposes its own errors.
         setNotice(resetNotice);
       } else if (activeMode === 'signup') {

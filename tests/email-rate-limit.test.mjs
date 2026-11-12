@@ -3,18 +3,21 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import test from 'node:test';
 import puppeteer from 'puppeteer-core';
-test('email rate limits get distinct inline messages without an invented countdown', {timeout:60000}, async()=>{
+test('email rate limits get distinct inline messages without an invented countdown', {timeout:90000}, async()=>{
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
  try{
-  const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
+  const local=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
+  const url=process.env.HOSTED_URL||local;
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
   const context=await browser.createBrowserContext();const p=await context.newPage();p.on('dialog',d=>d.accept());p.setDefaultTimeout(8000);await p.setViewport({width:390,height:844});
   // nextError: the error payload the next auth call should fail with.
-  let nextError=null; let requestCount=0; let delayMs=0;
+  let nextError=null; let resetFailure=null; let requestCount=0; let delayMs=0;
   await p.setRequestInterception(true);p.on('request',req=>{
    if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();
    const headers={'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS','access-control-allow-headers':'*'};
    if(req.method()==='OPTIONS')return req.respond({status:204,headers});
+   if(req.url().includes('/recover')&&resetFailure==='network')return req.abort('failed');
+   if(req.url().includes('/recover')&&resetFailure==='server')return req.respond({status:503,headers,contentType:'application/json',body:JSON.stringify({msg:'Unavailable'})});
    let status=200,body=req.url().includes('/user')&&req.method()==='GET'?{id:'rate-user',email:'rate@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Rate User',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'}:{};
    const isAuth=/\/(recover|signup|token)(\?|$)/.test(req.url()); if(isAuth) requestCount++;
    if((req.url().includes('/recover')||req.url().includes('/signup')||req.url().includes('/token')||(req.url().includes('/user')&&req.method()==='PUT'))&&nextError){
@@ -29,10 +32,13 @@ test('email rate limits get distinct inline messages without an invented countdo
   const submit=()=>p.locator('form[aria-label="Email account"] .gen').click();
   // Wait until the alert shows the NEW message (a previous error can still be on screen at click time).
   const alertText=async(re)=>{await p.waitForFunction(src=>{const e=document.querySelector('form [role=alert]');return e&&new RegExp(src).test(e.textContent)},{},re.source);return p.$eval('form [role=alert]',e=>e.textContent)};
-  // 1. Reset outcomes remain conditional, including delivery quota errors.
+  // 1. Project-wide quota is actionable and does not identify an account.
   await p.locator('.email-forgot').click();await p.locator('#f-signin-email').fill('quota@example.com');
   nextError={error_code:'over_email_send_rate_limit',code:'over_email_send_rate_limit',msg:'email rate limit exceeded'};await submit();
-  await p.waitForSelector('form [role=status]');let msg=await p.$eval('form [role=status]',e=>e.textContent);assert.match(msg,/If an account exists/);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
+  let msg=await alertText(/our email limit/);assert.equal(await p.$('form [role=status]'),null);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
+  nextError={code:'over_request_rate_limit',msg:'Request rate limit reached'};await submit();await alertText(/Too many attempts from this network/);assert.equal(await p.$('form [role=status]'),null);
+  for(const failure of ['server','network']){resetFailure=failure;await submit();await alertText(/Could not send a reset link/);assert.equal(await p.$('form [role=status]'),null);await p.waitForFunction(()=>!document.querySelector('form .gen').disabled);resetFailure=null;}
+  if(process.env.SCREENSHOT_DIR)await p.screenshot({path:process.env.SCREENSHOT_DIR+'/reset-failure-390.png',fullPage:false});
   // 2. Per-recipient cooldown: never pins server seconds that would go stale on screen.
   nextError={error_code:'over_email_send_rate_limit',code:'over_email_send_rate_limit',msg:'For security purposes, you can only request this after 37 seconds.'};await submit();
   await p.waitForSelector('form [role=status]');msg=await p.$eval('form [role=status]',e=>e.textContent);const cooldownNotice=msg;assert.match(msg,/If an account exists/);assert.doesNotMatch(msg,/we have sent|You requested an email/);assert.doesNotMatch(msg,/\d+ seconds/);assert.equal(await p.$eval('#f-signin-email',e=>e.value),'quota@example.com');
@@ -66,7 +72,8 @@ test('email rate limits get distinct inline messages without an invented countdo
  // 4. Account-dependent failures have the same conditional response.
  const server2=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser2;
  try{
-  const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server2.once('error',reject);server2.once('exit',code=>reject(Error(`Preview exited ${code}`)));server2.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
+  const local=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server2.once('error',reject);server2.once('exit',code=>reject(Error(`Preview exited ${code}`)));server2.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
+  const url=process.env.HOSTED_URL||local;
   browser2=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
   const p=await browser2.newPage();p.on('dialog',d=>d.accept());p.setDefaultTimeout(8000);await p.setViewport({width:390,height:844});
   await p.setRequestInterception(true);p.on('request',req=>{
