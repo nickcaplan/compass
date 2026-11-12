@@ -1559,7 +1559,11 @@ export default function App() {
     else {
       if (anonymousBinding.current) {
         persisted = stashAuthDraft();
-        if (persisted && !('googleFlow' in anonymousBinding.current)) clearPlannerState();
+        if (persisted && !('googleFlow' in anonymousBinding.current) && hasPlannerWork() &&
+          !window.confirm('Use this brief with your Google account? Your earlier email attempt will keep its saved copy.')) {
+          googlePending.current = false;
+          return;
+        }
       }
       let retryFlow: string | null = null;
       if (previousFlow && !hasPlannerWork()) {

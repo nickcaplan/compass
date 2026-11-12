@@ -205,7 +205,7 @@ export class AuthController {
           throw error;
         });
         if (result.error || (await this.read()).generation !== state.generation) this.recovery = false;
-        if (result.error) this.callbackNotice = new Error('This log-in or reset link is invalid or has expired.');
+        if (result.error) this.callbackNotice = new Error(isAuthRetryableFetchError(result.error) ? 'Could not check this link. Check your connection, then open the link again.' : 'This log-in or reset link is invalid or has expired.');
         await this.transaction((latest, store) => {
           if (latest.generation !== state.generation || latest.callbackClaim !== claim) throw stale();
           const session = this.session(latest);
@@ -224,6 +224,9 @@ export class AuthController {
         }, 'readwrite');
       }
       });
+      } catch (error) {
+        this.callbackNotice ??= new Error('Could not check this link. Open it again from your email, or request a fresh link.');
+        throw error;
       } finally {
         const url = new window.URL(window.location.href); url.hash = ''; url.searchParams.delete('compassAuth');
         window.history.replaceState(null, '', url.pathname + url.search);
