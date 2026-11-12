@@ -610,3 +610,12 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
 .pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
+
+/* Keep reveal inside the password field, with a keyboard-visible 44px target. */
+.password-control{position:relative}
+.password-control .ctl{padding-right:3.5em;min-height:48px}
+.password-reveal{position:absolute;right:3px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:2.5em;min-width:44px;height:calc(100% - 4px);min-height:44px;padding:0;border:0;border-radius:8px;background:none;color:var(--muted);font:inherit;cursor:pointer}
+.password-reveal svg{width:1.25em;height:1.25em}
+.password-reveal:hover{color:var(--text)}
+.password-reveal:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+.password-reveal:disabled{cursor:wait;opacity:.55}

@@ -36,10 +36,12 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
   const currentScope = useRef(scope); currentScope.current = scope;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [revealedMode, setRevealedMode] = useState<Mode | null>(null);
+  const passwordVisible = revealedMode === activeMode;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  function changeMode(next: Mode) { setMode(next); setError(null); setNotice(null); setPassword(''); }
+  function changeMode(next: Mode) { setMode(next); setError(null); setNotice(null); setPassword(''); setRevealedMode(null); }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
@@ -75,7 +77,7 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
       } else if (activeMode === 'signup') {
         const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') } });
         if (result.error) { setError(result.error.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' : authErrorMessage(result.error, 'Could not create your account. Try logging in if you already have one.')); return; }
-        setPassword('');
+        setPassword(''); setRevealedMode(null);
         if (result.data.session) onAuthenticated(result.data.session.user);
         else setNotice('Check your inbox to confirm your email, then return to log in. If you already have an account, log in instead.');
       } else if (activeMode === 'update') {
@@ -110,11 +112,11 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
         if (result.data.user.id !== id) { stopped(true); return; }
         await authController.finishRecovery(generation, id);
         if (!(await authController.isCurrent(generation))) { stopped(true); return; }
-        setPassword(''); onAuthenticated(result.data.user);
+        setPassword(''); setRevealedMode(null); onAuthenticated(result.data.user);
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (result.error || !result.data.user) { setError(authErrorMessage(result.error, 'Could not log in. Check your email and password, and confirm your email if you just signed up.')); return; }
-        setPassword(''); onAuthenticated(result.data.user);
+        setPassword(''); setRevealedMode(null); onAuthenticated(result.data.user);
       }
     } catch (failure) { if (currentScope.current === scope) setError(passwordAccepted ? 'Your password may have been updated, but the result could not be confirmed. Log in again to check it.' : failure instanceof Error && /Reset request timed out/.test(failure.message) ? 'The reset request took too long. A reset email may still arrive. Check your inbox and spam before requesting another link.' : 'Could not connect. Please try again.'); }
     finally { setBusy(false); }
@@ -132,7 +134,12 @@ export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeE
       </div>}
       {activeMode !== 'reset' && <div className="field">
         <label htmlFor={`${idPrefix}-password`}>{recovery ? 'New password' : 'Password'}</label>
-        <input id={`${idPrefix}-password`} className="ctl" type="password" autoComplete={activeMode === 'signin' ? 'current-password' : 'new-password'} required minLength={activeMode === 'signin' ? 1 : 8} disabled={busy} value={password} onChange={e => { setPassword(e.target.value); setError(null); }} />
+        <div className="password-control">
+          <input id={`${idPrefix}-password`} className="ctl" type={passwordVisible ? 'text' : 'password'} autoComplete={activeMode === 'signin' ? 'current-password' : 'new-password'} required minLength={activeMode === 'signin' ? 1 : 8} disabled={busy} value={password} onChange={e => { setPassword(e.target.value); setError(null); }} />
+          <button type="button" className="password-reveal" aria-label={passwordVisible ? 'Hide password' : 'Show password'} aria-pressed={passwordVisible} aria-controls={`${idPrefix}-password`} disabled={busy} onClick={() => setRevealedMode(passwordVisible ? null : activeMode)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{passwordVisible && <path d="m3 3 18 18" />}</svg>
+          </button>
+        </div>
         {activeMode !== 'signin' && <p className="hint">Use at least 8 characters.</p>}
       </div>}
       {error && <p className="fieldnote" role="alert">{error}</p>}
