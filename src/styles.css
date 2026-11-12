@@ -592,3 +592,6 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
 /* Small field and preview labels stay below the bold card-title hierarchy. */
 .form label,.outline .ok{font-weight:600}
+/* Native date segments are not ::placeholder text. Keep the empty cue regular. */
+input[type="date"].date-empty{font-weight:400;color:var(--faint)}
+input[type="date"].date-empty::-webkit-datetime-edit{font-weight:400;color:var(--faint)}
