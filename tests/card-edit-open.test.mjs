@@ -18,7 +18,7 @@ test('equal active card Edit/Open actions use selected colours and correct edit/
         if (match) { clearTimeout(timer); resolve(match[0]); }
       });
     });
-    browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+    browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : '/usr/bin/google-chrome'), headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) for (const theme of ['dark', 'light']) {
       const context = await browser.createBrowserContext();
       const page = await context.newPage();

@@ -759,7 +759,15 @@ export default function App() {
   useEffect(() => {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
   });
-  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && brief !== submittedBrief;
+  const editsNotGenerated = stage === 'plan' && submittedBrief !== null && briefValues(brief) !== briefValues(submittedBrief);
+  const missingForRegeneration = editingSaved ? [
+    !(brief.markets?.length) && 'Market',
+    !brief.objectives.length && 'Objective',
+    !brief.kpis.length && 'KPI',
+    !brief.audiences.some(a => AUDIENCES.includes(a)) && 'Audience',
+    !(brief.budget !== null && brief.budget > 0) && 'Budget',
+    !(weeks > 0 && !startNotFuture(brief.start)) && 'valid future campaign dates',
+  ].filter((answer): answer is string => Boolean(answer)) : [];
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -1117,7 +1125,7 @@ export default function App() {
     clearSaveSpacer();
     window.clearTimeout(toastTimer.current);
     setToast(null);
-    if (route.page === 'planner' && route.planId === undefined && viewingSaved) {
+    if (route.page === 'planner' && route.planId === undefined && (viewingSaved || editingSaved)) {
       clearPlannerState();
     }
     // At this point navigation is either unchanged or an approved discard.
@@ -1477,9 +1485,12 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" disabled={count < 6 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
+          {missingForRegeneration.length > 0 && stage !== 'generating' && (
+            <p id="regenerate-required" className="regenerate-required" role="status">{new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' }).format(missingForRegeneration)} must be selected.</p>
+          )}
             </>
           )}
         </section>
@@ -1594,6 +1605,9 @@ export default function App() {
                   : 'Recommended plan'}</h2>
                 {viewingSaved || editingSaved ? <div className="cap">{editingSaved ? 'SAVED PLAN - EDITING BRIEF' : 'SAVED PLAN - READ ONLY'}</div> : <DemoCap />}
               </div>
+              {editsNotGenerated && (
+                <p className="stale-plan-note" role="status">Your brief has changed. These figures are from your previous plan. Regenerate your plan to include your latest changes before saving.</p>
+              )}
               <div className="metrics">
                 {plan.metrics.map((m) => (
                   <div className="metric" key={m.k}>
@@ -1656,9 +1670,6 @@ export default function App() {
                   </>
                 ) : editingSaved ? (
                   <>
-                    {editsNotGenerated && (
-                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
-                    )}
                     <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save changes
@@ -1670,9 +1681,6 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    {editsNotGenerated && (
-                      <p className="savenote">Regenerate your plan to include your latest changes before saving.</p>
-                    )}
                     <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
                       <IconSave />
                       Save plan
