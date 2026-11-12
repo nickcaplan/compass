@@ -1,3 +1,4 @@
+import {observeJourney, reportJourneyFailure} from './fixtures/journey-diagnostics.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
@@ -9,7 +10,7 @@ const chromePath = process.platform === 'darwin'
   ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
   : '/usr/bin/google-chrome';
 
-test('PDF gold feedback preserves layout, text and dismissal in generated and saved views', { timeout: 60000 }, async () => {
+test('Generated-plan PDF placeholder preserves layout, text and dismissal', { timeout: 60000 }, async () => {
   const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
   let browser;
   try {
@@ -27,10 +28,18 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [320, 390, 1440]) {
-      const context = await browser.createBrowserContext();const page = await context.newPage(); await page.setViewport({width,height:900});
-      await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill'); await page.locator('.demofill').click();
-      await page.waitForFunction(()=>!document.querySelector('.gen').disabled); await page.evaluate(()=>document.querySelector('.gen').click()); await page.waitForSelector('.cs-wrap button');
-      for (const saved of [false,true]) {
+      const context = await browser.createBrowserContext();const page = await context.newPage(); await observeJourney(page);await page.setViewport({width,height:900});
+      await page.goto(previewUrl+'?demo=1'); await page.waitForSelector('.demofill');
+      await page.evaluate(() => document.fonts.ready);
+      // Exercise the PDF journey via keyboard so font/layout movement cannot
+      // redirect a coordinate click to the surrounding form on a busy runner.
+      await page.focus('.demofill');
+      assert.equal(await page.$eval('.demofill', e => e === document.activeElement), true);
+      await page.keyboard.press('Enter');
+      // Fill it in already generates the plan after the example walkthrough.
+      // Waiting for transient Generate enablement races the automatic start.
+      await page.waitForSelector('.cs-wrap button');
+      for (const saved of [false]) {
         if(saved){await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save plan').click());await page.waitForSelector('.bsum');}
         await page.$eval('.cs-wrap button',e=>e.scrollIntoView({block:'center'}));
         // The plan reveal settles for a moment after generation; only measure once the layout is still.
@@ -61,5 +70,5 @@ test('PDF gold feedback preserves layout, text and dismissal in generated and sa
       }
       await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await page.locator('.cs-wrap button').click();await page.waitForFunction(()=>document.querySelector('.cs-wrap').classList.contains('cs-showing'));assert.equal(await page.$eval('.cs-wrap .ghost',e=>e.getAnimations().length),0);assert.equal(await page.$eval('.cs-wrap .ghost',e=>getComputedStyle(e).transitionDuration),'0s');await page.keyboard.press('Escape');assert.equal(await page.$eval('.cs-wrap .ghost',e=>getComputedStyle(e).transitionDuration),'0s');await context.close();
     }
-  } finally { await browser?.close(); server.kill(); }
+  } catch (error) { await reportJourneyFailure(browser); throw error; } finally { await browser?.close(); server.kill(); }
 });
