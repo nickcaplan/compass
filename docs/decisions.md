@@ -344,3 +344,11 @@ removal. Reduced-motion users get the final size immediately. No objective or
 KPI choices are removed, and existing answers survive responsive layout changes.
 
 - Enlarged-text phone verification also caught the Generate arrow wrapping alone. Keep its final word and arrow in a non-breaking inline group; cover that at 200% text in the KPI layout regression.
+
+## 13 November: audit all brief states, not only all-objectives-selected
+
+- Empty desktop review exposed 344px below the KPI hint. Rebalance the upper section to a narrow Campaign name/Market column and wider Objective/KPI column. Audience gets a full-width row; Budget and Dates share the bottom row. Phone/tablet retain the existing order.
+- Actual empty column mismatch is 23px at 1280/1440/1920. At one/two/three objectives it is 11/67/106px. No artificial minimum height, dummy content, hidden labels or fixed final KPI height. Lower rows follow the actual animated upper section.
+- Readiness requires pixel review of empty, partial, all-objectives and fully answered/generated states at phone/tablet/desktop, plus enlarged text. A single flattering screenshot is not enough. Apply that review to every future Compass UI PR.
+
+- Partial phone/tablet briefs now show only the real answer summary and next-step guidance, rather than reserving a tall set of empty result blocks before generation. Actual generating-state skeletons remain.

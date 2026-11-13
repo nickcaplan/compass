@@ -651,9 +651,17 @@ input[type="date"].date-empty{font-weight:400;color:var(--faint)}
 input[type="date"].date-empty::-webkit-datetime-edit{font-weight:400;color:var(--faint)}
 
 /* Independent desktop columns keep a growing KPI list out of the left flow. */
-.brief-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;grid-column:1/-1;align-items:start}
-.brief-details,.brief-goals{display:grid;gap:14px;min-width:0;align-content:start}
+.brief-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:18px;grid-column:1/-1;align-items:start}
+.brief-details,.brief-goals,.brief-timing{display:grid;gap:14px;min-width:0;align-content:start}
+.brief-audience{grid-column:1/-1;min-width:0}
+.brief-timing{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
 .brief-columns .field{margin:0;min-width:0}
 .kpi-field{box-sizing:border-box;min-width:0}
 .kpi-content{display:flow-root;min-width:0}
 .kpi-content>.hint{margin-bottom:0}
+/* Text enlargement needs the single-column form before labels get squeezed. */
+@media(min-width:1200px){.brief-first>.form{container:brief-layout / inline-size}}
+@container brief-layout (max-width:45em){
+ .brief-columns{grid-template-columns:minmax(0,1fr)}
+ .brief-timing{grid-template-columns:minmax(0,1fr)}
+}

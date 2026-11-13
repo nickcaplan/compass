@@ -32,8 +32,10 @@ test('planning cards stay readable and inputs remain usable', { timeout: 60000 }
       await page.goto(previewUrl+'?demo=1');
       await page.waitForSelector('.planning-step');
       if (width >= 1200) {
-        assert.deepEqual(await page.$$eval('.brief-details .planning-step label',es=>es.map(e=>e.textContent)),['Campaign name','Market','Audience','Budget','Campaign dates']);
+        assert.deepEqual(await page.$$eval('.brief-details .planning-step label',es=>es.map(e=>e.textContent)),['Campaign name','Market']);
         assert.deepEqual(await page.$$eval('.brief-goals .planning-step label',es=>es.map(e=>e.textContent)),['Objective','KPI']);
+        assert.deepEqual(await page.$$eval('.brief-audience .planning-step label',es=>es.map(e=>e.textContent)),['Audience']);
+        assert.deepEqual(await page.$$eval('.brief-timing .planning-step label',es=>es.map(e=>e.textContent)),['Budget','Campaign dates']);
         const columns = await page.evaluate(() => {
           const left = document.querySelector('.brief-details').getBoundingClientRect();
           const right = document.querySelector('.brief-goals').getBoundingClientRect();

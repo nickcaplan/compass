@@ -2093,8 +2093,10 @@ export default function App() {
 
           {wideBrief && !viewingSaved && !editingSaved && (stage === 'empty' || stage === 'filling') ? (
             <div className="brief-columns">
-              <div className="brief-details">{nameField}{marketField}{audienceField}{budgetField}{datesField}</div>
+              <div className="brief-details">{nameField}{marketField}</div>
               <div className="brief-goals">{objectiveField}{kpiField}</div>
+              <div className="brief-audience">{audienceField}</div>
+              <div className="brief-timing">{budgetField}{datesField}</div>
             </div>
           ) : <>{nameField}{marketField}{objectiveField}{kpiField}{audienceField}{budgetField}{datesField}</>}
 
@@ -2156,7 +2158,6 @@ export default function App() {
                 </div>
                 <div className="t">{count} OF 6 ANSWERED</div>
               </div>
-              <SkeletonBlock />
               <p className="keep">
                 Keep going - your recommended publishers, spend split and expected results appear
                 here as soon as you generate.

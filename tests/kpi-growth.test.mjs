@@ -5,7 +5,7 @@ import {stripVTControlCharacters} from 'node:util';
 import puppeteer from 'puppeteer-core';
 import {seedPlannerFixture} from './planner-auth-fixture.mjs';
 
-test('Objective stays above animated KPI growth; left fields stay put; reduced motion and responsive state are retained', {timeout:60000}, async () => {
+test('Objective stays above animated KPI growth; name/market stay put; reduced motion and responsive state are retained', {timeout:60000}, async () => {
   const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0']);
   let browser;
   try {
@@ -23,6 +23,15 @@ test('Objective stays above animated KPI growth; left fields stay put; reduced m
       await page.locator('#f-name').fill('Preserved campaign');
       const measure=()=>page.evaluate(()=>({height:document.querySelector('.kpi-field').getBoundingClientRect().height,audience:document.querySelector('[aria-labelledby=g-audience]').getBoundingClientRect().y,market:document.querySelector('[aria-labelledby=g-market]').getBoundingClientRect().y}));
       const before=await measure();
+      if(width>=1200){
+        const balance=await page.evaluate(()=>{
+          const left=document.querySelector('.brief-details').getBoundingClientRect();
+          const right=document.querySelector('.brief-goals').getBoundingClientRect();
+          return {gap:Math.abs(left.bottom-right.bottom),audience:document.querySelector('.brief-audience').getBoundingClientRect().top,bottom:Math.max(left.bottom,right.bottom)};
+        });
+        assert.ok(balance.gap<40,`${width}: empty brief has no large unmatched column hole`);
+        assert.ok(balance.audience>=balance.bottom&&balance.audience-balance.bottom<24);
+      }
       for (let objective=1;objective<=3;objective++) {
         const previous=await measure();
         await page.locator(`[aria-labelledby=g-objective] button:nth-child(${objective})`).click();
@@ -40,7 +49,15 @@ test('Objective stays above animated KPI growth; left fields stay put; reduced m
         await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         if (reduce) assert.equal(await page.$eval('.kpi-field',e=>e.getAnimations().length),0,'reduced motion has no height animation');
         const after=await measure();assert.ok(after.height>previous.height,`${width}: grows for additional objective`);
-        if(width>=1200){assert.equal(after.audience,before.audience);assert.equal(after.market,before.market)}
+        if(width>=1200){assert.equal(after.market,before.market);
+          const layout=await page.evaluate(()=>{
+            const left=document.querySelector('.brief-details').getBoundingClientRect(),right=document.querySelector('.brief-goals').getBoundingClientRect();
+            const audience=document.querySelector('.brief-audience').getBoundingClientRect();
+            return {gap:Math.abs(left.bottom-right.bottom),audience:audience.top,bottom:Math.max(left.bottom,right.bottom)};
+          });
+          assert.ok(layout.gap<125,`${width}: partial/full objective columns stay balanced`);
+          assert.ok(layout.audience>=layout.bottom&&layout.audience-layout.bottom<24);
+        }
       }
       assert.equal(await page.$$eval('[aria-labelledby=g-kpi] button',bs=>bs.length),19);
       // Removing an objective gently shrinks and removes its selected KPI only.
