@@ -1,3 +1,4 @@
+import { seedPlannerFixture } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {spawn} from 'node:child_process';
@@ -9,7 +10,7 @@ test('desktop brief fills its canvas, keeps Objective next to KPI and completes 
  const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(Error('Preview startup timeout')),10000);server.once('error',reject);server.stdout.on('data',d=>{output+=stripVTControlCharacters(d.toString());const m=output.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
  for(const width of[390,1280,1440,1920])for(const theme of['dark','light']){
- const c=await browser.createBrowserContext(),p=await c.newPage();await p.setViewport({width,height:1000});await p.evaluateOnNewDocument(t=>localStorage.setItem('compass-theme',t),theme);await p.goto(url+'#/planner');await p.waitForSelector('#f-name');await p.evaluate(()=>document.fonts.ready);
+ const c=await browser.createBrowserContext(),p=await c.newPage();await seedPlannerFixture(p);await p.setViewport({width,height:1000});await p.evaluateOnNewDocument(t=>localStorage.setItem('compass-theme',t),theme);await p.goto(url+'#/planner');await p.waitForSelector('#f-name');await p.evaluate(()=>document.fonts.ready);
  const g=await p.evaluate(()=>{const rect=s=>document.querySelector(s).getBoundingClientRect().toJSON();return {layout:rect('.layout'),form:rect('.form'),objective:rect('#g-objective'),kpi:rect('#g-kpi'),audience:rect('#g-audience'),emptyVisible:document.querySelector('.plan').offsetWidth>0,overflow:document.documentElement.scrollWidth>innerWidth}});
  assert.equal(g.overflow,false);if(width>=1200){assert.equal(g.form.width,g.layout.width);assert.equal(g.objective.y,g.kpi.y);assert.ok(g.kpi.x>g.objective.x);assert.equal(g.emptyVisible,false)}else assert.equal(g.emptyVisible,true);
 
