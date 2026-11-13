@@ -80,6 +80,15 @@ export interface Brief {
   end: string; // ISO date or ''
 }
 
+// KPIs are never picked by hand: choosing an objective includes all of its
+// KPIs automatically (Nick, 13 Nov 2026). A brief being edited always carries
+// the derived set; saved plans keep whatever KPIs they stored.
+export function kpisForObjectives(objectives: readonly ObjectiveId[]): string[] {
+  return OBJECTIVES.filter((o) => objectives.includes(o.id))
+    .flatMap((o) => o.kpis)
+    .filter((k, i, a) => a.indexOf(k) === i);
+}
+
 export const EMPTY_BRIEF: Brief = {
   name: '',
   objectives: [],
@@ -514,7 +523,10 @@ export function buildPlan(b: Brief): Plan {
 }
 
 export function checklistFor(b: Brief): string[] {
-  const kpi = b.kpis.length ? b.kpis.join(' + ').toLowerCase() : 'your KPI';
+  // KPIs come included with the chosen objectives, so name the objectives
+  // rather than listing every derived KPI.
+  const included = OBJECTIVES.filter((o) => b.objectives.includes(o.id)).map((o) => o.label.toLowerCase());
+  const kpi = included.length ? `your ${included.join(' + ')} KPIs` : 'your KPI';
   const efficiency =
     b.objectives.length > 1
       ? 'results across your selected objectives'
