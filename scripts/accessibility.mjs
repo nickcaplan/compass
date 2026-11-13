@@ -28,6 +28,7 @@ test('WCAG AA, keyboard focus and200% text on every route and Planner state',{ti
     if(state==='edit'){await page.locator('.saved-plan-edit').click();await page.waitForSelector('#f-name')}
    }
    if(state==='generated'){
+    await page.waitForFunction(()=>location.hash==='#/planner');await page.waitForSelector('.avatar');await page.evaluate(()=>document.fonts.ready);
     await page.waitForFunction(()=>!document.querySelector('.demofill')?.disabled);
     await page.locator('.demofill').click();
     try{await page.waitForSelector('.planin',{timeout:20000})}catch(error){console.error(label,await page.evaluate(()=>({url:location.href,visibility:document.visibilityState,button:document.querySelector('.gen')?.outerHTML,text:document.body.innerText.slice(-1800)})));throw error}
