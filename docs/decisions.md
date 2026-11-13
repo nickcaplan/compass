@@ -103,6 +103,136 @@ and varies by browser, so each date field gets its own always-visible
 calendar button that opens the native picker (showPicker, focus fallback).
 Dates stack vertically on small screens so the fields never clip.
 
+## 2026-11-02 - Sign-in: Google or emailed link, no password
+
+Nick chose an emailed sign-in link over a password mechanism ("happy with an
+email link", 2 Nov 2026). The sign-in page offers Continue with Google
+(Supabase OAuth, redirecting back to the current origin) and Continue with
+email (Supabase magic link). Supabase Auth holds the accounts; the app only
+ever sees the publishable key. Saved plans remain in browser localStorage,
+not a server-side saved_plans table. The sign-in gate is a product UI gate,
+not data access control; generated demo plans are computed in the browser.
+Server-side storage would need its own row-level security before use.
+
+## 2026-11-02 - Sign-in gate uses real auth; demo bypass removed
+
+The earlier gate collected a name, email and company and announced "Signed
+in for this demo - no account created". Once real sign-in shipped that copy
+became misleading, so the gate now offers the same two real sign-in options
+as the sign-in page, and a signed-in user skips the gate entirely. The demo
+gate was lead capture, not authentication; account auth replaces it rather
+than being equated with it.
+
+## 2026-11-02 - Brief and plan survive the sign-in round trip
+
+Signing in navigates away (Google) or reloads (email link), which would drop
+the in-progress brief and generated plan. Starting either flow stashes a
+snapshot in localStorage, restored when the user lands back signed in. The
+snapshot expires after an hour and never leaves the device.
+
+## 2026-11-03 - Redirect configuration verified live
+
+The earlier exact-origin-only description was incorrect. The live Supabase
+allowlist has wildcard paths for production, localhost, preview26 and preview41.
+Preview41 therefore covers the demo query redirect. Preview51 is absent and is
+fixture-only evidence, not a validated real-auth return route. Real-auth checks
+use preview41. No provider settings were changed by this correction.
+
+## 2026-11-02 - Current email and password implementation
+
+This branch supersedes the earlier magic-link implementation above: the
+email controls now use password sign-in, account creation, verification
+email and password-reset email, alongside Google sign-in. Verification and
+recovery callbacks can reload the page, so the browser-local draft snapshot
+remains necessary. The gate offers these same account flows plus profile
+completion. These are implementation notes for this unmerged branch, not a
+claim that the earlier product decision or production site has changed.
+
+## 2026-11-03 - Bind unfinished auth drafts to an account or originating flow
+
+Unfinished planner state is no longer handed to the next account using the
+same browser. An account transition stashes the prior account's unfinished
+work under its account ID and clears visible planner state. That account
+can resume its own work after logging in again. Anonymous email attempts
+are bound to the first submitted address; changing the address does not
+relabel the previous attempt's draft. Google redirects use an originating
+tab's one-time flow token, not an email-bound draft. Legacy ownerless
+snapshots are not restored. Drafts expire after an hour. The existing
+browser-wide demo saved-plan list is unchanged and is not account storage.
+
+## 2026-11-03 - Readable PR evidence
+
+Post one readable screenshot per PR comment. Do not combine screenshot
+proof into a composite or a grouped comment; Nick found that hard to read.
+
+## 2026-11-03 - Auth lifecycle follow-up
+
+Only an OAuth-shaped callback with a fresh
+provider token, no email/recovery type, Google provider metadata and the
+originating tab's pending one-time flow may restore a Google draft. Email
+callbacks invalidate a pending Google flow. Provider redirect URLs
+are unchanged. An immediate Google-start failure keeps current work and
+removes only its failed flow snapshot. Successful email login consumes its
+matching snapshot even when current work stays in memory. Known expired
+unfinished snapshots are removed during draft access/startup; the saved
+plan store and unrecognized work are not touched.
+
+## 2026-11-03 - Profile metadata does not own auth-session persistence
+
+The SDK alone persists auth sessions. Profile saves use a captured bearer token,
+check the active principal before applying a result in memory, and never write
+captured session credentials to localStorage. Startup reads canonical metadata
+with a captured token, guarded by account epoch and profile revision. Late reads
+cannot undo a newer save or carry metadata into a replacement account. Lookup
+failure retains the profile gate rather than inferring completion.
+
+## 2026-11-03 - Preview-only canonical auth controller
+
+This branch is an unmerged follow-up to the held auth/rate-limit work, not a
+production rollout. Supabase remains the authentication service. Saved plans
+and draft records keep their existing stores; this change never migrates or
+clears them.
+
+Auth persistence uses a new `compass-auth-v2` IndexedDB store. A transaction
+advances the intent generation and every SDK storage adapter is permanently
+bound to the generation that created it. Stale reads return null, stale writes
+and removes reject inside the same transaction as their comparison. SDK events
+and cross-tab notifications are hints to reread canonical state, not authority
+to replace it. No SDK internals are patched. Callback links carry a one-use
+binding to the original generation; missing, used or superseded bindings are
+not adopted as fresh intent. Callback hydration publishes no intermediate UI
+state. Secure-storage failure stops authentication with inline feedback.
+
+Rollout, if separately approved, requires old Compass tabs to close/reload and
+visitors to log in again. Legacy SDK tokens are not imported. Links created
+before the rollout need reissuing. This branch does not change provider
+settings, accounts, email templates, billing, or real user credentials.
+
+Regression tests use only fixture credentials and intercepted provider
+responses. Helpers in `tests/helpers` translate old test fixtures into the new
+store, never production tokens. Inherited assertions on profile, drafts,
+recovery, saved-plan lifecycle and inline errors remain. New controller tests
+must not install that compatibility helper when proving legacy-token rejection.
+
+Recovery mode is persisted only for the verified principal and intent generation,
+so a reload keeps the reset form while a new intent or successful completion
+removes that mode. The callback URL is cleaned even when verification fails.
+Runtime storage failure is fail-closed until reload, including pending writes.
+
+The validated Supabase SDK is pinned to2.119.0 in package.json and the lockfile.
+Its default refresh path remains unchanged: no deprecated
+custom lock, external lock wrapper or internal SDK patch. Two-tab regressions
+exercise concurrent same-generation refresh with a delayed successful rotation
+and an already-used-token rejection. Generation fences cover replacement and
+logout independently of SDK/server refresh-race handling. This is not proof of
+every provider/network interleaving. Direct profile/password requests already
+sent cannot be undone; guards reject stale local acceptance and prevent a later
+request from silently taking a replacement account token.
+
+Email links work only in the browser profile where they were requested. Opening
+one in another browser, device or in-app browser fails the binding check and
+shows the mismatch notice. Request a fresh link in the intended browser. An
+already used or superseded link also fails. Strict binding is not relaxed.
 ## 2026-11-03 - Market brief selection
 
 Nick's edited combined-feedback document places Market between Objective and
@@ -182,3 +312,23 @@ Unselected Awareness, Consideration and Performance choices use the same
 outline and text treatment. Objective shades begin when selected; KPIs keep
 their objective colour coding. This supersedes distinct unselected Objective
 outlines only, not the selected or KPI shades.
+
+## Combined sign-in release integration (11 November 2026)
+
+The combined release replaces the separate #38/#50/#56 stack; preview mirror #57
+is never a release candidate. Refresh-safe routes from #37 are retained through
+the current shared plan router, with auth callback ownership kept separate.
+Profile edit preservation, explicit demo redirect flags and logout draft-restore
+revocation from that branch are present in the combined controller flow.
+
+Current-main PDF downloads, equal Edit/Open card actions, edit history, stale-plan
+warnings, red destructive confirmations and saved-plan objective colours are
+preserved. Plan-only browser regressions use an intercepted fixture account;
+auth regressions separately exercise signed-out gating and account transitions.
+No test drops its existing assertions to accommodate authentication.
+
+This integration does not change provider settings, authorize real account tests,
+sync browser-local saved plans to a server, or approve a production merge. A
+bounded real Google plus email signup/verification/reset check still needs an
+agreed account and audience before it is attempted. Old-version tabs must close
+and existing users log in again when the canonical auth controller is deployed.
