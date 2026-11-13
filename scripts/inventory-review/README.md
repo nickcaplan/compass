@@ -1,6 +1,6 @@
 # Mock inventory review
 
-The isolated `?inventory=1` view reads the mock workbook snapshot in `src/inventory.mock.json`. The normal Compass planner and saved plans are unchanged. No auth or storage integration is used by this view.
+The isolated `/data-review` (with `/data-review/` and legacy `?inventory=1` aliases) view reads the mock workbook snapshot in `src/inventory.mock.json`. The normal Compass planner and saved plans are unchanged. No auth or storage integration is used by this view.
 
 All 1,745 source records retain their original fields, source row and provenance. `Other` and `Other / Review` normalize into a held review bucket. Source currency labels are unverified, no GBP quote is calculated, audience mapping is not inferred, Global never matches another region, and no preferred publisher or scalable budget plan is claimed.
 
