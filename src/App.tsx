@@ -7,6 +7,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 import EmailAuth from './EmailAuth';
+import { BriefColumns } from './BriefColumns';
 import { AnimatedKpiField } from './AnimatedKpiField';
 
 import logoUrl from './assets/thh-logo.svg';
@@ -2092,12 +2093,12 @@ export default function App() {
           </>}
 
           {wideBrief && !viewingSaved && !editingSaved && (stage === 'empty' || stage === 'filling') ? (
-            <div className="brief-columns">
+            <BriefColumns>
               <div className="brief-details">{nameField}{marketField}</div>
               <div className="brief-goals">{objectiveField}{kpiField}</div>
               <div className="brief-audience">{audienceField}</div>
               <div className="brief-timing">{budgetField}{datesField}</div>
-            </div>
+            </BriefColumns>
           ) : <>{nameField}{marketField}{objectiveField}{kpiField}{audienceField}{budgetField}{datesField}</>}
 
           <span className="sr-only brief-status" role="status" aria-live="polite" aria-atomic="true">

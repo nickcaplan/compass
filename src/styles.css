@@ -665,3 +665,10 @@ input[type="date"].date-empty::-webkit-datetime-edit{font-weight:400;color:var(-
  .brief-columns{grid-template-columns:minmax(0,1fr)}
  .brief-timing{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Empty KPI and Market boxes share a baseline without fixing expanded KPI height. */
+.brief-goals [aria-labelledby="g-objective"]{min-height:var(--brief-name-height);align-items:center}
+.brief-goals .kpi-content>.hint{min-height:var(--brief-market-height);display:flex;align-items:center}
+@container brief-layout (max-width:45em){
+ .brief-goals [aria-labelledby="g-objective"],.brief-goals .kpi-content>.hint{min-height:0}
+}

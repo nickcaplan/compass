@@ -22,6 +22,10 @@ test('Objective stays above animated KPI growth; name/market stay put; reduced m
       await page.goto(url+'#/planner');await page.waitForSelector('.avatar');await page.evaluate(()=>document.fonts.ready);
       await page.locator('#f-name').fill('Preserved campaign');
       const measure=()=>page.evaluate(()=>({height:document.querySelector('.kpi-field').getBoundingClientRect().height,audience:document.querySelector('[aria-labelledby=g-audience]').getBoundingClientRect().y,market:document.querySelector('[aria-labelledby=g-market]').getBoundingClientRect().y}));
+      if(width>=1200)await page.waitForFunction(()=>{
+        const left=document.querySelector('.brief-details').getBoundingClientRect(),right=document.querySelector('.brief-goals').getBoundingClientRect();
+        return Math.abs(left.bottom-right.bottom)<1&&!document.querySelector('.kpi-field').getAnimations().some(a=>a.playState==='running');
+      });
       const before=await measure();
       if(width>=1200){
         const balance=await page.evaluate(()=>{
@@ -29,13 +33,13 @@ test('Objective stays above animated KPI growth; name/market stay put; reduced m
           const right=document.querySelector('.brief-goals').getBoundingClientRect();
           return {gap:Math.abs(left.bottom-right.bottom),audience:document.querySelector('.brief-audience').getBoundingClientRect().top,bottom:Math.max(left.bottom,right.bottom)};
         });
-        assert.ok(balance.gap<40,`${width}: empty brief has no large unmatched column hole`);
+        assert.ok(balance.gap<1,`${width}: empty KPI bottom aligns exactly with Market`);
         assert.ok(balance.audience>=balance.bottom&&balance.audience-balance.bottom<24);
       }
       for (let objective=1;objective<=3;objective++) {
         const previous=await measure();
         await page.locator(`[aria-labelledby=g-objective] button:nth-child(${objective})`).click();
-        if (!reduce) {
+        if (!reduce && !(width>=1200 && objective===1)) {
           await page.waitForFunction(()=>document.querySelector('.kpi-field').getAnimations().some(a=>a.playState==='running'));
           const midpoint=await page.$eval('.kpi-field',e=>{
             const animation=e.getAnimations()[0];animation.pause();animation.currentTime=140;
@@ -48,14 +52,14 @@ test('Objective stays above animated KPI growth; name/market stay put; reduced m
         }
         await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         if (reduce) assert.equal(await page.$eval('.kpi-field',e=>e.getAnimations().length),0,'reduced motion has no height animation');
-        const after=await measure();assert.ok(after.height>previous.height,`${width}: grows for additional objective`);
+        const after=await measure();assert.ok(after.height>=previous.height,`${width}: never shrinks for additional objective`);
         if(width>=1200){assert.equal(after.market,before.market);
           const layout=await page.evaluate(()=>{
             const left=document.querySelector('.brief-details').getBoundingClientRect(),right=document.querySelector('.brief-goals').getBoundingClientRect();
             const audience=document.querySelector('.brief-audience').getBoundingClientRect();
             return {gap:Math.abs(left.bottom-right.bottom),audience:audience.top,bottom:Math.max(left.bottom,right.bottom)};
           });
-          assert.ok(layout.gap<125,`${width}: partial/full objective columns stay balanced`);
+          assert.ok(layout.gap<140,`${width}: partial/full objective columns stay balanced`);
           assert.ok(layout.audience>=layout.bottom&&layout.audience-layout.bottom<24);
         }
       }

@@ -354,3 +354,5 @@ KPI choices are removed, and existing answers survive responsive layout changes.
 - Partial phone/tablet briefs now show only the real answer summary and next-step guidance, rather than reserving a tall set of empty result blocks before generation. Actual generating-state skeletons remain.
 
 - Keep the visual desktop progress row mounted from zero answers, so the first objective click and final deselection do not snap the Generate button down/up. The screen-reader status still mounts empty and only announces actual answer changes.
+
+- Nick requested exact empty KPI/Market alignment. The Objective control now matches the measured name input height, and the empty KPI hint matches the measured market pills. A ResizeObserver tracks actual font/wrap changes; expanded KPI height stays content-driven and animated. Single-column enlarged-text layout clears these peer minimums.
