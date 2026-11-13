@@ -572,16 +572,18 @@ input.ctl{color:var(--text)}
 .pc-actions .pc-edit svg,.pc-actions .pc-open svg{width:12px;height:12px;flex:none}
 .is-expired .pc-actions .pc-open{width:100%}
 
+
 .plancard .pc-main{padding-right:98px}
 .pc-share{position:absolute;top:10px;right:60px;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:12px}
 .pc-share:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .pc-link-field{margin-top:48px;width:100%}
-@media(max-width:360px){.plancard{padding-top:64px}.plancard.is-expired{padding-top:18px}.plancard .pc-main{padding-right:0}.plancard.is-expired .pc-main{padding-top:12px}.plancard>.chip.expired{margin-right:98px;min-height:28px}}
+@media(max-width:520px){.plancard{padding-top:64px}.plancard.is-expired{padding-top:18px}.plancard .pc-main{padding-right:0}.plancard.is-expired .pc-main{padding-top:12px}.plancard>.chip.expired{margin-right:98px;min-height:28px}}
 
 /* Card utility icons share one size, stroke and colour treatment. */
 .pc-share,.pc-delete{color:var(--muted)}
 .pc-share svg,.pc-delete svg{width:16px;height:16px;stroke-width:1.8}
 .pc-share:hover,.pc-delete:hover{color:var(--text)}
+
 
 /* Unselected Objective choices are peers; colour coding begins on selection. */
 [aria-labelledby=g-objective] .pill.off{border-color:var(--muted);color:var(--muted);background:none}
@@ -610,6 +612,21 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
 .pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
+
+/* Text enlargement reflows actions and labels without widening the page. */
+.saved-page-navigation,.cta,.planhead{flex-wrap:wrap}
+.saved-page-navigation>*,.cta>*,.planhead>*{min-width:0;max-width:100%}
+.cta button{white-space:normal;overflow-wrap:normal}
+.planlist,.plancard,.pc-main{min-width:0}
+.plancard .pc-main{max-width:100%}
+.plancard .pc-main>b,.plancard .chip{overflow-wrap:anywhere}
+.plancard .chip{max-width:100%}
+h1,.empty h3,.planhead h2,.metric .k,.num .k{overflow-wrap:anywhere}
+.pc-actions{flex-wrap:wrap}
+.pc-actions .pc-edit,.pc-actions .pc-open{flex:1 1 calc(50% - 5px);min-width:max-content;width:auto}
+.is-expired .pc-actions .pc-open{flex-basis:100%}
+/* Keep the provider mark in text flow so enlarged labels cannot overlap it. */
+.sso svg{position:static;flex-shrink:0}
 
 /* Keep reveal inside the password field, with a keyboard-visible 44px target. */
 .password-control{position:relative}
