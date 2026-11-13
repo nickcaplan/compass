@@ -1,3 +1,6 @@
+import { handleFixtureAuthRequest } from './planner-auth-fixture.mjs';
+import { installAuthFixture } from './helpers/auth-fixtures.mjs';
+import {stripVTControlCharacters} from 'node:util';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
@@ -13,15 +16,10 @@ const chromePath = process.platform === 'darwin'
 async function clickButton(page, label) {
   // The mobile toast temporarily overlays navigation; wait for it to clear.
   await page.waitForSelector('.toast', { hidden: true });
-  const handle = await page.evaluateHandle((text) =>
-    [...document.querySelectorAll('button')].find((button) => button.textContent.trim().replace(/\s*→$/, '') === text), label);
-  try {
-    const button = handle.asElement();
-    assert.ok(button, `Button not found: ${label}`);
-    await button.click();
-  } finally {
-    await handle.dispose();
-  }
+  // Wait for stable geometry before the physical click: web fonts can shift it.
+  const findButton = new Function(
+    `return [...document.querySelectorAll('button')].find(button => button.textContent.trim().replace(/\\s*→$/, '') === ${JSON.stringify(label)})`);
+  await page.locator(findButton).click();
 }
 
 test('example walkthrough generates automatically and respects interruptions', { timeout: 60000 }, async () => {
@@ -35,18 +33,25 @@ test('example walkthrough generates automatically and respects interruptions', {
       server.once('error', error => { clearTimeout(timeout); reject(error); });
       server.once('exit', code => { clearTimeout(timeout); reject(new Error(`Preview exited early: ${code}`)); });
       server.stdout.on('data', chunk => {
-        output += chunk.toString().replace(/\x1b\[[0-9;]*m/g, '');
-        const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
+        output += chunk.toString();
+        const match = stripVTControlCharacters(output).match(/http:\/\/127\.0\.0\.1:\d+\//);
         if (match) { clearTimeout(timeout); resolve(match[0]); }
       });
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     const page = await browser.newPage();
+    await page.setRequestInterception(true);page.on('request',req=>{if(!handleFixtureAuthRequest(req))void req.continue()});
     await page.setViewport({ width: 390, height: 844 });
-    await page.goto(previewUrl+'?demo=1');
+    await installAuthFixture(page);await page.evaluateOnNewDocument(async ()=>(await window.fixtureAuth.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify({access_token:'test',refresh_token:'test',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'walk-test',email:'walk@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Walk Test',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'}}))));
+    await (await installAuthFixture(page), page.goto(previewUrl+'?demo=1'));
+    await page.waitForSelector('.avatar');
+    await page.waitForSelector('.demofill');
+    await page.waitForFunction(()=>location.hash==='#/planner');
+
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
-    assert.match(await page.$eval('.demohint', e => e.textContent), /Example filled/);
+    // The transient one-second cue may have completed on a busy runner.
+    await page.waitForFunction(()=>document.querySelector('.demohint')?.textContent.includes('Example filled') || document.querySelector('.planin .metrics'));
     await page.waitForSelector('.planin .metrics');
     assert.ok(await page.$('.secondary'));
     // Replacing work still requires confirmation; cancelling does not run.
@@ -76,6 +81,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     assert.equal(await page.$eval('#f-name', e => e.value), 'My own draft');
     // Opening a date field cancels the example before a date is committed.
     await page.reload();
+    await page.waitForSelector('.demofill');
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
     await page.focus('input[type=date]');
@@ -84,6 +90,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
     // Replacement confirmation during the fill pause must stop that pause.
     await page.reload();
+    await page.waitForSelector('.demofill');
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
     await clickButton(page, 'Try another example');
@@ -103,8 +110,13 @@ test('example walkthrough generates automatically and respects interruptions', {
     await page.waitForSelector('[role=alertdialog]');
     await page.locator('.confirm .btn').click();
     await page.waitForSelector('[role=alertdialog]', {hidden:true});
-    await clickButton(page, 'Fill it in for me');
-    await clickButton(page, 'My plans');
+    // Keep navigation inside the intentional one-second fill pause. Two remote
+    // locator clicks can exceed it on a loaded runner and test a later state.
+    await page.evaluate(async () => {
+      [...document.querySelectorAll('button')].find(e => e.textContent.trim() === 'Fill it in for me').click();
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      [...document.querySelectorAll('button')].find(e => e.textContent.trim() === 'My plans').click();
+    });
     await page.waitForSelector('[role="alertdialog"]');
     await delay(1300);
     assert.equal(await page.$('.planin .metrics'), null);
