@@ -1,0 +1,34 @@
+{
+  "rows": 1745,
+  "source_products": 349,
+  "markets": {
+    "Global": 349,
+    "North America": 349,
+    "UK": 349,
+    "France": 349,
+    "Germany": 349
+  },
+  "tactics": {
+    "Display Advertising": 30,
+    "Email": 5,
+    "Video": 5,
+    "Sponsorship & Events": 35,
+    "Print": 55,
+    "Audio": 45,
+    "Directory": 15,
+    "Other / Review": 1470,
+    "Sponsored Content": 15,
+    "Lead Generation": 5,
+    "Paid Social": 5,
+    "Webinars": 60
+  },
+  "structurally_reviewable": 150,
+  "structural_issue_counts": {
+    "missing_tactic_rule_or_description": 115,
+    "unclassified_tactic": 1470,
+    "cpl_one_unit_cost_not_campaign_budget": 95,
+    "price_like_product_name": 315,
+    "cpm_over_1000_review_threshold": 45
+  },
+  "production_eligible": 0
+}
