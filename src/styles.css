@@ -583,6 +583,9 @@ input.ctl{color:var(--text)}
 .pc-share svg,.pc-delete svg{width:16px;height:16px;stroke-width:1.8}
 .pc-share:hover,.pc-delete:hover{color:var(--text)}
 
+/* Secondary Open remains distinct from the primary Edit action in dark mode. */
+:root[data-theme="dark"] .pc-actions .pc-open{border-color:#767680;color:#eeeef2}
+:root[data-theme="dark"] .pc-actions .pc-open:hover{border-color:#aaaab4;background:#242429;color:#fff}
 /* Unselected Objective choices are peers; colour coding begins on selection. */
 [aria-labelledby=g-objective] .pill.off{border-color:var(--muted);color:var(--muted);background:none}
 
