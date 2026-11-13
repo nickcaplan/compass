@@ -1253,7 +1253,10 @@ export default function App() {
     }
     setConfirmFill(false);
     setHasFilled(true);
-    const d = demoBrief(brief.name || undefined);
+    const demo = demoBrief(brief.name || undefined);
+    // Derive KPIs up front: the walkthrough timer can call generate() from a
+    // render still holding this brief, before the normalization effect runs.
+    const d = { ...demo, kpis: kpisForObjectives(demo.objectives) };
     setBrief(d);
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
     setSubmittedBrief(null);
