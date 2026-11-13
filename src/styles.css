@@ -618,6 +618,9 @@ input.ctl{color:var(--text)}
 .saved-page-navigation>*,.cta>*,.planhead>*{min-width:0;max-width:100%}
 .cta button{white-space:normal;overflow-wrap:normal}
 .planlist,.plancard,.pc-main{min-width:0}
+.plancard .pc-main{max-width:100%}
+.plancard .pc-main>b,.plancard .chip{overflow-wrap:anywhere}
+.plancard .chip{max-width:100%}
 h1,.empty h3,.planhead h2,.metric .k,.num .k{overflow-wrap:anywhere}
 .pc-actions{flex-wrap:wrap}
 .pc-actions .pc-edit,.pc-actions .pc-open{flex:1 1 calc(50% - 5px);min-width:max-content;width:auto}
