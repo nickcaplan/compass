@@ -1,3 +1,4 @@
+import { installAuthFixture, fixtureNavigation } from './helpers/auth-fixtures.mjs';
 import {observeJourney, reportJourneyFailure} from './fixtures/journey-diagnostics.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -14,15 +15,11 @@ const chromePath = process.platform === 'darwin'
 async function clickButton(page, label) {
   // The mobile toast temporarily overlays navigation; wait for it to clear.
   await page.waitForSelector('.toast', { hidden: true });
-  const handle = await page.evaluateHandle((text) =>
-    [...document.querySelectorAll('button')].find((button) => button.textContent.trim().replace(/\s*→$/, '') === text), label);
-  try {
-    const button = handle.asElement();
-    assert.ok(button, `Button not found: ${label}`);
-    await button.click();
-  } finally {
-    await handle.dispose();
-  }
+  // A fresh web font can move the button between targeting and dispatch.
+  // Locator clicks keep the physical pointer path and wait for stable geometry.
+  const findButton = new Function(
+    `return [...document.querySelectorAll('button')].find(button => button.textContent.trim().replace(/\\s*→$/, '') === ${JSON.stringify(label)})`);
+  await page.locator(findButton).click();
 }
 
 async function openSavedPlan(page) {
@@ -33,11 +30,37 @@ async function openSavedPlan(page) {
 
 async function generateExample(page) {
   await clickButton(page, 'Fill it in for me');
+  await page.waitForSelector('.planin .metrics', { timeout: 20000 });
+  assert.equal(await page.$eval('.cta b', e => e.textContent), 'A Hybrid House specialist can pick it up from here.');
+}
 
-  // Four950ms checklist ticks follow the1s walkthrough pause. Busy CI
-  // must wait for completion rather than treating runner speed as app failure.
-  await page.waitForSelector('.planin', { timeout: 20000 });
-  assert.equal(await page.$eval('.cta b',e=>e.textContent), 'A Hybrid House specialist can pick it up from here.');
+// Plants a stored Supabase session so the app loads as signed in, the way it
+// would after a real OAuth or magic-link round trip. supabase-js accepts an
+// unexpired stored session without a network call, so this needs no live
+// Supabase project or credentials.
+async function signInTestUser(page) {
+  await page.setRequestInterception(true);page.on('request',r=>r.url().includes('supabase.co')?r.abort():r.continue());
+  await installAuthFixture(page);
+  await page.evaluateOnNewDocument(async () => {
+    const session = {
+      access_token: 'test-access-token',
+      token_type: 'bearer',
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      refresh_token: 'test-refresh-token',
+      user: {
+        id: 'test-user-id',
+        aud: 'authenticated',
+        role: 'authenticated',
+        email: 'test@example.com',
+        app_metadata: {},
+        user_metadata: { full_name: 'Test User', compass_profile_complete: true },
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    };
+    await window.fixtureAuth.setItem('sb-ctailpmcoyvaplwbwskf-auth-token', JSON.stringify(session));
+  });
+
 }
 
 test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, async (t) => {
@@ -73,9 +96,26 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4173/?demo=1');
+    await installAuthFixture(page);await fixtureNavigation(page,'http://127.0.0.1:4173/?demo=1');
     // Initial router setup clears any pending walkthrough. Wait before clicking.
     await page.waitForFunction(() => location.hash === '#/planner');
+
+    // Anonymous first generation is gated behind real sign-in: the gate shows
+    // the sign-in options and keeps the plan hidden.
+    await clickButton(page, 'Fill it in for me');
+    // Fill starts generation automatically. Do not race it with a second click.
+    await page.waitForSelector('#f-gate-email');
+    assert.ok(await page.$('#f-gate-email'), 'First generation must show the sign-in gate');
+    assert.ok(await page.$('.sso'), 'Gate must offer Continue with Google');
+    assert.equal(await page.$('.planin .metrics'), null, 'Plan stays behind the gate');
+
+    // With a signed-in session, generation goes straight to the plan.
+    await signInTestUser(page);
+    await page.reload();
+    // The header reflects the signed-in account avatar instead of a Log in prompt.
+    await page.waitForFunction(() => document.querySelector('.signin')?.getAttribute('aria-label')?.includes('test@example.com'));
+    assert.equal(await page.$eval('.signin .avatar', (e) => e.textContent?.trim()), 'T');
+
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
     await clickButton(page, 'Save plan');
@@ -265,7 +305,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
         cards.filter((c) => c.textContent.includes(n)).length, savedName);
       let beforeCount = 0;
       try {
-        await otherPage.goto('http://127.0.0.1:4173');
+        await (await installAuthFixture(otherPage), fixtureNavigation(otherPage,'http://127.0.0.1:4173'));
         await clickButton(otherPage, 'My plans');
         await otherPage.waitForSelector('.pc-actions');
         beforeCount = await cardsWithName(otherPage);
@@ -337,7 +377,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     const expiredCount = () => page.$$eval('.chip', (els) => els.filter((e) => e.textContent.trim() === 'Expired').length);
 
     // Fresh visitor: exactly the seven seeds, five of them Expired.
-    await page.goto('http://127.0.0.1:4175/?demo=1');
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4175/?demo=1'));
     await clickButton(page, 'My plans');
     await page.waitForSelector('.plancard');
     assert.equal((await cardNames()).length, 7);
@@ -369,6 +409,8 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     assert.equal((await cardNames()).length, 7);
 
     // The visitor's own plan lands first and is never overwritten by seeds.
+    await signInTestUser(page);
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4175/?demo=1'));
     await clickButton(page, 'Planner');
     await generateExample(page);
     const userName = await page.$eval('#f-name', (input) => input.value);
@@ -440,7 +482,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
-    await page.goto('http://127.0.0.1:4174/?demo=1');
+    await installAuthFixture(page);await fixtureNavigation(page,'http://127.0.0.1:4174/?demo=1');
 
     // A clean visitor sees samples without a recovery notice.
     await clickButton(page, 'My plans');
@@ -471,6 +513,8 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     assert.equal(await page.$('.notice'), null);
 
     // Saving works normally afterwards, and the unreadable copy is kept.
+    await signInTestUser(page);
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4174/?demo=1'));
     await clickButton(page, 'Planner');
     await generateExample(page);
     await clickButton(page, 'Save plan');
@@ -510,7 +554,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
         return original.call(this, key, value);
       };
     });
-    await blocked.goto('http://127.0.0.1:4174/?demo=1');
+    await (await installAuthFixture(blocked), fixtureNavigation(blocked,'http://127.0.0.1:4174/?demo=1'));
     await blocked.evaluate(() => localStorage.setItem('compass-saved-plans', '{still here'));
     await blocked.reload();
     await clickButton(blocked, 'My plans');
@@ -526,6 +570,8 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     assert.equal(kept.backups, null);
 
     // Saving is blocked while the unreadable original cannot be backed up.
+    await signInTestUser(blocked);
+    await (await installAuthFixture(blocked), fixtureNavigation(blocked,'http://127.0.0.1:4174/?demo=1'));
     await clickButton(blocked, 'Planner');
     await generateExample(blocked);
     await clickButton(blocked, 'Save plan');
@@ -536,6 +582,53 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     await blocked.close();
     await blockedContext.close();
   } catch (error) { await reportJourneyFailure(browser); throw error; } finally {
+    if (browser) await browser.close();
+    server.kill();
+  }
+});
+
+test('signed-out visitor is asked to log in before the plan reveals, brief kept', { timeout: 90000 }, async () => {
+  const server = spawn(process.execPath, [
+    'node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1',
+    '--port', '4177', '--strictPort',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let browser;
+  try {
+    const deadline = Date.now() + 10000;
+    let ready = false;
+    while (Date.now() < deadline && server.exitCode === null) {
+      try {
+        const response = await fetch('http://127.0.0.1:4177', { signal: AbortSignal.timeout(1000) });
+        await response.body?.cancel();
+        if (response.ok) { ready = true; break; }
+      } catch {
+        // Retry only while the preview is starting, within the deadline.
+      }
+      await delay(100);
+    }
+    assert.ok(ready, 'Preview did not become ready');
+    browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    page.setDefaultTimeout(15000);
+    await page.setViewport({ width: 1440, height: 900 });
+    await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4177/?demo=1'));
+
+    // Generate without a session: the gate asks for log-in and hides the plan.
+    await clickButton(page, 'Fill it in for me');
+    await page.waitForFunction(() => {
+      const h = [...document.querySelectorAll('.planin h2')].find((el) => el.textContent.trim() === 'Your plan is ready');
+      return Boolean(h);
+    });
+    assert.match(await page.$eval('.planin', (el) => el.textContent), /Log in to see it/);
+    assert.equal(await page.$('.planin .metrics'), null);
+
+    // The brief survives behind the gate: Back to my brief returns the answers.
+    await clickButton(page, 'Back to my brief');
+    await page.waitForSelector('#f-name');
+    assert.notEqual(await page.$eval('#f-name', (input) => input.value), '');
+    await context.close();
+  } finally {
     if (browser) await browser.close();
     server.kill();
   }
