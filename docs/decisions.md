@@ -342,3 +342,5 @@ existing single-column field order. The KPI box uses a short eased transition
 between measured heights when objectives change, including shrinking after
 removal. Reduced-motion users get the final size immediately. No objective or
 KPI choices are removed, and existing answers survive responsive layout changes.
+
+- Enlarged-text phone verification also caught the Generate arrow wrapping alone. Keep its final word and arrow in a non-breaking inline group; cover that at 200% text in the KPI layout regression.

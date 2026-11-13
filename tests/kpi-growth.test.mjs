@@ -52,6 +52,17 @@ test('Objective stays above animated KPI growth; left fields stay put; reduced m
       await page.setViewport({width:width>=1200?390:1440,height:1000});
       await page.waitForFunction(w=>Boolean(document.querySelector('.brief-columns'))===(w>=1200),{},width>=1200?390:1440);
       assert.equal(await page.$eval('#f-name',e=>e.value),'Preserved campaign');
+      // The arrow must remain on the final word's line, even at 200% text.
+      await page.evaluate(()=>{
+        const sizes=[...document.querySelectorAll('*')].map(e=>[e,parseFloat(getComputedStyle(e).fontSize)]);
+        for(const [e,size] of sizes)e.style.fontSize=`${size*2}px`;
+      });
+      const tail=await page.$eval('.gen-tail',e=>{
+        const word=document.createRange();word.setStart(e.firstChild,0);word.setEnd(e.firstChild,4);
+        const arrow=e.querySelector('.gen-arrow').getBoundingClientRect();
+        return {wordTop:word.getBoundingClientRect().top,arrowTop:arrow.top};
+      });
+      assert.ok(Math.abs(tail.wordTop-tail.arrowTop)<2,`${width}: enlarged CTA arrow stays beside plan`);
       assert.equal(await page.$$eval('[aria-labelledby=g-objective] [aria-pressed=true]',bs=>bs.length),2);
       await context.close();
     }

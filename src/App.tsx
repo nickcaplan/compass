@@ -2110,7 +2110,7 @@ export default function App() {
             </div>
           )}
           <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || stage === 'generating'} onClick={generate}>
-            {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
+            {hasGenerated || stage === 'plan' ? 'Regenerate my' : 'Generate my'} <span className="gen-tail">plan <span className="gen-arrow">&rarr;</span></span>
           </button>
           {missingForRegeneration.length > 0 && stage !== 'generating' && (
             <p id="regenerate-required" className="regenerate-required" role="status">{new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' }).format(missingForRegeneration)} must be selected.</p>
