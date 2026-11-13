@@ -352,3 +352,5 @@ KPI choices are removed, and existing answers survive responsive layout changes.
 - Readiness requires pixel review of empty, partial, all-objectives and fully answered/generated states at phone/tablet/desktop, plus enlarged text. A single flattering screenshot is not enough. Apply that review to every future Compass UI PR.
 
 - Partial phone/tablet briefs now show only the real answer summary and next-step guidance, rather than reserving a tall set of empty result blocks before generation. Actual generating-state skeletons remain.
+
+- Keep the visual desktop progress row mounted from zero answers, so the first objective click and final deselection do not snap the Generate button down/up. The screen-reader status still mounts empty and only announces actual answer changes.

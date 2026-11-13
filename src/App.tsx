@@ -2103,7 +2103,7 @@ export default function App() {
           <span className="sr-only brief-status" role="status" aria-live="polite" aria-atomic="true">
             {briefProgressCount === null ? '' : `${briefProgressCount} OF 6 ANSWERED`}
           </span>
-          {!viewingSaved && !editingSaved && stage === 'filling' && (
+          {!viewingSaved && !editingSaved && (stage === 'empty' || stage === 'filling') && (
             <div className="prog brief-progress" aria-hidden="true">
               <div className="bar" aria-hidden="true">
                 <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />

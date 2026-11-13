@@ -16,6 +16,7 @@ test('desktop brief fills its canvas, keeps Objective above KPI and completes ma
 
  await p.evaluate(()=>{window.progressRegion=document.querySelector('.brief-status');window.progressChanges=[];new MutationObserver(()=>window.progressChanges.push(window.progressRegion.textContent.trim())).observe(window.progressRegion,{childList:true,subtree:true,characterData:true})});
  assert.equal(await p.$eval('.brief-status',e=>e.textContent.trim()),'');
+ if(width>=1200)assert.match(await p.$eval('.brief-progress',e=>e.textContent),/0 OF 6 ANSWERED/);
  if(width>=1200)assert.notEqual(await p.$eval('.brief-status',e=>getComputedStyle(e).display),'none');else assert.equal(await p.$eval('.brief-status',e=>getComputedStyle(e).display),'none');
  await p.locator('[aria-labelledby=g-market] button').click();await p.waitForFunction(()=>window.progressRegion.textContent.includes('1 OF 6 ANSWERED'));
  await p.locator('[aria-labelledby=g-market] button').click();await p.waitForFunction(()=>window.progressRegion.textContent.includes('0 OF 6 ANSWERED'));
