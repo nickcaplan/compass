@@ -43,9 +43,9 @@ test('nav is Planner, My plans and Sign in, with no Support link', { timeout: 60
         const brandRight = await page.$eval('.brand.lockup', e => e.getBoundingClientRect().right);
         const plannerLeft = await page.$eval('.navlinks > button:first-child', e => e.getBoundingClientRect().left);
         const signinRight = await page.$eval('.navlinks .signin', e => e.getBoundingClientRect().right);
-        const navlinksRight = await page.$eval('.navlinks', e => e.getBoundingClientRect().right);
+        const headerRight = await page.$eval('.toprow', e => e.getBoundingClientRect().right);
         assert.ok(plannerLeft - brandRight > 200, `nav options must be detached from the brand (gap ${plannerLeft - brandRight}px)`);
-        assert.ok(Math.abs(signinRight - navlinksRight) < 1, 'nav cluster must be flush with the right edge');
+        assert.ok(Math.abs(signinRight - headerRight) < 1, 'nav cluster must be flush with the right edge of the header');
       }
       await page.close();
     }
