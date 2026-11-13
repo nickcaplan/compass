@@ -1,3 +1,4 @@
+import { seedPlannerFixture } from '../tests/planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {spawn} from 'node:child_process';
@@ -16,6 +17,7 @@ test('WCAG AA, keyboard focus and200% text on every route and Planner state',{ti
   browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox']});
   for(const width of[390,1440])for(const theme of['dark','light'])for(const state of['empty','generated','saved','edit','plans','signin','pricing']){
    const label=`${width}/${theme}/${state}`;const context=await browser.createBrowserContext(),page=await context.newPage();
+   if(state!=='signin')await seedPlannerFixture(page);
    await page.setViewport({width,height:950});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
    await page.evaluateOnNewDocument(theme=>localStorage.setItem('compass-theme',theme),theme);
    const route={plans:'my-plans',saved:'my-plans',edit:'my-plans',signin:'sign-in',pricing:'pricing'}[state]||'planner';
