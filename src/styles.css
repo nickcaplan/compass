@@ -9,7 +9,7 @@
   --text:#F4F3EF;
   --text2:#C9C7D1;
   --muted:#8E8C96;
-  --faint:#6E6C78;
+  --faint:#85838F;
   --line:rgba(255,255,255,.09);
   --line-soft:rgba(255,255,255,.1);
   --line-mid:rgba(255,255,255,.18);
@@ -49,7 +49,7 @@
   --text:#17171C;
   --text2:#3A3942;
   --muted:#5D5B68;
-  --faint:#7B7987;
+  --faint:#656370;
   --line:rgba(20,20,25,.12);
   --line-soft:rgba(20,20,25,.14);
   --line-mid:rgba(20,20,25,.25);
@@ -97,6 +97,8 @@ nav{display:flex;flex-wrap:wrap;row-gap:12px;align-items:center;padding:22px 0}
 .themebtn{margin-left:auto;width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--line-mid)!important;background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .themebtn:hover{color:var(--accent-ink);border-color:var(--accent-line)!important}
 .signin{font:inherit;border-radius:999px;padding:9px 20px;font-weight:600;font-size:13px;cursor:pointer}
+.signin:has(.avatar){padding:4px;border-radius:50%}
+.signin .avatar{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:13px;line-height:1}
 .hero{padding:42px 0 34px}
 .eyebrow{font-family:Roboto,system-ui,sans-serif;font-size:11.5px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;margin-bottom:16px}
 h1{font-family:Poppins,sans-serif;font-weight:800;font-size:52px;line-height:1.06;letter-spacing:-.01em;max-width:680px;color:var(--text)}
@@ -330,6 +332,7 @@ input.ctl{color:var(--text)}
 .divider{display:flex;align-items:center;gap:12px;margin:4px 0 16px;color:var(--faint);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
 .finenote{font-size:11.5px;color:var(--faint);margin-top:16px;line-height:1.5}
+.fieldnote{font-size:11.5px;color:var(--accent-ink);margin-top:6px;line-height:1.4}
 .includegrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:22px}
 .include{background:var(--inset);border:1px solid var(--line);border-radius:14px;padding:16px 17px}
 .include .n{font-weight:500;color:var(--accent-ink);font-size:11.5px;letter-spacing:.08em;margin-bottom:7px}
@@ -396,6 +399,15 @@ input.ctl{color:var(--text)}
 
 .savenote{grid-column:1/-1;margin:0;font-size:12.5px;color:var(--muted)}
 
+.email-modes{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:10px;margin:0 0 22px}
+.email-modes button{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:9px;border-radius:7px;cursor:pointer}
+.email-modes button.selected{background:var(--accent);color:#121212;font-weight:600}
+.email-heading{font-size:16px;margin:0 0 20px}
+.email-forgot{display:block;margin:16px auto 0;border:0;background:none;color:var(--text);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.email-notice{font-size:13px;line-height:1.6;padding:12px;border:1px solid var(--line);border-radius:8px}
+
+.signincard .hint{font-size:12px;margin:6px 0 0}
+.email-modes button:focus-visible,.email-forgot:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .planfilters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
 .planfilters button{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-mid);border-radius:999px;padding:8px 14px;background:transparent;color:var(--text2);font:600 13px Roboto,system-ui,sans-serif;cursor:pointer}
 .planfilters button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -439,6 +451,14 @@ input.ctl{color:var(--text)}
 .plancard>.expired::before{content:'◷';font-size:14px}
 .plancard.is-expired .pc-main>b{color:var(--text2)}
 :root[data-theme=light] .plancard>.expired{border-color:#d4a9ac;color:#8f353d;background:#f8e9eb}
+
+.cancel-recovery{margin-top:10px}
+
+.gate-secondary{margin-top:10px}
+
+.draft-choice{margin:14px 0;padding:14px;border:1px solid var(--accent-line);border-radius:12px;font-size:12px;line-height:1.5}
+.draft-choice p{margin:0 0 12px}
+.draft-choice button{display:block;width:100%;margin-top:10px;white-space:normal}
 /* Specialist link keeps the existing button contrast, including on hover. */
 .cta a.specialist-link,.cta a.specialist-link:hover{color:var(--on-accent);text-decoration:none}
 /* Inset inputs need their own edge inside matching-background planning cards. */
@@ -590,3 +610,17 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-awareness{border-color:var(--obj-awareness-line);background:var(--obj-awareness);color:var(--obj-awareness-ink)}
 .pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
+
+/* Keep reveal inside the password field, with a keyboard-visible 44px target. */
+.password-control{position:relative}
+.password-control .ctl{padding-right:3.5em;min-height:48px}
+.password-reveal{position:absolute;right:3px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:2.5em;min-width:44px;height:calc(100% - 4px);min-height:44px;padding:0;border:0;border-radius:8px;background:none;color:var(--muted);font:inherit;cursor:pointer}
+.password-reveal svg{width:1.25em;height:1.25em}
+.password-reveal:hover{color:var(--text)}
+.password-reveal:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+.password-reveal:disabled{cursor:wait;opacity:.55}
+/* Small field and preview labels stay below the bold card-title hierarchy. */
+.form label,.outline .ok{font-weight:600}
+/* Native date segments are not ::placeholder text. Keep the empty cue regular. */
+input[type="date"].date-empty{font-weight:400;color:var(--faint)}
+input[type="date"].date-empty::-webkit-datetime-edit{font-weight:400;color:var(--faint)}

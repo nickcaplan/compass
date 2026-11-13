@@ -1,3 +1,4 @@
+import { seedPlannerFixture } from './planner-auth-fixture.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {stripVTControlCharacters} from 'node:util';
@@ -6,9 +7,9 @@ import puppeteer from 'puppeteer-core';
 const click=async(p,t)=>{const h=await p.evaluateHandle(t=>[...document.querySelectorAll('button')].find(e=>(e.getAttribute('aria-label')||e.textContent.trim().replace(/\s*→$/,''))===t),t);assert.ok(h.asElement(),t);await h.asElement().click();await h.dispose()};
 test('unchanged edits leave silently; only changed fields block leaving; invalid dates identify the field',{timeout:90000},async()=>{
  const server=process.env.HOSTED_URL?null:spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let b;
- try{const url=process.env.HOSTED_URL||await new Promise(r=>{let out='';server.stdout.on('data',d=>{out+=stripVTControlCharacters(d.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m)r(m[0])})});b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+ try{const url=process.env.HOSTED_URL||await new Promise(r=>{let out='';server.stdout.on('data',d=>{out+=stripVTControlCharacters(d.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m)r(m[0])})});b=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
  for(const width of[390,1440])for(const theme of['light','dark']){
- const c=await b.createBrowserContext(),p=await c.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});await p.goto(url+'?demo=1#/my-plans');await p.waitForSelector('.pc-actions .pc-open');await p.evaluate(()=>document.fonts.ready);await p.waitForSelector('.toast',{hidden:true});await p.evaluate(t=>{document.documentElement.dataset.theme=t;localStorage.setItem('compass-theme',t)},theme);const stored=await p.evaluate(()=>localStorage.getItem('compass-saved-plans'));
+ const c=await b.createBrowserContext(),p=await c.newPage();p.setDefaultTimeout(6000);await p.setViewport({width,height:900});await seedPlannerFixture(p);await p.goto(url+'?demo=1#/my-plans');await p.waitForSelector('.pc-actions .pc-open');await p.evaluate(()=>document.fonts.ready);await p.waitForSelector('.toast',{hidden:true});await p.evaluate(t=>{document.documentElement.dataset.theme=t;localStorage.setItem('compass-theme',t)},theme);const stored=await p.evaluate(()=>localStorage.getItem('compass-saved-plans'));
  await click(p,'Open plan');await p.waitForSelector('.bsum');await click(p,'Edit plan');await p.waitForSelector('#f-name');const name=await p.$eval('#f-name',e=>e.value);
  await click(p,'My plans');await p.waitForSelector('.pc-actions .pc-open');await click(p,'Open plan');
  if(process.env.BEFORE){await p.waitForSelector('[role=alertdialog]');await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/discard-before-${width}-${theme}.png`});await p.keyboard.press('Escape');await click(p,'Planner');}
