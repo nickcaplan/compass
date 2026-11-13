@@ -27,7 +27,7 @@ test('planning cards stay readable and inputs remain usable', { timeout: 60000 }
     });
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true, args: ['--no-sandbox'] });
     for (const width of [390, 1440]) {
-      const page = await browser.newPage();
+      const context = await browser.createBrowserContext();const page = await context.newPage();
       await page.setViewport({ width, height: 900 });
       await page.goto(previewUrl+'?demo=1');
       await page.waitForSelector('.planning-step');
@@ -45,7 +45,7 @@ test('planning cards stay readable and inputs remain usable', { timeout: 60000 }
       await page.$eval('.themebtn',e=>e.click());
       assert.equal(await page.$$eval('.planning-step',es=>es.every(e=>getComputedStyle(e).borderTopStyle==='solid')),true);
       assert.equal(await page.$$eval('.planning-step input.ctl',es=>es.every(e=>getComputedStyle(e).borderTopStyle==='solid')),true);
-      await page.close();
+      await context.close();
     }
   } finally { await browser?.close(); server.kill(); }
 });

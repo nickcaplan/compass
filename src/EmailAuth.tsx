@@ -1,0 +1,171 @@
+import { useState, useRef, useLayoutEffect } from 'react';
+import type { FormEvent } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { supabase, authController, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
+
+const resetNotice = 'If an account exists for that email, check your inbox and spam folder for a reset link. If you requested one recently, please wait before trying again.';
+
+type Mode = 'signin' | 'signup' | 'reset' | 'update';
+type AuthErrorLike = { code?: string; message?: string; status?: number } | null;
+function authErrorMessage(err: AuthErrorLike, fallback: string): string {
+  const msg = err?.message ?? '';
+  const code = err?.code ?? '';
+  if (/Reset request timed out/i.test(msg)) return 'The reset request took too long. A reset email may still arrive. Check your inbox and spam before requesting another link.';
+  // Server-provided per-recipient cooldown. Checked first: Supabase reuses
+  // over_email_send_rate_limit for both the project quota and this cooldown, so
+  // only the message tells them apart. Deliberately no pinned seconds: the
+  // message persists until the next interaction and a stale countdown would
+  // outlive the real wait.
+  if (/after \d+ seconds?/i.test(msg))
+    return 'You requested an email for this address a moment ago. For security, please wait a short while before requesting another.';
+  if (code === 'over_email_send_rate_limit' || /email rate limit/i.test(msg))
+    return 'Compass cannot send more emails right now - our email limit for this period is reached. This is on our side, not a problem with your details. Please try again later.';
+  // IP throttle: no provider-guaranteed window is documented, so stay neutral.
+  if (code === 'over_request_rate_limit' || /request rate limit/i.test(msg) || /too many requests/i.test(msg))
+    return 'Too many attempts from this network. Please try again in a little while.';
+  return fallback;
+}
+
+export default function EmailAuth({ idPrefix, recovery, onAuthenticated, beforeEmail, recoveryUserId, isRecoveryCurrent, onCancelRecovery }: {
+  onCancelRecovery: () => void; recoveryUserId: string | null; isRecoveryCurrent: (id: string) => boolean;
+  idPrefix: string; recovery: boolean; onAuthenticated: (user: User) => void; beforeEmail: (email: string, reset?: boolean) => boolean | 'cancelled';
+}) {
+  const [mode, setMode] = useState<Mode>('signin');
+  const activeMode = recovery ? 'update' : mode;
+  const scope = `${activeMode}:${recoveryUserId ?? ''}`;
+  const currentScope = useRef(scope);
+  useLayoutEffect(() => { currentScope.current = scope; }, [scope]);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const needsConfirmation = activeMode === 'signup' || activeMode === 'update';
+  const mismatch = needsConfirmation && confirmation.length > 0 && confirmation !== password;
+  const passwordsMatch = password.length > 0 && confirmation === password;
+  const [revealedMode, setRevealedMode] = useState<Mode | null>(null);
+  const passwordVisible = revealedMode === activeMode;
+  const [revealScope, setRevealScope] = useState(scope);
+  if (revealScope !== scope) { setRevealScope(scope); setRevealedMode(null); setConfirmationVisible(false); setConfirmation(''); setPassword(''); }
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  function changeMode(next: Mode) { setMode(next); setError(null); setNotice(null); setPassword(''); setConfirmation(''); setConfirmationVisible(false); setRevealedMode(null); }
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    if (needsConfirmation && !passwordsMatch) { setError('Your passwords must match before you continue.'); return; }
+    setError(null); setNotice(null);
+    const prepared = activeMode === 'update' ? true : beforeEmail(email, activeMode === 'reset');
+    if (prepared === 'cancelled') return;
+    if (!prepared) { setError('Could not keep your brief in this browser. Your answers are still here. Free some browser storage and try again.'); return; }
+    setBusy(true);
+    let passwordAccepted = false;
+    try {
+      if (activeMode === 'reset') {
+        const deadline = new AbortController();
+        let timer: ReturnType<typeof setTimeout>;
+        const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => {
+          deadline.abort(); reject(new TypeError('Reset request timed out'));
+        }, 20_000); });
+        let resetError: Awaited<ReturnType<typeof supabase.auth.resetPasswordForEmail>>['error'];
+        try {
+          ({ error: resetError } = await Promise.race([
+            supabase.auth.resetPasswordForEmail(email.trim(), undefined, deadline.signal), timeout,
+          ]));
+        } finally { clearTimeout(timer!); }
+        // Recipient cooldowns and account-dependent outcomes stay private.
+        // Network, server, IP and project-quota failures are not account facts.
+        const cooldown = /after \d+ seconds?/i.test(resetError?.message ?? '');
+        const independentFailure = resetError && !cooldown && (
+          !resetError.status || resetError.status >= 500 || resetError.code === 'over_request_rate_limit' ||
+          resetError.code === 'over_email_send_rate_limit' || /email rate limit|request rate limit|too many requests/i.test(resetError.message)
+        );
+        if (independentFailure) { setError(authErrorMessage(resetError, 'Could not send a reset link. Please try again.')); return; }
+        // This is UI privacy only; the provider API still exposes its own errors.
+        setNotice(resetNotice);
+      } else if (activeMode === 'signup') {
+        const result = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + (new URLSearchParams(window.location.search).get('demo') === '1' ? '/?demo=1' : '') } });
+        if (result.error) { setError(result.error.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' : authErrorMessage(result.error, 'Could not create your account. Try logging in if you already have one.')); return; }
+        setPassword(''); setConfirmation(''); setConfirmationVisible(false); setRevealedMode(null);
+        if (result.data.session) onAuthenticated(result.data.session.user);
+        else setNotice('Check your inbox to confirm your email, then return to log in. If you already have an account, log in instead.');
+      } else if (activeMode === 'update') {
+        // Capture A's token and check its principal before sending. updateUser()
+        // otherwise looks up whichever session is active after its internal await.
+        const generation = await authController.capture();
+        const id = recoveryUserId;
+        const stopped = (accepted = false) => {
+          if (currentScope.current === scope) setError(accepted ? 'Your password may have been updated, but your session changed. Log in again to check it.' : 'Your session changed. Log in again, or request a fresh reset link.');
+        };
+        if (!id || !isRecoveryCurrent(id)) { stopped(); return; }
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (!isRecoveryCurrent(id) || !(await authController.isCurrent(generation))) { stopped(); return; }
+        if (sessionError) { setError('Could not update your password. Try again, or request a fresh reset link if this one has expired.'); return; }
+        if (data.session?.user.id !== id) { stopped(); return; }
+        const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
+          method: 'PUT',
+          headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        passwordAccepted = response.ok;
+        const body = await response.json();
+        if (!isRecoveryCurrent(id) || !(await authController.isCurrent(generation))) { stopped(response.ok); return; }
+        const result = { data: { user: response.ok ? body as User : null },
+          error: response.ok ? null : { code: body.code ?? body.error_code, message: body.msg ?? body.message } };
+        if (result.error || !result.data.user) {
+          setError(result.error?.code === 'same_password' ? 'Choose a different password from your current one.' :
+            result.error?.code === 'weak_password' ? 'Choose a stronger password. It does not meet the password requirements.' :
+            authErrorMessage(result.error, 'Could not update your password. Try again, or request a fresh reset link if this one has expired.'));
+          return;
+        }
+        if (result.data.user.id !== id) { stopped(true); return; }
+        await authController.finishRecovery(generation, id);
+        if (!(await authController.isCurrent(generation))) { stopped(true); return; }
+        setPassword(''); setConfirmation(''); setConfirmationVisible(false); setRevealedMode(null); onAuthenticated(result.data.user);
+      } else {
+        const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (result.error || !result.data.user) { setError(authErrorMessage(result.error, 'Could not log in. Check your email and password, and confirm your email if you just signed up.')); return; }
+        setPassword(''); setConfirmation(''); setConfirmationVisible(false); setRevealedMode(null); onAuthenticated(result.data.user);
+      }
+    } catch (failure) { if (currentScope.current === scope) setError(passwordAccepted ? 'Your password may have been updated, but the result could not be confirmed. Log in again to check it.' : failure instanceof Error && /Reset request timed out/.test(failure.message) ? 'The reset request took too long. A reset email may still arrive. Check your inbox and spam before requesting another link.' : 'Could not connect. Please try again.'); }
+    finally { setBusy(false); }
+  }
+  return <>
+    {!recovery && <div className="email-modes" aria-label="Email account options">
+      <button type="button" className={mode === 'signin' ? 'selected' : ''} aria-pressed={mode === 'signin'} disabled={busy} onClick={() => changeMode('signin')}>Log in</button>
+      <button type="button" className={mode === 'signup' ? 'selected' : ''} aria-pressed={mode === 'signup'} disabled={busy} onClick={() => changeMode('signup')}>Create account</button>
+    </div>}
+    <form onSubmit={submit} aria-label="Email account">
+      <h3 className="email-heading">{activeMode === 'signup' ? 'Create your account' : activeMode === 'reset' ? 'Reset your password' : activeMode === 'update' ? 'Choose a new password' : 'Log in with email'}</h3>
+      {activeMode !== 'update' && <div className="field">
+        <label htmlFor={`${idPrefix}-email`}>Email</label>
+        <input id={`${idPrefix}-email`} className="ctl" type="email" autoComplete="email" placeholder="you@company.com" required disabled={busy} value={email} onChange={e => { setEmail(e.target.value); setError(null); }} />
+      </div>}
+      {activeMode !== 'reset' && <div className="field">
+        <label htmlFor={`${idPrefix}-password`}>{recovery ? 'New password' : 'Password'}</label>
+        <div className="password-control">
+          <input id={`${idPrefix}-password`} className="ctl" type={passwordVisible ? 'text' : 'password'} autoComplete={activeMode === 'signin' ? 'current-password' : 'new-password'} required minLength={activeMode === 'signin' ? 1 : 8} disabled={busy} value={password} onChange={e => { setPassword(e.target.value); setError(null); }} />
+          <button type="button" className="password-reveal" aria-label={passwordVisible ? 'Hide password' : 'Show password'} aria-pressed={passwordVisible} aria-controls={`${idPrefix}-password`} disabled={busy} onClick={() => setRevealedMode(passwordVisible ? null : activeMode)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{passwordVisible && <path d="m3 3 18 18" />}</svg>
+          </button>
+        </div>
+        {activeMode !== 'signin' && <p className="hint">Use at least 8 characters.</p>}
+      </div>}
+      {needsConfirmation && <div className="field">
+        <label htmlFor={`${idPrefix}-confirm-password`}>Confirm {activeMode === 'update' ? 'new password' : 'password'}</label>
+        <div className="password-control">
+          <input id={`${idPrefix}-confirm-password`} className="ctl" type={confirmationVisible ? 'text' : 'password'} autoComplete="new-password" required minLength={8} disabled={busy} value={confirmation} aria-invalid={mismatch || undefined} aria-describedby={`${idPrefix}-password-match`} onChange={e => { setConfirmation(e.target.value); setError(null); }} />
+          <button type="button" className="password-reveal" aria-label={confirmationVisible ? 'Hide confirmed password' : 'Show confirmed password'} aria-pressed={confirmationVisible} aria-controls={`${idPrefix}-confirm-password`} disabled={busy} onClick={() => setConfirmationVisible(!confirmationVisible)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{confirmationVisible && <path d="m3 3 18 18" />}</svg>
+          </button>
+        </div>
+        <p id={`${idPrefix}-password-match`} className={mismatch ? 'fieldnote' : 'hint'} role="status">{mismatch ? 'Passwords do not match.' : passwordsMatch ? 'Passwords match.' : 'Enter the same password again.'}</p>
+      </div>}
+      {error && <p className="fieldnote" role="alert">{error}</p>}
+      {notice && <p className="email-notice" role="status">{notice}</p>}
+      <button type="submit" className="gen" disabled={busy || (needsConfirmation && !passwordsMatch)}>{busy ? 'Please wait...' : activeMode === 'signup' ? 'Create account' : activeMode === 'reset' ? 'Send reset link' : activeMode === 'update' ? 'Save new password' : 'Log in with email'} <span>&rarr;</span></button>
+      {activeMode === 'signin' && <button type="button" className="email-forgot" disabled={busy} onClick={() => changeMode('reset')}>Forgot password?</button>}
+    </form>
+    {recovery && <button type="button" className="ghost cancel-recovery" disabled={busy} onClick={onCancelRecovery}>Cancel password reset</button>}
+  </>;
+}
