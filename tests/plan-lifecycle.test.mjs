@@ -114,7 +114,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     await page.reload();
     // The header reflects the signed-in account avatar instead of a Log in prompt.
     await page.waitForFunction(() => document.querySelector('.signin')?.getAttribute('aria-label')?.includes('test@example.com'));
-    assert.equal(await page.$eval('.signin .avatar', (e) => e.textContent?.trim()), 'T');
+    assert.equal(await page.$eval('.signin .avatar', (e) => e.textContent?.trim()), 'TU');
 
     await generateExample(page);
     const originalName = await page.$eval('#f-name', (input) => input.value);
