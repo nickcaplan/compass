@@ -611,6 +611,12 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
 
+/* Preserve compact labels while providing finger-sized navigation hit areas. */
+.navlinks button:not(.signin){min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.themebtn{width:44px;height:44px}
+@media(max-width:520px){.toprow{gap:12px}.navlinks{gap:8px}.navlinks .signin{padding-inline:12px}.themebtn{margin-left:auto}}
+.navlinks button{min-height:44px;min-width:44px}
+
 /* Keep reveal inside the password field, with a keyboard-visible 44px target. */
 .password-control{position:relative}
 .password-control .ctl{padding-right:3.5em;min-height:48px}
