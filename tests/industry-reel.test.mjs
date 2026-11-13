@@ -1,3 +1,4 @@
+import {stripVTControlCharacters} from 'node:util';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
@@ -31,8 +32,8 @@ test('service reel settles in 2.6 seconds and never blocks interaction', { timeo
       server.once('error', error => { clearTimeout(timeout); reject(error); });
       server.once('exit', code => { clearTimeout(timeout); reject(new Error(`Preview exited early: ${code}`)); });
       server.stdout.on('data', chunk => {
-        output += chunk.toString().replace(/\x1b\[[0-9;]*m/g, '');
-        const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//);
+        output += chunk.toString();
+        const match = stripVTControlCharacters(output).match(/http:\/\/127\.0\.0\.1:\d+\//);
         if (match) { clearTimeout(timeout); resolve(match[0]); }
       });
     });
@@ -41,7 +42,9 @@ test('service reel settles in 2.6 seconds and never blocks interaction', { timeo
       for (const font of [null, 'Arial,sans-serif', 'system-ui,sans-serif']) {
       const page = await browser.newPage();
       await page.setViewport({ width, height: 900 });
-      await page.goto(previewUrl+'?demo=1');
+      await page.evaluateOnNewDocument(()=>localStorage.setItem('sb-ctailpmcoyvaplwbwskf-auth-token',JSON.stringify({access_token:'test',refresh_token:'test',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,user:{id:'walk-test',email:'walk@example.com',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{full_name:'Walk Test',compass_profile_complete:true},created_at:'2026-01-01T00:00:00Z'}})));
+    await page.goto(previewUrl+'?demo=1');
+
       await page.waitForSelector('.industry-reel-track');
       assert.equal(await page.$eval('.industry-accessible', e => e.textContent), 'Life Sciences Media Planning');
       assert.deepEqual(await page.$$eval('.industry-reel-track > span', es => es.map(e=>e.textContent)), ['Media Planning','Data Infrastructure','Analytics','Measurement','Publisher Partnerships','Sponsorship','Events','Paid Social','SEO','Media Planning']);
