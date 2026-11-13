@@ -25,7 +25,7 @@ test('canonical controller rejects delayed login after replacement or logout, ac
    const plans=await a.evaluate(()=>localStorage.getItem('compass-saved-plans'));
    for(const replacement of [session('b'),null]) {
     await a.bringToFront();
-    await seedSession(a,null);await a.reload();await a.waitForSelector('.signin');await a.locator('.signin').click();await a.waitForSelector('#f-signin-email');await a.locator('#f-signin-email').fill('a@example.com');await a.locator('#f-signin-password').fill('fixture-only-password');held=false;await a.locator('form[aria-label="Email account"] .gen').click();await until(()=>held,'held login A');
+    await seedSession(a,null);await a.reload();await a.waitForSelector('.signin');await a.locator('.signin').click();await a.waitForSelector('#f-signin-email');await a.locator('#f-signin-email').fill('a@example.com');await a.locator('#f-signin-password').fill('fixture-only-password');if(await a.$('input[id$="-confirm-password"]'))await a.locator('input[id$="-confirm-password"]').fill('fixture-only-password');held=false;await a.locator('form[aria-label="Email account"] .gen').click();await until(()=>held,'held login A');
     await seedSession(b,replacement);release();await new Promise(r=>setTimeout(r,200));
     assert.equal((await readSession(a))?.user.id,replacement?.user.id);assert.equal((await readSession(b))?.user.id,replacement?.user.id);
     await a.reload();await a.waitForSelector('.signin');if(replacement)await a.waitForFunction(()=>document.querySelector('.signin')?.getAttribute('aria-label')?.includes('b@example.com'));else await a.waitForFunction(()=>!document.querySelector('.avatar'));
