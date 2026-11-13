@@ -7,6 +7,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 import EmailAuth from './EmailAuth';
+import { AnimatedKpiField } from './AnimatedKpiField';
 
 import logoUrl from './assets/thh-logo.svg';
 
@@ -629,6 +630,13 @@ function IndustryReel() {
 }
 
 export default function App() {
+  const [wideBrief, setWideBrief] = useState(() => window.matchMedia('(min-width:1200px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width:1200px)');
+    const update = () => setWideBrief(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const editBaseline = useRef<Brief | null>(null);
@@ -1018,7 +1026,8 @@ export default function App() {
       if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin'); }
     });
     const stopErrors = authController.onError(error => setAuthNotice(error.message));
-    return () => { stopErrors(); subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
+
+  return () => { stopErrors(); subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
     // One subscription per mount; planner/account/flow state is read through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1764,6 +1773,184 @@ export default function App() {
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
   if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
 
+  // Keep mobile DOM/tab order unchanged; group desktop columns independently.
+  const nameField = (
+          <div className="field planning-step">
+            <label htmlFor="f-name">Campaign name</label>
+            <input
+              id="f-name"
+              className="ctl"
+              type="text"
+              placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
+              value={brief.name}
+              onChange={(e) => patch({ name: e.target.value })}
+            />
+          </div>
+
+
+  );
+  const marketField = (
+          <div className="field planning-step">
+            <label id="g-market">Market</label>
+            <div className="pills" role="group" aria-labelledby="g-market">
+              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
+            </div>
+          </div>
+
+
+  );
+  const objectiveField = (
+          <div className="field planning-step">
+            <label id="g-objective">Objective</label>
+            <div className="pills" role="group" aria-labelledby="g-objective">
+              {OBJECTIVES.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`pill obj-${o.id}${brief.objectives.includes(o.id) ? '' : ' off'}`}
+                  aria-pressed={brief.objectives.includes(o.id)}
+                  onClick={() => toggleObjective(o.id)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+
+  );
+  const kpiField = (
+          <AnimatedKpiField>
+            <label id="g-kpi">KPI</label>
+            {kpiOptions.length === 0 ? (
+              <div className="hint">Select an objective first</div>
+            ) : (
+              <div className="pills" role="group" aria-labelledby="g-kpi">
+                {kpiOptions.map((entry) => (
+                  <button
+                    key={entry.label}
+                    type="button"
+                    className={`pill obj-${entry.objective}${brief.kpis.includes(entry.label) ? '' : ' off'}`}
+                    aria-pressed={brief.kpis.includes(entry.label)}
+                    onClick={() => toggleKpi(entry.label)}
+                  >
+                    {entry.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </AnimatedKpiField>
+
+
+  );
+  const audienceField = (
+          <div className="field planning-step">
+            <label id="g-audience">Audience</label>
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
+              {AUDIENCES.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  className={`pill${brief.audiences.includes(a) ? '' : ' off'}`}
+                  aria-pressed={brief.audiences.includes(a)}
+                  onClick={() => toggleAudience(a)}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+
+  );
+  const budgetField = (
+          <div className="field planning-step">
+            <label htmlFor="f-budget">Budget</label>
+            <input
+              id="f-budget"
+              className="ctl"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. £100,000"
+              value={budgetText ? `£${budgetText}` : ''}
+              onChange={(e) => onBudget(e.target.value)}
+            />
+          </div>
+
+
+  );
+  const datesField = (
+          <div className="field planning-step">
+            <label>Campaign dates</label>
+            <div className="daterow">
+              <div className="datewrap">
+                <input
+                  ref={startRef}
+                  aria-label="Start date"
+                  aria-invalid={startNotFuture(brief.start) || undefined}
+                  aria-describedby={startNotFuture(brief.start) ? "start-date-error" : undefined}
+                  className={`ctl${!brief.start ? " date-empty" : ""}`}
+                  type="date"
+                  onFocus={clearCue}
+                  onPointerDown={clearCue}
+                  value={brief.start}
+                  min={tomorrowISO}
+                  onChange={(e) => patch({ start: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="calbtn"
+                  aria-label="Choose start date"
+                  onClick={() => openDatePicker(startRef)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+                  </svg>
+                </button>
+              </div>
+              <div className="datewrap">
+                <input
+                  ref={endRef}
+                  aria-label="End date"
+                  aria-invalid={endBeforeStart(brief.start, brief.end) || undefined}
+                  aria-describedby={endBeforeStart(brief.start, brief.end) ? "end-date-error" : undefined}
+                  className={`ctl${!brief.end ? " date-empty" : ""}`}
+                  type="date"
+                  onFocus={clearCue}
+                  onPointerDown={clearCue}
+                  value={brief.end}
+                  min={brief.start || tomorrowISO}
+                  onChange={(e) => patch({ end: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="calbtn"
+                  aria-label="Choose end date"
+                  onClick={() => openDatePicker(endRef)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            {startNotFuture(brief.start) && (
+              <div id="start-date-error" className="dur date-error" role="status">⚠ Start date must be in the future.</div>
+            )}
+            {endBeforeStart(brief.start, brief.end) && (
+              <div id="end-date-error" className="dur date-error" role="status">⚠ End date must be on or after the start date.</div>
+            )}
+            {weeks > 0 && (
+              <div className="dur">
+                {formatDate(brief.start)} to {formatDate(brief.end)} · {weeksLabel(weeks)}
+              </div>
+            )}
+          </div>
+
+
+  );
   return (
     <div className="wrap">
       <nav>
@@ -1904,161 +2091,12 @@ export default function App() {
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
           </>}
 
-          <div className="field planning-step">
-            <label htmlFor="f-name">Campaign name</label>
-            <input
-              id="f-name"
-              className="ctl"
-              type="text"
-              placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
-              value={brief.name}
-              onChange={(e) => patch({ name: e.target.value })}
-            />
-          </div>
-
-          <div className="field planning-step">
-            <label id="g-market">Market</label>
-            <div className="pills" role="group" aria-labelledby="g-market">
-              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
+          {wideBrief && !viewingSaved && !editingSaved && (stage === 'empty' || stage === 'filling') ? (
+            <div className="brief-columns">
+              <div className="brief-details">{nameField}{marketField}{audienceField}{budgetField}{datesField}</div>
+              <div className="brief-goals">{objectiveField}{kpiField}</div>
             </div>
-          </div>
-
-          <div className="field planning-step">
-            <label id="g-objective">Objective</label>
-            <div className="pills" role="group" aria-labelledby="g-objective">
-              {OBJECTIVES.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`pill obj-${o.id}${brief.objectives.includes(o.id) ? '' : ' off'}`}
-                  aria-pressed={brief.objectives.includes(o.id)}
-                  onClick={() => toggleObjective(o.id)}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="field planning-step">
-            <label id="g-kpi">KPI</label>
-            {kpiOptions.length === 0 ? (
-              <div className="hint">Select an objective first</div>
-            ) : (
-              <div className="pills" role="group" aria-labelledby="g-kpi">
-                {kpiOptions.map((entry) => (
-                  <button
-                    key={entry.label}
-                    type="button"
-                    className={`pill obj-${entry.objective}${brief.kpis.includes(entry.label) ? '' : ' off'}`}
-                    aria-pressed={brief.kpis.includes(entry.label)}
-                    onClick={() => toggleKpi(entry.label)}
-                  >
-                    {entry.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="field planning-step">
-            <label id="g-audience">Audience</label>
-            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
-              {AUDIENCES.map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  className={`pill${brief.audiences.includes(a) ? '' : ' off'}`}
-                  aria-pressed={brief.audiences.includes(a)}
-                  onClick={() => toggleAudience(a)}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="field planning-step">
-            <label htmlFor="f-budget">Budget</label>
-            <input
-              id="f-budget"
-              className="ctl"
-              type="text"
-              inputMode="numeric"
-              placeholder="e.g. £100,000"
-              value={budgetText ? `£${budgetText}` : ''}
-              onChange={(e) => onBudget(e.target.value)}
-            />
-          </div>
-
-          <div className="field planning-step">
-            <label>Campaign dates</label>
-            <div className="daterow">
-              <div className="datewrap">
-                <input
-                  ref={startRef}
-                  aria-label="Start date"
-                  aria-invalid={startNotFuture(brief.start) || undefined}
-                  aria-describedby={startNotFuture(brief.start) ? "start-date-error" : undefined}
-                  className={`ctl${!brief.start ? " date-empty" : ""}`}
-                  type="date"
-                  onFocus={clearCue}
-                  onPointerDown={clearCue}
-                  value={brief.start}
-                  min={tomorrowISO}
-                  onChange={(e) => patch({ start: e.target.value })}
-                />
-                <button
-                  type="button"
-                  className="calbtn"
-                  aria-label="Choose start date"
-                  onClick={() => openDatePicker(startRef)}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
-                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
-                  </svg>
-                </button>
-              </div>
-              <div className="datewrap">
-                <input
-                  ref={endRef}
-                  aria-label="End date"
-                  aria-invalid={endBeforeStart(brief.start, brief.end) || undefined}
-                  aria-describedby={endBeforeStart(brief.start, brief.end) ? "end-date-error" : undefined}
-                  className={`ctl${!brief.end ? " date-empty" : ""}`}
-                  type="date"
-                  onFocus={clearCue}
-                  onPointerDown={clearCue}
-                  value={brief.end}
-                  min={brief.start || tomorrowISO}
-                  onChange={(e) => patch({ end: e.target.value })}
-                />
-                <button
-                  type="button"
-                  className="calbtn"
-                  aria-label="Choose end date"
-                  onClick={() => openDatePicker(endRef)}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
-                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            {startNotFuture(brief.start) && (
-              <div id="start-date-error" className="dur date-error" role="status">⚠ Start date must be in the future.</div>
-            )}
-            {endBeforeStart(brief.start, brief.end) && (
-              <div id="end-date-error" className="dur date-error" role="status">⚠ End date must be on or after the start date.</div>
-            )}
-            {weeks > 0 && (
-              <div className="dur">
-                {formatDate(brief.start)} to {formatDate(brief.end)} · {weeksLabel(weeks)}
-              </div>
-            )}
-          </div>
+          ) : <>{nameField}{marketField}{objectiveField}{kpiField}{audienceField}{budgetField}{datesField}</>}
 
           <span className="sr-only brief-status" role="status" aria-live="polite" aria-atomic="true">
             {briefProgressCount === null ? '' : `${briefProgressCount} OF 6 ANSWERED`}

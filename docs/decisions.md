@@ -332,3 +332,13 @@ sync browser-local saved plans to a server, or approve a production merge. A
 bounded real Google plus email signup/verification/reset check still needs an
 agreed account and audience before it is attempted. Old-version tabs must close
 and existing users log in again when the canonical auth controller is deployed.
+
+## 13 November 2026 - Objective and expanding KPIs
+
+For the desktop brief-first proposal, Objective sits top-right with KPI directly
+below it. The remaining fields form an independent left column, so additional
+KPI rows do not create gaps between those fields. Phone and tablet keep their
+existing single-column field order. The KPI box uses a short eased transition
+between measured heights when objectives change, including shrinking after
+removal. Reduced-motion users get the final size immediately. No objective or
+KPI choices are removed, and existing answers survive responsive layout changes.
