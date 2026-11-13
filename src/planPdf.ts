@@ -2,7 +2,6 @@ import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { Brief, Plan } from './data';
 import { OBJECTIVES, campaignWeeks, formatDate, gbp, marketLabels, weeksLabel } from './data';
 
-export const REPORT_NOTE = 'Design concept - scenario, figures and rationale are illustrative, adapted from the Compass brief';
 
 // Plain text only: campaign names are never interpreted as HTML or PDF markup.
 export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: { brandLogo: string; brandMark: string }): TDocumentDefinitions {
@@ -52,11 +51,10 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
       ]] }, layout: 'noBorders' },
       { canvas: [{ type: 'line', x1: 0, y1: 1, x2: 64, y2: 1, lineWidth: 2, lineColor: '#ffcc00' }] },
     ] }),
-    info: { title: brief.name || 'Untitled campaign', author: 'The Hybrid House', subject: 'Compass saved media plan - illustrative concept' },
+    info: { title: brief.name || 'Untitled campaign', author: 'The Hybrid House', subject: 'Compass saved media plan' },
     defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25, color: '#000000' },
     footer: (page, pages) => ({ margin: [42, 10, 42, 0], stack: [
-      { text: REPORT_NOTE, fontSize: 7.5, color: '#000000' },
-      { text: `Compass by The Hybrid House  |  ${page} / ${pages}`, fontSize: 8, color: '#000000', margin: [0, 5, 0, 0] },
+      { text: `Compass by The Hybrid House  |  ${page} / ${pages}`, fontSize: 8, color: '#000000' },
     ] }),
     content: [
       { text: brief.name || 'Untitled campaign', font: 'Poppins', fontSize: 19, bold: true, margin: [0, 0, 0, 6] },
