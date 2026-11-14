@@ -564,8 +564,8 @@ function ensureSavedPlanMarkets(): void {
     const plans: SavedPlan[] = JSON.parse(raw);
     let changed = false;
     const updated = plans.map(plan => {
+      if (plan.brief.markets?.length) return plan;
       const brief = withSavedMarket(plan.brief);
-      if (brief === plan.brief) return plan;
       changed = true;
       return { ...plan, brief };
     });

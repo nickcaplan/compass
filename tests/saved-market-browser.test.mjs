@@ -21,6 +21,8 @@ test('legacy/custom/expired saved markets persist and appear in cards, Open and 
     localStorage.setItem('compass-seeded-plans',JSON.stringify({version:2,applied:['seed-active-1','seed-active-2',...Array.from({length:5},(_,i)=>'seed-past-'+(i+1))]}));localStorage.setItem('saved-market-fixture','1');
    },theme);
    await p.goto(url+'#/my-plans');await p.waitForSelector('.avatar');await p.waitForSelector('.plancard');
+   assert.match(await p.$$eval('.plancard',es=>es.map(e=>e.textContent).join(' ')),/Expired empty market/);
+   assert.equal(await p.$$('.plancard.is-expired').then(es=>es.length),1);
    assert.deepEqual(await p.$$eval('.pc-market',es=>es.map(e=>e.textContent)),['UK','UK','France + Germany']);
    const read=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans')));
    const plans=await read();assert.deepEqual(plans.map(p=>p.brief.markets),[['uk'],['uk'],['france','germany']]);assert.deepEqual(plans.map(p=>p.id),['custom','empty','explicit']);assert.equal(plans[0].savedAt,'2026-01-01');
