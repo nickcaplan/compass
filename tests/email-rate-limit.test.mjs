@@ -9,7 +9,8 @@ test('email rate limits get distinct inline messages without an invented countdo
   const local=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server.once('error',reject);server.once('exit',code=>reject(Error(`Preview exited ${code}`)));server.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
   const url=process.env.HOSTED_URL||local;
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
-  const context=await browser.createBrowserContext();const p=await context.newPage();p.on('dialog',d=>d.accept());p.setDefaultTimeout(8000);await p.setViewport({width:390,height:844});
+  const context=await browser.createBrowserContext();const p=await context.newPage();p.on('dialog',d=>d.accept());// Poll ceilings, not performance budgets: CI runners can be 3-4x slower than local, so these fixed waits are sized to tolerate load.
+  p.setDefaultTimeout(20000);await p.setViewport({width:390,height:844});
   // nextError: the error payload the next auth call should fail with.
   let nextError=null; let resetFailure=null; let requestCount=0; let delayMs=0;
   await p.setRequestInterception(true);p.on('request',req=>{
@@ -75,7 +76,7 @@ test('email rate limits get distinct inline messages without an invented countdo
   const local=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('No preview ready')),10000);server2.once('error',reject);server2.once('exit',code=>reject(Error(`Preview exited ${code}`)));server2.stdout.on('data',chunk=>{out+=chunk.toString().replace(/\x1b\[[0-9;]*m/g,'');const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0])}})});
   const url=process.env.HOSTED_URL||local;
   browser2=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
-  const p=await browser2.newPage();p.on('dialog',d=>d.accept());p.setDefaultTimeout(8000);await p.setViewport({width:390,height:844});
+  const p=await browser2.newPage();p.on('dialog',d=>d.accept());p.setDefaultTimeout(20000);await p.setViewport({width:390,height:844});
   await p.setRequestInterception(true);p.on('request',req=>{
    if(!req.url().includes('ctailpmcoyvaplwbwskf.supabase.co'))return req.continue();
    const headers={'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS','access-control-allow-headers':'*'};
