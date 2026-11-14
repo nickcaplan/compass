@@ -613,6 +613,10 @@ test('signed-out visitor is asked to log in before the plan reveals, brief kept'
     const page = await context.newPage();
     page.setDefaultTimeout(30000);
     await page.setViewport({ width: 1440, height: 900 });
+    // Reduced motion skips the staged generation walkthrough (its chained
+    // timers are what stalled under CI load), and interval polling does not
+    // depend on animation frames firing.
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
     await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4177/?demo=1'));
 
     // Generate without a session: the gate asks for log-in and hides the plan.
@@ -620,7 +624,7 @@ test('signed-out visitor is asked to log in before the plan reveals, brief kept'
     await page.waitForFunction(() => {
       const h = [...document.querySelectorAll('.planin h2')].find((el) => el.textContent.trim() === 'Your plan is ready');
       return Boolean(h);
-    });
+    }, { polling: 100 });
     assert.match(await page.$eval('.planin', (el) => el.textContent), /Log in to see it/);
     assert.equal(await page.$('.planin .metrics'), null);
 
