@@ -22,7 +22,7 @@ export function SliceDropdown({id,label,value,options,onChange,placeholder='Sele
    <svg className={'ir-dd-caret'+(open?' ir-dd-open':'')} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
   </button>
   {open&&<ul className="ir-dd-list" role="listbox" aria-labelledby={id+'-label'}>
-   {options.map((o,i)=><li key={o} id={id+'-opt-'+o.replace(/\s+/g,'-')} role="option" aria-selected={o===value} className={i===active?'ir-dd-active':''} onPointerEnter={()=>setActive(i)} onClick={()=>commit(i)}>{o}</li>)}
+   {options.map((o,i)=><li key={o} id={id+'-opt-'+o.replace(/\s+/g,'-')} role="option" aria-selected={o===value||(!value&&o===placeholder)} className={i===active?'ir-dd-active':''} onPointerEnter={()=>setActive(i)} onClick={()=>commit(i)}>{o}</li>)}
   </ul>}
  </div>;
 }

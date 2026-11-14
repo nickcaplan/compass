@@ -24,9 +24,9 @@ export default function InventoryIssues(){
  const visible=useMemo(()=>rows.filter(r=>(!issueToken||r.structural_issues.includes(issueToken))&&(!market||r.market===market)&&(!tactic||r.tactic===tactic)),[issueToken,market,tactic]);
  const shown=visible.slice(0,showCount);
  return <div className="inventory-review" data-theme={theme}><div className="ir-wrap">
- <header className="ir-nav"><div className="ir-brand"><a className="ir-prodhome" href="/" aria-label="Compass - go to Planner"><svg className="mark" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)"><path className="mu" d="M32 4 L46 32 L18 32Z" /><path className="md" d="M32 60 L46 32 L18 32Z" /></g><circle className="mc" cx="32" cy="32" r="3.5" /></svg>COMPASS</a><span className="ir-byline"><span className="ir-by">by</span><a className="ir-logoLink" href="https://thehybridhouse.co.uk" target="_blank" rel="noopener noreferrer" aria-label="The Hybrid House website"><img src={logoUrl} alt="" height={26} /></a></span></div><span><a href="/data-review">Mock data review</a> · Rows that require review</span><button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')}>{theme==='dark'?'Light':'Dark'} mode</button></header>
+ <header className="ir-nav"><div className="ir-brand"><a className="ir-prodhome" href="/" aria-label="Compass - go to Planner"><svg className="mark" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)"><path className="mu" d="M32 4 L46 32 L18 32Z" /><path className="md" d="M32 60 L46 32 L18 32Z" /></g><circle className="mc" cx="32" cy="32" r="3.5" /></svg>COMPASS</a><span className="ir-byline"><span className="ir-by">by</span><a className="ir-logoLink" href="https://thehybridhouse.co.uk" target="_blank" rel="noopener noreferrer" aria-label="The Hybrid House website"><img src={logoUrl} alt="" height={26} /></a></span></div><span><a href="/data-review">Data review</a> · Rows that require review</span><button onClick={()=>setTheme(t=>t==='dark'?'light':'dark')}>{theme==='dark'?'Light':'Dark'} mode</button></header>
  <main className="ir-page">
- <p className="ir-eyebrow">MOCK INVENTORY REVIEW</p>
+ <p className="ir-eyebrow">INVENTORY REVIEW</p>
  <h1>Rows that require review</h1>
  <p className="ir-lede">{rows.length.toLocaleString('en-GB')} of {source.records.length.toLocaleString('en-GB')} imported rows carry at least one data issue. Nothing here is a recommendation; this page exists so the source problems can be worked through and fixed at the workbook.</p>
  <div className="ir-issues-filterbar">
@@ -47,5 +47,5 @@ export default function InventoryIssues(){
  </article>)}
  </div>
  {visible.length>shown.length&&<button type="button" className="ir-more" onClick={()=>setShowCount(c=>c+PAGE)}>Show more - {(visible.length-shown.length).toLocaleString('en-GB')} rows left</button>}
- </main><footer className="ir-footer">Mock inventory review · No live recommendations changed · Source workbook downloaded 12 November 2026</footer></div></div>;
+ </main><footer className="ir-footer">Inventory review · Source data received 12 November 2026</footer></div></div>;
 }
