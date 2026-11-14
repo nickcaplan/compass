@@ -180,7 +180,8 @@
     },
     "structurally_reviewable": 150,
     "structural_issue_counts": {
-      "missing_tactic_rule_or_description": 115,
+      "missing_tactic_rule": 115,
+      "missing_tactic_description": 115,
       "unclassified_tactic": 1470,
       "cpl_one_unit_cost_not_campaign_budget": 95,
       "price_like_product_name": 315,
@@ -2891,11 +2892,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -2960,11 +2963,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3029,11 +3034,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3098,11 +3105,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3167,11 +3176,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3236,11 +3247,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3305,11 +3318,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3374,11 +3389,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3443,11 +3460,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3512,11 +3531,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3581,11 +3602,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3650,11 +3673,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3719,11 +3744,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3788,11 +3815,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3857,11 +3886,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3927,11 +3958,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -3997,11 +4030,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4067,11 +4102,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4137,11 +4174,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4207,11 +4246,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4276,11 +4317,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4345,11 +4388,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4414,11 +4459,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4483,11 +4530,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4552,11 +4601,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4621,11 +4672,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4690,11 +4743,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4759,11 +4814,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4828,11 +4885,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4897,11 +4956,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -4966,11 +5027,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5035,11 +5098,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5104,11 +5169,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5173,11 +5240,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5242,11 +5311,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5311,11 +5382,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5380,11 +5453,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5449,11 +5524,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5518,11 +5595,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5587,11 +5666,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5656,11 +5737,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5725,11 +5808,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5794,11 +5879,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5863,11 +5950,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -5932,11 +6021,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6001,11 +6092,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6070,11 +6163,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6139,11 +6234,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6208,11 +6305,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6277,11 +6376,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6346,11 +6447,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6415,11 +6518,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6484,11 +6589,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6553,11 +6660,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6622,11 +6731,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6691,11 +6802,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6760,11 +6873,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6829,11 +6944,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6898,11 +7015,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -6967,11 +7086,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7036,11 +7157,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7105,11 +7228,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7174,11 +7299,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7243,11 +7370,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7312,11 +7441,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7382,11 +7513,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7452,11 +7585,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7522,11 +7657,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7592,11 +7729,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7662,11 +7801,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7731,11 +7872,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7800,11 +7943,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7869,11 +8014,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -7938,11 +8085,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8007,11 +8156,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8076,11 +8227,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8145,11 +8298,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8214,11 +8369,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8283,11 +8440,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8352,11 +8511,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8421,11 +8582,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8490,11 +8653,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8559,11 +8724,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8628,11 +8795,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8697,11 +8866,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8766,11 +8937,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8835,11 +9008,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8904,11 +9079,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -8973,11 +9150,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9042,11 +9221,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9111,11 +9292,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9180,11 +9363,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9249,11 +9434,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9318,11 +9505,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9387,11 +9576,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9456,11 +9647,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9525,11 +9718,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9594,11 +9789,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9663,11 +9860,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9732,11 +9931,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9801,11 +10002,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9870,11 +10073,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -9939,11 +10144,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10008,11 +10215,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10077,11 +10286,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10146,11 +10357,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10215,11 +10428,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10284,11 +10499,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10353,11 +10570,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10422,11 +10641,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10491,11 +10712,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10560,11 +10783,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10629,11 +10854,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10698,11 +10925,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
@@ -10767,11 +10996,13 @@
       "mock": true,
       "tactic_description": null,
       "structural_issues": [
-        "missing_tactic_rule_or_description"
+        "missing_tactic_rule",
+        "missing_tactic_description"
       ],
       "structurally_reviewable": false,
       "recommendation_blockers": [
-        "missing_tactic_rule_or_description",
+        "missing_tactic_rule",
+        "missing_tactic_description",
         "currency_unverified",
         "audience_mapping_unapproved",
         "availability_unverified",
