@@ -634,7 +634,7 @@ function SkeletonBlock() {
 }
 
 function DemoCap() {
-  return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
+  return <div className="cap">DEMO DATA</div>;
 }
 
 const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
@@ -1201,6 +1201,12 @@ export default function App() {
   useEffect(() => {
     if (stage !== 'generating') return;
     setTicks(0);
+    // Reduced motion skips the staged progress theatre: the plan is ready
+    // as soon as it computes, with no animated checklist to sit through.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setTicks(genSteps);
+      return;
+    }
     const interval = window.setInterval(() => {
       setTicks((t) => Math.min(t + 1, genSteps));
     }, 950);
@@ -1213,7 +1219,8 @@ export default function App() {
     if (ticks < genSteps) return;
     // Plans are gated behind sign-in: without a session, show the gate
     // first; the brief and generated plan stay intact behind it.
-    const id = window.setTimeout(() => setStage(canViewPlan ? 'plan' : 'gate'), 500);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const id = window.setTimeout(() => setStage(canViewPlan ? 'plan' : 'gate'), reduce ? 0 : 500);
     return () => window.clearTimeout(id);
   }, [stage, ticks, genSteps, canViewPlan]);
 
@@ -2544,7 +2551,7 @@ export default function App() {
             <div className="include">
               <div className="n">03</div>
               <b>Saved and shareable</b>
-              <span>Saved plans stay in this browser in the demo - accounts and sharing are part of the full product design.</span>
+              <span>Saved plans stay in this browser - accounts and sharing are part of the full product design.</span>
             </div>
           </div>
           <div className="cta pricecta">
@@ -2569,9 +2576,7 @@ export default function App() {
         Compass by{' '}
         <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
           The Hybrid House
-        </a>{' '}
-        &middot; Design concept - scenario, figures and rationale are
-        illustrative, adapted from the Compass brief
+        </a>
       </footer>
 
       {demoMode && !editingSaved && confirmFill && (
