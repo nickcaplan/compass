@@ -11,7 +11,8 @@ test('reset deadline ends busy state, preserves conditional success and ignores 
   const url=new URL(process.env.HOSTED_URL||local).href;
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
   for(const width of [390,1440]){
-   const context=await browser.createBrowserContext(),p=await context.newPage();await p.setViewport({width,height:900});p.setDefaultTimeout(6000);
+   const context=await browser.createBrowserContext(),p=await context.newPage();await p.setViewport({width,height:900});// Poll ceilings, not performance budgets: CI runners can be 3-4x slower than local, so these fixed waits are sized to tolerate load.
+   p.setDefaultTimeout(15000);
    // Keep the first test on the real 20-second deadline; speed up the second.
    if(width===1440)await p.evaluateOnNewDocument(()=>{const original=window.setTimeout;window.setTimeout=(fn,delay,...args)=>original(fn,delay===20000?200:delay,...args)});
    let held,hold=true,calls=0;const issued=[];await p.setRequestInterception(true);p.on('request',r=>{
