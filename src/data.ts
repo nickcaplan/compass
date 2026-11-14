@@ -84,9 +84,7 @@ export interface Brief {
 // KPIs automatically (Nick, 13 Nov 2026). A brief being edited always carries
 // the derived set; saved plans keep whatever KPIs they stored.
 export function kpisForObjectives(objectives: readonly ObjectiveId[]): string[] {
-  return OBJECTIVES.filter((o) => objectives.includes(o.id))
-    .flatMap((o) => o.kpis)
-    .filter((k, i, a) => a.indexOf(k) === i);
+  return [...new Set(OBJECTIVES.filter((o) => objectives.includes(o.id)).flatMap((o) => o.kpis))];
 }
 
 export const EMPTY_BRIEF: Brief = {

@@ -1117,6 +1117,8 @@ export default function App() {
         ? b
         : { ...b, kpis: derived };
     });
+    // kpisForObjectives is pure and brief.kpis is read via the functional
+    // setter, so objectives and the read-only flag are the only real deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brief.objectives, savedBriefReadOnly]);
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && briefValues(brief) !== briefValues(submittedBrief);
