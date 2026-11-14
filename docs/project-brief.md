@@ -20,7 +20,7 @@ committed to.
 
 ## What it is
 
-- A single-page front end: the user answers a short brief (objective, KPI,
+- A single-page front end: the user answers a short brief (objective,
   audience, budget, campaign dates) and Compass shows a
   recommended media plan on the right.
 - Four states, matching the approved design: an explainer before anything is
@@ -30,8 +30,9 @@ committed to.
   and efficiency, a one-line rationale per choice, suggested timing, and the
   "speak to a Hybrid House specialist" call to action from the brief.
 - Objectives, KPIs and audiences come from the Compass
-  brief's own taxonomy. KPI options follow the selected objective, as the
-  brief requires.
+  brief's own taxonomy. KPIs are not picked by hand: each objective's KPIs
+  come included with it (Nick, 13 November 2026) and are shown for
+  information under the objective.
 - Metrics shown adapt to the objective (awareness shows reach and
   impressions; consideration shows engagements; performance shows leads and
   CPL), as the brief requires.
