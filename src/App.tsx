@@ -1404,6 +1404,11 @@ export default function App() {
       if (persist(updated)) {
         pinSaveRow();
         invalidateWorkspaceDraft();
+        // Only kpis can differ here (any other unregenerated edit disables
+        // Save): a legacy plan's form shows the objective-derived KPIs while
+        // the stored snapshot keeps what was generated. Re-sync the form to
+        // the persisted snapshot so the read-only view matches storage.
+        setBrief(submittedBrief);
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
         navigation.address({ page: 'planner', planId: savedEntry.id });

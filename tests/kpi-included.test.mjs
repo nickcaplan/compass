@@ -93,5 +93,21 @@ test('KPIs come included with the objective and cannot be picked by hand',{timeo
  await p3.locator('.secondary .lead').click();await p3.waitForSelector('.bsum');
  assert.deepEqual(await p3.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.kpis),['Reach','Impressions','Audience penetration','Video views','Brand exposure']);
  await c3.close();
+
+ // Saving an edited legacy plan without regenerating keeps the stored
+ // snapshot, and the view it returns to matches storage (CodeRabbit #113:
+ // the form showed five derived KPIs while only Reach was persisted).
+ const c4=await browser.createBrowserContext(),p4=await c4.newPage();p4.setDefaultTimeout(10000);
+ await p4.setViewport({width:1440,height:1000});await seedPlannerFixture(p4);
+ await p4.evaluateOnNewDocument(plan=>localStorage.setItem('compass-saved-plans',JSON.stringify([plan])),legacy);
+ await p4.goto(url+'#/my-plans');await p4.waitForSelector('.pc-actions .pc-open');
+ await p4.locator('.pc-actions .pc-open').click();await p4.waitForSelector('.bsum');
+ await p4.locator('.saved-plan-edit').click();await p4.waitForSelector('#f-name');
+ await p4.waitForFunction(()=>document.querySelectorAll('[aria-labelledby=g-kpi] .pill').length===5);
+ await p4.locator('button.ghost.lead').click();await p4.waitForSelector('.bsum');
+ assert.deepEqual(await p4.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.kpis),['Reach'],'unregenerated save keeps the stored snapshot');
+ const viewKpis=await p4.$$eval('.bsum>div',ds=>ds.find(d=>d.querySelector('.k')?.textContent==='KPI')?.querySelector('.v')?.textContent);
+ assert.equal(viewKpis,'Reach','post-save view matches storage');
+ await c4.close();
  }finally{await browser?.close();server?.kill()}
 });
