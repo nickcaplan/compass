@@ -31,9 +31,9 @@ Report the result through the agent's normal channel:
 ### Compass QA focus
 
 - The production demo is `https://compass-demo.websitesbynick.co.uk/`, serving the main branch as a Render static site.
-- Sign-in is a critical path: sign in and out repeatedly, clear or expire the session mid-journey and try gated routes while signed out. Do not infer server-side protection from the UI sign-in gate; report any data reachable without authentication.
+- Sign-in is a critical path: sign in and out repeatedly, clear or expire the session mid-journey and try gated routes while signed out. Use a dedicated test account for sign-in checks; never sign up or trigger email recovery with real addresses, because the authentication provider sends real emails. Do not infer server-side protection from the UI sign-in gate; report any data reachable without authentication.
 - Exercise planner state: save, edit and delete plans, reload with saved plans present, corrupt or hand-edit the stored plan data and check the recovery path. Watch for layout jumps when saved state changes.
-- On the data review page, filter by market and objective, open source details, include held-back rows and verify the shown counts against the underlying dataset.
+- On the data review page, filter by market and objective, open source details, include rows that require review and verify the shown counts against the underlying dataset.
 - Mocked figures are not live quotes or validated recommendations; report any copy or behaviour that implies otherwise.
 
 ## Standing maintenance agents
