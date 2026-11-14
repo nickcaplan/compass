@@ -97,6 +97,12 @@ test('data review issues page lists flagged rows with column titles and wording'
    if((await page.$$('.ir-filter-chip')).length===5)break;
   }
   assert.equal((await page.$$('.ir-filter-chip')).length,5);
+  await page.click('.ir-filter-chip');
+  assert.equal((await page.$$('.ir-filter-chip')).length,4);
+  await page.click('.ir-you-are-here button');
+  assert.equal((await page.$$('.ir-filter-chip')).length,5,'undo restores all five categories');
+  assert.equal(await page.$('#explore-by'),null,'all-five restoration never renders an empty select');
+  assert.ok(await page.$('.ir-irow'),'all-five restoration shows matching rows');
   assert.match(await page.$eval('.ir-next-heading',e=>e.textContent),/All categories chosen/);
   await chooseView('Explore groups');
   assert.equal(await page.$('#explore-by'),null);
