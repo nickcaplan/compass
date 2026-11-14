@@ -8,7 +8,7 @@ test('data review issues page lists flagged rows with column titles and wording'
  try{
   const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('Preview startup timeout')),10000);server.stdout.on('data',chunk=>{out+=stripVTControlCharacters(chunk.toString());const match=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0]);}});server.once('error',reject)});
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});const page=await browser.newPage();
-  await page.goto(url+'data-review/issues');await page.waitForSelector('.ir-view-switch');await page.evaluate(()=>[...document.querySelectorAll('.ir-view-switch button')].find(e=>e.textContent==='Rows').click());await page.waitForSelector('.ir-irow');
+  await page.goto(url+'data-review/issues');await page.waitForSelector('.ir-view-switch');await page.evaluate(()=>[...document.querySelectorAll('.ir-view-switch button')].find(e=>e.textContent==='View matching rows').click());await page.waitForSelector('.ir-irow');
   assert.match(await page.$eval('.ir-page h1',e=>e.textContent),/Rows that require review/);
   const heads=await page.$$eval('.ir-ihead span',es=>es.map(e=>e.textContent));
   assert.deepEqual(heads,['Publisher / Product','Tactic','Market','Objective','Source cost','Issue']);
@@ -17,13 +17,15 @@ test('data review issues page lists flagged rows with column titles and wording'
   assert.ok(!/Held|unclassified/.test(body),'no Held or unclassified wording');
   const chooseView=async label=>{const buttons=await page.$$('.ir-view-switch button');for(const b of buttons)if(await b.evaluate(e=>e.textContent)===label){await b.click();break}};
   const group=async name=>{await page.waitForSelector('.ir-data-group');const found=await page.evaluate(name=>{const b=[...document.querySelectorAll('.ir-data-group')].find(e=>e.querySelector('span').textContent===name);b?.click();return !!b},name);assert.ok(found,`group ${name} exists`)};
-  await chooseView('Groups');
+  await chooseView('Explore groups');
   assert.match(await page.$eval('.ir-explorer-total',e=>e.textContent),/1,595 matching rows/);
   assert.match(await page.$eval('.ir-explorer-total',e=>e.textContent),/319 source formats/);
   assert.match(await page.$eval('.ir-explorer',e=>e.textContent),/issue counts overlap/);
   await group('No tactic');
   assert.match(await page.$eval('.ir-explorer-total',e=>e.textContent),/1,470 matching rows/);
   assert.equal((await page.$$('.ir-filter-chip')).length,1);
+  assert.match(await page.$eval('.ir-you-are-here',e=>e.textContent),/Showing rows where Issue is No tactic/);
+  assert.ok(!(await page.$$eval('#explore-by option',es=>es.map(e=>e.value))).includes('issue'),'one choice per category');
   await page.select('#explore-by','publisher');
   await page.type('#group-search','AAAS');
   const publisher=await page.$eval('.ir-data-group>span',e=>e.textContent);
@@ -38,18 +40,27 @@ test('data review issues page lists flagged rows with column titles and wording'
   await page.select('#explore-by','market');await group('UK');
   const uk=expected.filter(r=>r.market==='UK');
   assert.match(await page.$eval('.ir-explorer-total',e=>e.textContent),new RegExp(uk.length+' matching rows'));
-  await chooseView('Rows');
+  await chooseView('View matching rows');
   assert.equal((await page.$$('.ir-irow')).length,Math.min(uk.length,50));
   assert.ok((await page.$$eval('.ir-irow h4',es=>es.map(e=>e.textContent))).every(t=>t.includes(publisher)));
   assert.equal((await page.$$('.ir-filter-chip')).length,3);
+  assert.match(await page.$eval('.ir-you-are-here',e=>e.textContent),/Issue is No tactic and Publisher is AAAS and Market is UK/);
+  await page.click('.ir-you-are-here button');
+  assert.equal((await page.$$('.ir-filter-chip')).length,2,'undo UK');
+  assert.equal(await page.$eval('#explore-by',e=>e.value),'market','undo returns to last category');
+  await group('UK');
   await page.click('.ir-filter-chip');
   assert.equal((await page.$$('.ir-filter-chip')).length,2,'remove one dimension only');
+  await page.click('.ir-you-are-here button');
+  assert.equal((await page.$$('.ir-filter-chip')).length,3,'undo chip removal restores scope');
   await page.click('.ir-clear-filters');
   assert.equal((await page.$$('.ir-filter-chip')).length,0);
+  assert.equal(await page.$('.ir-you-are-here button'),null,'clear resets undo history');
+  await chooseView('View matching rows');
   assert.equal((await page.$$('.ir-irow')).length,50);
   await page.click('.ir-more');
   assert.equal((await page.$$('.ir-irow')).length,100);
-  await chooseView('Groups');
+  await chooseView('Explore groups');
   await page.select('#explore-by','format');
   assert.match(await page.$eval('.ir-explorer',e=>e.textContent),/319 groups/);
   assert.match(await page.$eval('.ir-data-group strong',e=>e.textContent),/5 rows/);
@@ -63,9 +74,29 @@ test('data review issues page lists flagged rows with column titles and wording'
   // Keyboard activation and chips retain native button semantics.
   await page.focus('.ir-data-group');await page.keyboard.press('Enter');
   assert.equal((await page.$$('.ir-filter-chip')).length,1);
-  await page.click('.ir-clear-filters');await chooseView('Rows');
+  await page.click('.ir-clear-filters');await chooseView('View matching rows');
+  // Choose every remaining category: no empty select and Rows stays reachable.
+  await chooseView('Explore groups');
+  await group('No tactic');
+  for(let step=0;step<4;step++){
+   const value=await page.$eval('#explore-by',e=>e.value);
+   assert.ok(['publisher','market','tactic','format'].includes(value));
+   await page.waitForFunction(()=>document.activeElement?.id==='explorer-location');
+   const before=(await page.$$('.ir-filter-chip')).length;
+   await page.focus('.ir-data-group');await page.keyboard.press('Enter');
+   await page.waitForFunction(n=>document.querySelectorAll('.ir-filter-chip').length===n+1,{},before);
+   if((await page.$$('.ir-filter-chip')).length===5)break;
+  }
+  assert.equal((await page.$$('.ir-filter-chip')).length,5);
+  assert.match(await page.$eval('.ir-next-heading',e=>e.textContent),/All categories chosen/);
+  await chooseView('Explore groups');
+  assert.equal(await page.$('#explore-by'),null);
+  await page.click('.ir-you-are-here button');
+  assert.equal((await page.$$('.ir-filter-chip')).length,4);
+  assert.ok(await page.$('#explore-by'));
+  await page.click('.ir-clear-filters');await chooseView('View matching rows');
   // desktop header hides on phone, per-field labels take over
-  await page.setViewport({width:390,height:844});await page.reload();await page.waitForSelector('.ir-view-switch');await chooseView('Rows');await page.waitForSelector('.ir-irow');
+  await page.setViewport({width:390,height:844});await page.reload();await page.waitForSelector('.ir-view-switch');await chooseView('View matching rows');await page.waitForSelector('.ir-irow');
   assert.equal(await page.$eval('.ir-ihead',e=>getComputedStyle(e).display),'none');
   assert.equal(await page.$eval('.ir-irow h4 .ir-icol',e=>getComputedStyle(e).display),'block');
   // nav back to the review page
