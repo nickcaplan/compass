@@ -19,9 +19,19 @@ test('data review issues page lists flagged rows with column titles and wording'
   await page.click('#f-issue');await page.waitForSelector('.ir-dd-list li');
   const options=await page.$$eval('.ir-dd-list li',es=>es.map(e=>e.textContent));
   assert.ok(options.some(o=>o.startsWith('No tactic - 1,470')),'No tactic option with count');
-  await page.click('.ir-dd-list li');// first option: No tactic - 1,470
+  await page.evaluate(()=>[...document.querySelectorAll('.ir-dd-list li')].find(e=>e.textContent.startsWith('No tactic')).click());
   await page.waitForFunction(()=>document.querySelector('.ir-page .ir-small')?.textContent.includes('1,470 rows'));
   assert.match(await page.$eval('.ir-irow .ir-issues',e=>e.textContent),/Review: No tactic/);
+  // Show more reveals the next page of rows
+  assert.equal((await page.$$('.ir-irow')).length,50);
+  await page.click('.ir-more');
+  await page.waitForFunction(()=>document.querySelectorAll('.ir-irow').length===100);
+  assert.match(await page.$eval('.ir-page .ir-small',e=>e.textContent),/first 100 shown/);
+  // filters clear back to All
+  await page.click('#f-issue');await page.waitForSelector('.ir-dd-list li');
+  await page.evaluate(()=>[...document.querySelectorAll('.ir-dd-list li')].find(e=>e.textContent.trim()==='All').click());
+  await page.waitForFunction(()=>document.querySelector('.ir-page .ir-small')?.textContent.includes('1,595 rows'));
+  assert.equal((await page.$$('.ir-irow')).length,50,'clearing resets the reveal count');
   // desktop header hides on phone, per-field labels take over
   await page.setViewport({width:390,height:844});await page.reload();await page.waitForSelector('.ir-irow');
   assert.equal(await page.$eval('.ir-ihead',e=>getComputedStyle(e).display),'none');

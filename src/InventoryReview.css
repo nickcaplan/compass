@@ -20,3 +20,4 @@
 }
 .ir-page h1{font-size:clamp(28px,4vw,44px);margin:6px 0 10px;letter-spacing:-.02em}
 .ir-lede{max-width:68ch;opacity:.85;margin:0 0 6px}
+.ir-more{display:block;margin:16px auto 0;min-width:220px}
