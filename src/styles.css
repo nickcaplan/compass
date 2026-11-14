@@ -92,9 +92,9 @@ nav{display:flex;flex-wrap:wrap;row-gap:12px;align-items:center;padding:22px 0}
 .prodhome .mark .mu{fill:var(--accent)}
 .prodhome .mark .md{fill:var(--text)}
 .prodhome .mark .mc{fill:var(--bg)}
-.navlinks{display:flex;align-items:center;gap:26px;font-size:13.5px;font-weight:500}
+.navlinks{display:flex;align-items:center;gap:26px;font-size:13.5px;font-weight:500;justify-content:flex-end}
 .navlinks button:not(.signin){background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}
-.themebtn{margin-left:auto;width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--line-mid)!important;background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.themebtn{width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--line-mid)!important;background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .themebtn:hover{color:var(--accent-ink);border-color:var(--accent-line)!important}
 .signin{font:inherit;border-radius:999px;padding:9px 20px;font-weight:600;font-size:13px;cursor:pointer}
 .signin:has(.avatar){padding:4px;border-radius:50%}
