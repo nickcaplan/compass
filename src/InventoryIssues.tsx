@@ -28,7 +28,7 @@ export default function InventoryIssues(){
   if(nextDimension)setDimension(nextDimension[0]);else setView('rows');
   resetReveal();focusScope();
  }
- function undo(){const previous=history[history.length-1];if(!previous)return;setSelection(previous.selection);setHistory(h=>h.slice(0,-1));setDimension(previous.dimension);setView('groups');resetReveal();focusScope()}
+ function undo(){const previous=history[history.length-1];if(!previous)return;setSelection(previous.selection);setHistory(h=>h.slice(0,-1));const available=dimensions.find(([d])=>!previous.selection[d]);if(available)setDimension(available[0]);setView(available?'groups':'rows');resetReveal();focusScope()}
  function clear(){setSelection({});setHistory([]);setDimension('issue');setView('groups');resetReveal();focusScope()}
  const selectedDimensions=dimensions.filter(([d])=>selection[d]);
  const locationText=selectedDimensions.length?'Showing rows where '+selectedDimensions.map(([d,label])=>`${label} is ${groupLabel(d,selection[d]!)}`).join(' and '):'Showing all rows that require review';

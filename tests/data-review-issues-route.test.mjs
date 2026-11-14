@@ -53,6 +53,10 @@ test('data review issues page lists flagged rows with column titles and wording'
   assert.equal((await page.$$('.ir-filter-chip')).length,2,'remove one dimension only');
   await page.click('.ir-you-are-here button');
   assert.equal((await page.$$('.ir-filter-chip')).length,3,'undo chip removal restores scope');
+  const categoryAfterUndo=await page.$eval('#explore-by',e=>e.value);
+  assert.equal(categoryAfterUndo,'tactic','undo chooses a dimension absent from the restored scope');
+  const tacticLabels=[...new Set(expected.filter(r=>r.market==='UK').map(r=>r.tactic))];
+  assert.deepEqual(await page.$$eval('.ir-data-group>span:first-child',es=>es.map(e=>e.textContent)),tacticLabels,'group list matches select, never stale Issue options');
   await page.click('.ir-clear-filters');
   assert.equal((await page.$$('.ir-filter-chip')).length,0);
   assert.equal(await page.$('.ir-you-are-here button'),null,'clear resets undo history');
@@ -78,6 +82,11 @@ test('data review issues page lists flagged rows with column titles and wording'
   // Choose every remaining category: no empty select and Rows stays reachable.
   await chooseView('Explore groups');
   await group('No tactic');
+  await page.click('.ir-filter-chip');
+  await page.click('.ir-you-are-here button');
+  assert.equal(await page.$eval('#explore-by',e=>e.value),'publisher');
+  assert.ok(!(await page.$$eval('#explore-by option',es=>es.map(e=>e.value))).includes('issue'));
+  assert.ok((await page.$$eval('.ir-data-group>span:first-child',es=>es.map(e=>e.textContent))).includes('AAAS'),'publisher options after issue chip remove and undo');
   for(let step=0;step<4;step++){
    const value=await page.$eval('#explore-by',e=>e.value);
    assert.ok(['publisher','market','tactic','format'].includes(value));
