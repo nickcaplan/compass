@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';
+const helper=stripTypeScriptTypes(readFileSync(new URL('../src/savedPlanMarkets.ts',import.meta.url),'utf8')).replace("import type { MarketId } from './data';",'').replace('export ','');
+const withSavedMarket=new Function(helper+';return withSavedMarket')();
+const source=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+const migration=stripTypeScriptTypes(source.slice(source.indexOf('function ensureSavedPlanMarkets()'),source.indexOf('function loadPlans()')));
+const old={id:'custom',savedAt:'2026-01-01T00:00:00Z',extra:'keep',brief:{name:'Legacy',objectives:['awareness'],kpis:['Reach'],audiences:['Procurement'],budget:12345,start:'2026-01-01',end:'2026-02-01'}};
+for(const markets of[undefined,[]])test(`saved brief defaults UK for ${JSON.stringify(markets)}`,()=>{const b={...old.brief,...(markets===undefined?{}:{markets})};assert.deepEqual(withSavedMarket(b),{...b,markets:['uk']});assert.deepEqual(b.markets,markets)});
+for(const markets of[['france'],['north-america','uk'],['france','germany']])test(`preserves chosen markets ${markets}`,()=>{const b={...old.brief,markets};assert.deepEqual(withSavedMarket(b),b);assert.deepEqual(b.markets,markets)});
+for(const fail of[false,true])test(`whole saved-list migration is idempotent and preserves payload, write failure=${fail}`,()=>{const plans=[old,{...old,id:'empty',brief:{...old.brief,markets:[]}},{...old,id:'seed-active-2',brief:{...old.brief,markets:['france','germany']}}];let raw=JSON.stringify(plans),writes=0;const original=raw;const window={localStorage:{getItem:()=>raw,setItem:(_,v)=>{if(fail)throw Error('quota');raw=v;writes++}}};const run=new Function('window','PLANS_KEY','withSavedMarket',`let plansLoadFailed=false;${migration};ensureSavedPlanMarkets();ensureSavedPlanMarkets();return plansLoadFailed`);assert.equal(run(window,'plans',withSavedMarket),fail);if(fail){assert.equal(raw,original);assert.equal(writes,0)}else{assert.equal(writes,1);assert.deepEqual(JSON.parse(raw),plans.map((p,i)=>i<2?{...p,brief:{...p.brief,markets:['uk']}}:p))}});
+test('missing storage makes no write and never resurrects removed plans',()=>{let writes=0;const window={localStorage:{getItem:()=>null,setItem:()=>writes++}};new Function('window','PLANS_KEY','withSavedMarket',`let plansLoadFailed=false;${migration};ensureSavedPlanMarkets()`)(window,'plans',withSavedMarket);assert.equal(writes,0)});

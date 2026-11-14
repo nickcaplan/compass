@@ -12,6 +12,8 @@ test('market options preserve shared pill styling and multi-selection without re
  for(const width of[320,390,768,1440]){
  const p=await browser.newPage();await p.setViewport({width,height:900});await seedPlannerFixture(p);await p.goto(url);await p.waitForSelector('[aria-labelledby=g-market]');
  assert.deepEqual(await p.$$eval('[aria-labelledby=g-market] button',bs=>bs.map(b=>b.textContent)),['North America','UK','France','Germany']);
+ assert.equal(await p.$$eval('[aria-labelledby=g-market] [aria-pressed=true]',bs=>bs.length),0,'new unsaved brief still requires a market');
+ assert.equal(await p.$eval('.gen',e=>e.disabled),true);
  if(width>=1200){
   assert.deepEqual(await p.$$eval('.brief-details .planning-step label',es=>es.map(e=>e.textContent)),['Campaign name','Market']);
   assert.deepEqual(await p.$$eval('.brief-goals .planning-step label',es=>es.map(e=>e.textContent)),['Objective','KPI']);
@@ -37,9 +39,9 @@ test('market options preserve shared pill styling and multi-selection without re
   const stored=await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans')));assert.deepEqual([...stored[0].brief.markets].sort(),['north-america','uk']);
   await p.reload();await p.waitForSelector('.themebtn');await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('.bsum');assert.match(await p.$eval('.bsum',e=>e.textContent),/North America \+ UK/);
   await click('Edit plan');await p.waitForSelector('[aria-labelledby=g-market]');assert.equal(await p.$eval('[aria-labelledby=g-market] button',b=>b.getAttribute('aria-pressed')),'true');
-  // Old demo records have no inferred geography, remain readable, and can be edited.
+  // Legacy saved records now receive the chosen UK default, but removing it in Edit still blocks regeneration.
   await p.evaluate(()=>{const plans=JSON.parse(localStorage.getItem('compass-saved-plans'));delete plans[0].brief.markets;localStorage.setItem('compass-saved-plans',JSON.stringify(plans))});
-  await p.reload();await p.waitForSelector('.themebtn');await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('.bsum');assert.match(await p.$eval('.bsum',e=>e.textContent),/Not specified/);await click('Edit plan');await p.waitForSelector('[aria-labelledby=g-market]');assert.deepEqual(await p.$$eval('[aria-labelledby=g-market] button',bs=>bs.map(b=>b.getAttribute('aria-pressed'))),['false','false','false','false']);assert.equal(await p.$eval('.gen',e=>e.disabled),true);await p.locator('[aria-labelledby=g-market] button').click();assert.equal(await p.$eval('.gen',e=>e.disabled),false);await p.locator('[aria-labelledby=g-market] button').click();assert.equal(await p.$eval('.gen',e=>e.disabled),true);
+  await p.reload();await p.waitForSelector('.themebtn');await click('My plans');await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('.bsum');assert.match(await p.$eval('.bsum',e=>e.textContent),/MarketUK/);assert.deepEqual(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.markets),['uk']);await click('Edit plan');await p.waitForSelector('[aria-labelledby=g-market]');assert.deepEqual(await p.$$eval('[aria-labelledby=g-market] button',bs=>bs.map(b=>b.getAttribute('aria-pressed'))),['false','true','false','false']);assert.equal(await p.$eval('.gen',e=>e.disabled),false);await p.locator('[aria-labelledby=g-market] button:nth-child(2)').click();assert.equal(await p.$eval('.gen',e=>e.disabled),true);await p.locator('[aria-labelledby=g-market] button:nth-child(2)').click();assert.equal(await p.$eval('.gen',e=>e.disabled),false);
  }
  await p.$eval('[aria-labelledby=g-market]',e=>e.scrollIntoView({block:'center'}));if(process.env.SCREENSHOT_DIR)await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/markets-local-${width}.png`});await p.close();
  }

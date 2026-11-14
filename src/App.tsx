@@ -1,3 +1,4 @@
+import { withSavedMarket } from './savedPlanMarkets';
 import { downloadPlanPdf } from './planPdf';
 import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDraftKey, bindingMatches } from './authDraft';
 import type { DraftBinding } from './authDraft';
@@ -554,6 +555,27 @@ function recoverCorruptPlans(): void {
   }
 }
 
+// Persist a market for all valid legacy saved plans, not only untouched seeds.
+// Keep explicit choices, dates, plan order and IDs. A failed write leaves the
+// stored payload intact and uses the existing storage-failure state.
+function ensureSavedPlanMarkets(): void {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    if (raw === null) return;
+    const plans: SavedPlan[] = JSON.parse(raw);
+    let changed = false;
+    const updated = plans.map(plan => {
+      if (plan.brief.markets?.length) return plan;
+      const brief = withSavedMarket(plan.brief);
+      changed = true;
+      return { ...plan, brief };
+    });
+    if (changed) window.localStorage.setItem(PLANS_KEY, JSON.stringify(updated));
+  } catch {
+    plansLoadFailed = true;
+  }
+}
+
 function loadPlans(): SavedPlan[] {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
@@ -566,7 +588,7 @@ function loadPlans(): SavedPlan[] {
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
         isBrief(p.brief),
-    ).map(p => ({ ...p, brief: { ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) } }));
+    ).map(p => ({ ...p, brief: withSavedMarket({ ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) }) }));
   } catch {
     return [];
   }
@@ -757,6 +779,7 @@ export default function App() {
     if (!plansLoadFailed) {
       ensureSeedPlans();
       cleanDemoAudiences();
+      if (!plansLoadFailed) ensureSavedPlanMarkets();
     }
     return loadPlans();
   });
@@ -1371,6 +1394,7 @@ export default function App() {
 
   function persist(plans: SavedPlan[]): boolean {
     if (plansLoadFailed) return false;
+    plans = plans.map(plan => ({ ...plan, brief: withSavedMarket(plan.brief) }));
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
     } catch {

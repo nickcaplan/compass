@@ -369,3 +369,12 @@ KPI choices are removed, and existing answers survive responsive layout changes.
 - Keep the visual desktop progress row mounted from zero answers, so the first objective click and final deselection do not snap the Generate button down/up. The screen-reader status still mounts empty and only announces actual answer changes.
 
 - Nick requested exact empty KPI/Market alignment. The Objective control now matches the measured name input height, and the empty KPI hint matches the measured market pills. A ResizeObserver tracks actual font/wrap changes; expanded KPI height stays content-driven and animated. Single-column enlarged-text layout clears these peer minimums.
+
+## 14 November 2026 - Markets on saved plans
+
+All saved plans must have a market, including edited/custom legacy plans with
+no market or an empty list. Use UK as the fallback, as any market is acceptable
+for this demo data. Keep existing explicit market choices. Persist the repair
+without changing IDs, dates, other answers, list order or deleted-plan metadata.
+An unsaved brief still requires a deliberate market selection. A storage failure
+must not be presented as a successful repair.
