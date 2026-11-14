@@ -38,6 +38,15 @@ test('nav is Planner, My plans and Sign in, with no Support link', { timeout: 60
       assert.equal(await page.$eval('nav', n => n.textContent.includes('Support')), false, 'Support must stay out of the nav');
       assert.equal(await page.$eval('.navlinks .themebtn', b => b.getAttribute('aria-label')), 'Switch to light mode');
       assert.equal(await page.$eval('.prodhome', b => b.textContent.trim()), 'COMPASS');
+      if (width >= 980) {
+        // Nick (13 Nov 2026): nav options sit on the right of the header, not beside the brand.
+        const brandRight = await page.$eval('.brand.lockup', e => e.getBoundingClientRect().right);
+        const plannerLeft = await page.$eval('.navlinks > button:first-child', e => e.getBoundingClientRect().left);
+        const signinRight = await page.$eval('.navlinks .signin', e => e.getBoundingClientRect().right);
+        const headerRight = await page.$eval('.toprow', e => e.getBoundingClientRect().right);
+        assert.ok(plannerLeft - brandRight > 200, `nav options must be detached from the brand (gap ${plannerLeft - brandRight}px)`);
+        assert.ok(Math.abs(signinRight - headerRight) < 1, 'nav cluster must be flush with the right edge of the header');
+      }
       await page.close();
     }
   } finally { await browser?.close(); server.kill(); }
