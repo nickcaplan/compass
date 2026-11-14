@@ -2,3 +2,24 @@
 
 .ir-tag{font-size:10px;color:var(--text2);border:1px solid var(--line-strong);padding:4px 7px;border-radius:6px;white-space:nowrap}
 .ir-tag-review{color:#ff9caa;border-color:rgba(255,156,170,.45);background:rgba(255,156,170,.1)}[data-theme="light"] .ir-tag-review{color:#8f353d;border-color:#d4a9ac;background:#f8e9eb}
+
+.ir-issues-filterbar{display:flex;gap:18px;flex-wrap:wrap;margin:22px 0 8px}
+.ir-issues-filterbar .ir-dd{min-width:240px}
+.ir-issues-filterbar .ir-dd-btn{width:100%}
+.ir-page{padding:42px 0 40px}
+.ir-irows{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.ir-irow{display:grid;grid-template-columns:1.5fr .9fr .8fr .9fr .7fr 1.3fr;gap:12px;align-items:baseline;padding:12px 16px;border:1px solid var(--line);border-radius:10px}
+.ir-irow h4{margin:0;font-size:15px}
+.ir-irow .ir-mut{opacity:.65;font-size:13px}
+.ir-irow .ir-issues{margin:0}
+.ir-ihead{display:grid;grid-template-columns:1.5fr .9fr .8fr .9fr .7fr 1.3fr;gap:12px;padding:0 16px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ir-icol{display:none}
+@media(max-width:760px){
+ .ir-ihead{display:none}
+ .ir-irow{grid-template-columns:1fr;gap:4px}
+ .ir-icol{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:6px}
+ .ir-irow h4 .ir-icol{display:block;margin:0 0 2px}
+}
+.ir-page h1{font-size:clamp(28px,4vw,44px);margin:6px 0 10px;letter-spacing:-.02em}
+.ir-lede{max-width:68ch;opacity:.85;margin:0 0 6px}
+.ir-more{display:block;margin:16px auto 0;min-width:220px}
