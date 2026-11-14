@@ -28,9 +28,14 @@ test('simple problems report shows truthful counts and one-step affected rows',a
   assert.deepEqual(await p.$$eval('.ir-problem-row',es=>es.map(e=>e.querySelector('h2').textContent)),records.filter(r=>r.structural_issues.includes(token)).slice(0,50).map(r=>r.publisher),'detail rows belong to selected problem');
   const back=await p.$('.ir-back-problems');await back.click();await p.waitForSelector('.ir-problem');
  }
+ await p.waitForFunction(()=>document.activeElement?.id==='problem-heading');
  await p.focus('.ir-problem');await p.keyboard.press('Enter');await p.waitForSelector('.ir-problem-row');
  await p.waitForFunction(()=>document.activeElement?.id==='problem-heading');
- assert.match(await p.$eval('h1',e=>e.textContent),/1,470 rows have no tactic/);
+ assert.match(await p.$eval('h1',e=>e.textContent),/1,470 rows still need a tactic category/);
+ assert.match(await p.$eval('.ir-problem-evidence',e=>e.textContent),/Source tactic: Other/);
+ assert.match(await p.$eval('.ir-problem-evidence',e=>e.textContent),/Source inventory row/);
+ await p.goBack();await p.waitForSelector('.ir-problem');assert.equal(await p.$('.ir-problem-row'),null,'browser Back returns to problem list');
+ await p.goForward();await p.waitForSelector('.ir-problem-row');assert.match(await p.$eval('h1',e=>e.textContent),/tactic category/);
  await p.click('.ir-more');assert.equal((await p.$$('.ir-problem-row')).length,100);
  await p.click('.ir-back-problems');await p.click('.ir-problem');assert.equal((await p.$$('.ir-problem-row')).length,50,'reopening resets pagination');
  for(const width of [390,820,1440]){await p.setViewport({width,height:900});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}

@@ -42,3 +42,6 @@
 .ir-problem-row small{display:none}
 .ir-problem:focus-visible,.ir-back-problems:focus-visible{outline:2px solid var(--accent-ink);outline-offset:4px}
 @media(max-width:600px){.inventory-review .ir-problem{gap:16px;padding:22px 0}.ir-problem strong{font-size:18px}.ir-problem-action{font-size:0}.ir-problem-action span{font-size:22px}.ir-problem-head{display:none}.ir-problem-row{display:block;padding:22px 0}.ir-problem-row>span{display:block;margin-top:9px}.ir-problem-row small{display:inline;margin-right:8px;font-size:12px}.ir-problem-page h1{font-size:32px}}
+
+.ir-problem-evidence{grid-column:1/-1;font-size:12px;line-height:1.6;color:var(--text2);margin:0;overflow-wrap:anywhere}
+@media(max-width:600px){.ir-problem-evidence{margin-top:12px}}
