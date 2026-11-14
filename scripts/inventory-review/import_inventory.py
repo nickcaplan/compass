@@ -18,7 +18,8 @@ def import_workbook(path):
         tactic='Other / Review' if raw['Tactic']=='Other' else raw['Tactic']
         issues=[]
         if tactic=='Other / Review':issues.append('unclassified_tactic')
-        if tactic not in rules or tactic not in descriptions:issues.append('missing_tactic_rule_or_description')
+        if tactic not in rules:issues.append('missing_tactic_rule')
+        if tactic not in descriptions:issues.append('missing_tactic_description')
         if tactic!='Other / Review' and tactic in rules and raw['Primary KPI']!=rules[tactic]['Primary KPI']:issues.append('tactic_kpi_mismatch')
         name=str(raw['Product / Format']).strip(' \t\n•·-')
         if not re.search('[A-Za-z]',name) or re.fullmatch(r'[C$£€\s\d,.:]+(?:CPM|CPL|USD|CAD)?',name,re.I):issues.append('price_like_product_name')
