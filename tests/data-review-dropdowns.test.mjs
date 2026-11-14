@@ -43,7 +43,7 @@ test('data review slice dropdowns: placeholders, pointer and keyboard selection,
   assert.equal(await page.$('.ir-dd-list'),null);
   assert.match(await page.$eval('#market',b=>b.textContent),/UK/);
   // outside pointer closes
-  await page.click('#market');await page.waitForSelector('.ir-dd-list');await page.click('.ir-results-head');await new Promise(r=>setTimeout(r,100));
+  await page.click('#market');await page.waitForSelector('.ir-dd-list');await page.click('.ir-results-head');await page.waitForFunction(()=>!document.querySelector('.ir-dd-list'));
   assert.equal(await page.$('.ir-dd-list'),null);
   // keyboard selection flow: UK + Awareness gives the known 7 options
   await page.focus('#objective');await page.keyboard.press('Enter');await page.waitForSelector('.ir-dd-list');
