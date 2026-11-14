@@ -31,7 +31,21 @@ test('planning cards stay readable and inputs remain usable', { timeout: 60000 }
       await page.setViewport({ width, height: 900 });
       await page.goto(previewUrl+'?demo=1');
       await page.waitForSelector('.planning-step');
-      assert.deepEqual(await page.$$eval('.planning-step label',es=>es.map(e=>e.textContent)),['Campaign name','Market','Objective','KPI','Audience','Budget','Campaign dates']);
+      if (width >= 1200) {
+        assert.deepEqual(await page.$$eval('.brief-details .planning-step label',es=>es.map(e=>e.textContent)),['Campaign name','Market']);
+        assert.deepEqual(await page.$$eval('.brief-goals .planning-step label',es=>es.map(e=>e.textContent)),['Objective','KPI']);
+        assert.deepEqual(await page.$$eval('.brief-audience .planning-step label',es=>es.map(e=>e.textContent)),['Audience']);
+        assert.deepEqual(await page.$$eval('.brief-timing .planning-step label',es=>es.map(e=>e.textContent)),['Budget','Campaign dates']);
+        const columns = await page.evaluate(() => {
+          const left = document.querySelector('.brief-details').getBoundingClientRect();
+          const right = document.querySelector('.brief-goals').getBoundingClientRect();
+          return { leftRight: left.right, rightLeft: right.left, leftTop: left.top, rightTop: right.top };
+        });
+        assert.ok(columns.rightLeft > columns.leftRight);
+        assert.equal(columns.leftTop, columns.rightTop);
+      } else {
+        assert.deepEqual(await page.$$eval('.planning-step label',es=>es.map(e=>e.textContent)),['Campaign name','Market','Objective','KPI','Audience','Budget','Campaign dates']);
+      }
       assert.equal(await page.$$eval('.planning-step',es=>es.every(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.left>=0&&r.right<=innerWidth})),true);
       await page.locator('#f-name').fill('Readable planning cards');
       await page.$eval('[aria-labelledby=g-objective] button', e=>e.click());
