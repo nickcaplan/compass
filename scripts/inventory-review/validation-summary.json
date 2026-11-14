@@ -24,7 +24,8 @@
   },
   "structurally_reviewable": 150,
   "structural_issue_counts": {
-    "missing_tactic_rule_or_description": 115,
+    "missing_tactic_rule": 115,
+    "missing_tactic_description": 115,
     "unclassified_tactic": 1470,
     "cpl_one_unit_cost_not_campaign_budget": 95,
     "price_like_product_name": 315,
