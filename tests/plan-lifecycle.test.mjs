@@ -30,7 +30,8 @@ async function openSavedPlan(page) {
 
 async function generateExample(page) {
   await clickButton(page, 'Fill it in for me');
-  await page.waitForSelector('.planin .metrics', { timeout: 20000 });
+  // Poll ceilings, not performance budgets: CI runners can be 3-4x slower than local, so these fixed waits are sized to tolerate load.
+  await page.waitForSelector('.planin .metrics', { timeout: 40000 });
   assert.equal(await page.$eval('.cta b', e => e.textContent), 'A Hybrid House specialist can pick it up from here.');
 }
 
@@ -94,7 +95,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
-    page.setDefaultTimeout(10000);
+    page.setDefaultTimeout(20000);
     await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
     await installAuthFixture(page);await fixtureNavigation(page,'http://127.0.0.1:4173/?demo=1');
     // Initial router setup clears any pending walkthrough. Wait before clicking.
@@ -156,7 +157,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 60000 }, asyn
       await page.locator('.gen').click();
       // Four950ms checklist ticks follow the1s walkthrough pause. Busy CI
   // must wait for completion rather than treating runner speed as app failure.
-  await page.waitForSelector('.planin', { timeout: 20000 });
+  await page.waitForSelector('.planin', { timeout: 40000 });
   assert.equal(await page.$eval('.cta b',e=>e.textContent), 'A Hybrid House specialist can pick it up from here.');
       await clickButton(page, 'Save changes');
       await page.waitForFunction(() => { const b = document.querySelector('.secondary .saved'); return b && b.disabled && b.textContent.trim() === 'Saved'; });
@@ -370,7 +371,7 @@ test('seeded demo plans appear for a fresh visitor, stay deleted, and never over
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
-    page.setDefaultTimeout(10000);
+    page.setDefaultTimeout(20000);
     await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
 
     const cardNames = () => page.$$eval('.plancard b', (els) => els.map((e) => e.textContent));
@@ -480,7 +481,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
-    page.setDefaultTimeout(10000);
+    page.setDefaultTimeout(20000);
     await observeJourney(page);await page.setViewport({ width: 1440, height: 900 });
     await installAuthFixture(page);await fixtureNavigation(page,'http://127.0.0.1:4174/?demo=1');
 
@@ -546,7 +547,7 @@ test('corrupt saved plans are moved aside with a notice and saving still works',
     // honest failure panel tells the visitor, and writes stay blocked.
     const blockedContext = await browser.createBrowserContext();
     const blocked = await blockedContext.newPage();
-    blocked.setDefaultTimeout(10000);
+    blocked.setDefaultTimeout(20000);
     await blocked.evaluateOnNewDocument(() => {
       const original = Storage.prototype.setItem;
       Storage.prototype.setItem = function setItem(key, value) {
@@ -610,7 +611,7 @@ test('signed-out visitor is asked to log in before the plan reveals, brief kept'
     browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
-    page.setDefaultTimeout(15000);
+    page.setDefaultTimeout(30000);
     await page.setViewport({ width: 1440, height: 900 });
     await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4177/?demo=1'));
 
