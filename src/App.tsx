@@ -1137,6 +1137,8 @@ export default function App() {
     !(brief.budget !== null && brief.budget > 0) && 'Budget',
     !(weeks > 0 && !startNotFuture(brief.start)) && 'valid future campaign dates',
   ].filter((answer): answer is string => Boolean(answer)) : [];
+  const legacyNameUnchanged = editingSaved && brief.name === editBaseline.current?.name && brief.name.length > 80;
+  const nameTooLong = brief.name.length > 80 && !legacyNameUnchanged;
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -1308,6 +1310,7 @@ export default function App() {
   }, [stage]);
 
   function generate() {
+    if (nameTooLong) return;
     if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
@@ -1399,7 +1402,7 @@ export default function App() {
   }
 
   function savePlan() {
-    if (!submittedBrief) return;
+    if (!submittedBrief || nameTooLong) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
       if (latest.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) { cancelEditSaved(); return; }
@@ -1946,7 +1949,8 @@ export default function App() {
               type="text"
               placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
               value={brief.name}
-              onChange={(e) => patch({ name: e.target.value })}
+              maxLength={80}
+              onChange={(e) => patch({ name: e.target.value.slice(0, 80) })}
             />
           </div>
 
@@ -2094,7 +2098,7 @@ export default function App() {
             )}
           </div>
 
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || stage === 'generating'} onClick={generate}>
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || nameTooLong || stage === 'generating'} onClick={generate}>
             {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
           </button>
           {missingForRegeneration.length > 0 && stage !== 'generating' && (
@@ -2295,7 +2299,7 @@ export default function App() {
                   </>
                 ) : editingSaved ? (
                   <>
-                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated || nameTooLong}>
                       <IconSave />
                       Save changes
                     </button>
@@ -2306,7 +2310,7 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated || nameTooLong}>
                       <IconSave />
                       Save plan
                     </button>
