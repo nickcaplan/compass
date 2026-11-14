@@ -1,5 +1,18 @@
 # Decisions
 
+## 2026-11-13 - KPIs come included with the objective
+
+Nick's feedback (13 November 2026): "you shouldn't be able to select KPIs -
+you just select the Objective and the KPIs come for free". KPI selection is
+removed from the brief: choosing an objective includes every KPI of that
+objective automatically, shown as read-only chips under the objective with
+an "Included with your objective(s)" note. The KPI question still counts
+toward the brief's answered progress, answered by the objective that
+includes it. Saved plans keep their stored KPIs in
+read-only views; opening one in the editable form derives KPIs from its
+objectives, so a legacy plan with a hand-picked subset is not treated as
+changed on open.
+
 ## 2026-11-05 - Seniority step removed
 
 Ben's combined feedback (2.2: "Too much going on for now") asked for the

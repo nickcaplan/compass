@@ -49,7 +49,7 @@ test('planning cards stay readable and inputs remain usable', { timeout: 60000 }
       assert.equal(await page.$$eval('.planning-step',es=>es.every(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.left>=0&&r.right<=innerWidth})),true);
       await page.locator('#f-name').fill('Readable planning cards');
       await page.$eval('[aria-labelledby=g-objective] button', e=>e.click());
-      await page.waitForFunction(()=>[...document.querySelectorAll('.planning-step')].find(e=>e.querySelector('label')?.textContent==='KPI')?.querySelector('button'));
+      await page.waitForFunction(()=>[...document.querySelectorAll('.planning-step')].find(e=>e.querySelector('label')?.textContent==='KPI')?.querySelector('.pill'));
       assert.equal(await page.$eval('#f-name',e=>e.value),'Readable planning cards');
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       assert.equal(await page.$$eval('.planning-step input.ctl', es=>es.every(e=>getComputedStyle(e).borderTopStyle==='solid'&&getComputedStyle(e).borderTopWidth==='1px')),true);
