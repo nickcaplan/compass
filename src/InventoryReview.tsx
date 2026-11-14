@@ -23,12 +23,12 @@ function SliceDropdown({id,label,value,options,onChange}:{id:string;label:string
  }
  return <div className="ir-dd" ref={box}>
   <label className="ir-dd-label" id={id+'-label'} htmlFor={id}>{label}</label>
-  <button type="button" id={id} className={'ir-dd-btn'+(value?'':' ir-dd-empty')} aria-haspopup="listbox" aria-expanded={open} aria-activedescendant={open?id+'-opt-'+active:undefined} onClick={()=>open?setOpen(false):openList()} onKeyDown={onKey}>
+  <button type="button" id={id} className={'ir-dd-btn'+(value?'':' ir-dd-empty')} aria-haspopup="listbox" aria-expanded={open} aria-activedescendant={open?id+'-opt-'+options[active].replace(/\s+/g,'-'):undefined} onClick={()=>open?setOpen(false):openList()} onKeyDown={onKey}>
    <span>{value||'Select...'}</span>
    <svg className={'ir-dd-caret'+(open?' ir-dd-open':'')} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
   </button>
   {open&&<ul className="ir-dd-list" role="listbox" aria-labelledby={id+'-label'}>
-   {options.map((o,i)=><li key={o} id={id+'-opt-'+i} role="option" aria-selected={o===value} className={i===active?'ir-dd-active':''} onPointerEnter={()=>setActive(i)} onClick={()=>commit(i)}>{o}</li>)}
+   {options.map((o,i)=><li key={o} id={id+'-opt-'+o.replace(/\s+/g,'-')} role="option" aria-selected={o===value} className={i===active?'ir-dd-active':''} onPointerEnter={()=>setActive(i)} onClick={()=>commit(i)}>{o}</li>)}
   </ul>}
  </div>;
 }

@@ -20,7 +20,7 @@ test('data review slice dropdowns: placeholders, pointer and keyboard selection,
   assert.equal(await page.$eval('#market',b=>b.getAttribute('aria-haspopup')),'listbox');
   assert.equal((await page.$$('.ir-dd-list [role="option"]')).length,5);
   assert.equal(await page.$eval('.ir-dd-list',l=>l.getAttribute('aria-labelledby')),'market-label');
-  await page.click('#market-opt-0');
+  await page.click('#market-opt-UK');
   assert.match(await page.$eval('#market',b=>b.textContent),/UK/);
   assert.equal(await page.$eval('#market',b=>b.getAttribute('aria-expanded')),'false');
   assert.equal(await page.$('.ir-dd-list'),null);
@@ -31,8 +31,8 @@ test('data review slice dropdowns: placeholders, pointer and keyboard selection,
   await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');
   assert.match(await page.$eval('#objective',b=>b.textContent),/Consideration/);
   await page.keyboard.press('ArrowDown');await page.waitForSelector('.ir-dd-list');
-  assert.equal(await page.$eval('#objective-opt-1',o=>o.getAttribute('aria-selected')),'true');
-  assert.equal(await page.$eval('#objective',b=>b.getAttribute('aria-activedescendant')),'objective-opt-1');
+  assert.equal(await page.$eval('#objective-opt-Consideration',o=>o.getAttribute('aria-selected')),'true');
+  assert.equal(await page.$eval('#objective',b=>b.getAttribute('aria-activedescendant')),'objective-opt-Consideration');
   await page.keyboard.press('Escape');
   // both chosen: results appear
   await page.waitForSelector('.ir-results-head');
