@@ -19,7 +19,7 @@ function Option({row}:{row:SourceOption}) {
  </article>;
 }
 export default function PlannerProposal(){
- const [market,setMarket]=useState('UK'),[objective,setObjective]=useState('Consideration'),[audience,setAudience]=useState('Laboratory Manager'),[budget,setBudget]=useState('25000'),[theme,setTheme]=useState('dark');
+ const [market,setMarket]=useState('UK'),[objective,setObjective]=useState('Consideration'),[audience,setAudience]=useState('Laboratory Manager'),[budget,setBudget]=useState('60000'),[theme,setTheme]=useState('dark');
  const [briefOpen,setBriefOpen]=useState(()=>window.matchMedia('(min-width:761px)').matches);
  const result=useMemo(()=>sourceOptions(inventory.records,market,[objective]),[market,objective]);
  return <div className="pp" data-theme={theme}>
