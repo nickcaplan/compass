@@ -10,8 +10,9 @@ Compass_Developer_Guide_CPM_CTR_and_Tactic_Descriptions.docx (all seven sections
 and field table), and its companion workbook. Guide:
 https://docs.google.com/document/d/1Tuom6MGKMtDFucv4DpH6DoPsGwCZ1Phh/edit
 
-The source has 349 original products repeated across five simulated markets,
-1,745 rows in total. These are not 1,745 distinct products. No publisher's
+The source has 349 workbook rows repeated across five simulated markets,
+1,745 rows in total. There are 319 distinct publisher/product names. These are
+not 1,745 distinct products. No publisher's
 market availability or rates have been validated. Global is a separate
 simulated market, not the union of the other four. All rows are mock data.
 The guide says three tabs early on, then adds Tactic Descriptions in section 7;
