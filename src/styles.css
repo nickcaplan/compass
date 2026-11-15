@@ -92,9 +92,9 @@ nav{display:flex;flex-wrap:wrap;row-gap:12px;align-items:center;padding:22px 0}
 .prodhome .mark .mu{fill:var(--accent)}
 .prodhome .mark .md{fill:var(--text)}
 .prodhome .mark .mc{fill:var(--bg)}
-.navlinks{display:flex;align-items:center;gap:26px;font-size:13.5px;font-weight:500}
+.navlinks{display:flex;align-items:center;gap:26px;font-size:13.5px;font-weight:500;justify-content:flex-end}
 .navlinks button:not(.signin){background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}
-.themebtn{margin-left:auto;width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--line-mid)!important;background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.themebtn{width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--line-mid)!important;background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .themebtn:hover{color:var(--accent-ink);border-color:var(--accent-line)!important}
 .signin{font:inherit;border-radius:999px;padding:9px 20px;font-weight:600;font-size:13px;cursor:pointer}
 .signin:has(.avatar){padding:4px;border-radius:50%}
@@ -130,7 +130,8 @@ input[type="date"].ctl::-webkit-calendar-picker-indicator{display:none}
 .pill{border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;background:none;font-family:Roboto,system-ui,sans-serif}
 .pill.more{border-style:dashed}
 .gen{width:100%;margin-top:22px;border:0;border-radius:12px;padding:15px;font-family:Poppins,sans-serif;font-weight:700;font-size:15.5px;cursor:pointer}
-.gen span{opacity:.7;font-weight:500}
+.gen .gen-tail{display:inline-block;white-space:nowrap}
+.gen .gen-arrow{opacity:.7;font-weight:500}
 .demofill{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;border:1.5px dashed var(--accent-line);color:var(--accent-ink);border-radius:12px;padding:11px 14px;font-family:Poppins,sans-serif;font-weight:600;font-size:13.5px;cursor:pointer;background:rgba(254,202,10,.05);transition:border-color .15s ease,background .15s ease}
 .demofill:hover{border-color:var(--accent-ink);background:rgba(254,202,10,.09)}
 .demohint{font-size:11.5px;color:var(--faint);text-align:center;margin:7px 0 18px}
@@ -229,12 +230,14 @@ input.ctl{color:var(--text)}
 .pill.obj-consideration.off{background:none;border-color:var(--obj-consideration-line);color:var(--muted)}
 .pill.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
 .pill.obj-performance.off{background:none;border-color:var(--obj-performance-line);color:var(--muted)}
-/* KPI pills carry their objective's shade from the outset, so the grouping is
-   visible while choosing; selection is a separate state: bold, ring. */
-[aria-labelledby=g-kpi] .pill.obj-awareness.off{background:var(--obj-awareness);border-color:var(--obj-awareness-line);color:var(--obj-awareness-ink)}
-[aria-labelledby=g-kpi] .pill.obj-consideration.off{background:var(--obj-consideration);border-color:var(--obj-consideration-line);color:var(--obj-consideration-ink)}
-[aria-labelledby=g-kpi] .pill.obj-performance.off{background:var(--obj-performance);border-color:var(--obj-performance-line);color:var(--obj-performance-ink)}
-[aria-labelledby=g-kpi] .pill:not(.off){font-weight:700;box-shadow:0 0 0 1.5px currentColor}
+/* KPI chips are read-only: every shown KPI comes included with its objective,
+   so each carries that objective's filled shade and none is interactive. */
+[aria-labelledby=g-kpi] .pill{cursor:default}
+/* The inclusion note shares the label line so the measured column gains no height. */
+.kpi-label-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.kpi-label-row>label{margin-bottom:0}
+.kpi-label-row{margin-bottom:7px}
+.kpi-note{font-size:10.5px;font-weight:500;color:var(--muted);text-align:right}
 .gen{background:linear-gradient(100deg,var(--accent),var(--accent2));color:var(--on-accent);box-shadow:0 8px 30px rgba(254,202,10,.22)}
 .planhead{border-bottom:1px solid var(--line)}
 .cap{color:var(--faint)}
@@ -611,6 +614,30 @@ input.ctl{color:var(--text)}
 .pc-objective.obj-consideration{border-color:var(--obj-consideration);background:var(--obj-consideration);color:var(--obj-consideration-ink)}
 .pc-objective.obj-performance{border-color:var(--obj-performance-line);background:var(--obj-performance);color:var(--obj-performance-ink)}
 
+/* Empty workspace stays compact; the main introduction remains above. */
+.plan:has(>.empty){align-self:start;min-height:0}
+.plan>.empty{padding:24px 18px}
+.plan>.empty .glyph{width:48px;height:48px;margin-bottom:14px}
+.plan>.empty p{margin-bottom:0}
+
+/* Desktop proposal: complete the brief before introducing the result column. */
+@media(min-width:1200px){
+ .layout.brief-first{display:block;max-width:none;margin-inline:0}
+ .brief-first>.form{position:static;display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;padding:26px}
+ .brief-first>.form>h2,.brief-first>.form>.hint,.brief-first>.form>.demofill,.brief-first>.form>.demohint,.brief-first>.form>.gen{grid-column:1/-1}
+ .brief-first>.form>h2{margin-bottom:0}
+ .brief-first>.form>.hint{margin-bottom:0}
+ .brief-first>.form>.field{margin:0}
+ .brief-first>.form>.field:has(#g-audience){grid-column:1/-1}
+ .brief-first>.form>.gen{margin-top:4px;justify-self:end;width:auto;min-width:250px}
+ .brief-first>.plan{display:none}
+}
+@media(min-width:1200px){.brief-first>.form>.demohint{margin:0}.brief-first>.form>.field{align-self:start}.brief-first>.form>.demofill{margin:0}.brief-first>.form>.hint{margin:0}}
+
+/* Keep completion feedback in the full-width desktop brief, not its hidden result. */
+.brief-progress,.brief-status{display:none}
+@media(min-width:1200px){.brief-first>.form>.brief-status{display:block}.brief-first>.form>.brief-progress{display:flex;grid-column:1/-1;margin:4px 0 0}}
+
 /* Keep reveal inside the password field, with a keyboard-visible 44px target. */
 .password-control{position:relative}
 .password-control .ctl{padding-right:3.5em;min-height:48px}
@@ -624,3 +651,26 @@ input.ctl{color:var(--text)}
 /* Native date segments are not ::placeholder text. Keep the empty cue regular. */
 input[type="date"].date-empty{font-weight:400;color:var(--faint)}
 input[type="date"].date-empty::-webkit-datetime-edit{font-weight:400;color:var(--faint)}
+
+/* Independent desktop columns keep a growing KPI list out of the left flow. */
+.brief-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:18px;grid-column:1/-1;align-items:start}
+.brief-details,.brief-goals,.brief-timing{display:grid;gap:14px;min-width:0;align-content:start}
+.brief-audience{grid-column:1/-1;min-width:0}
+.brief-timing{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.brief-columns .field{margin:0;min-width:0}
+.kpi-field{box-sizing:border-box;min-width:0}
+.kpi-content{display:flow-root;min-width:0}
+.kpi-content>.hint{margin-bottom:0}
+/* Text enlargement needs the single-column form before labels get squeezed. */
+@media(min-width:1200px){.brief-first>.form{container:brief-layout / inline-size}}
+@container brief-layout (max-width:45em){
+ .brief-columns{grid-template-columns:minmax(0,1fr)}
+ .brief-timing{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Empty KPI and Market boxes share a baseline without fixing expanded KPI height. */
+.brief-goals [aria-labelledby="g-objective"]{min-height:var(--brief-name-height);align-items:center}
+.brief-goals .kpi-content>.hint{min-height:var(--brief-market-height);display:flex;align-items:center}
+@container brief-layout (max-width:45em){
+ .brief-goals [aria-labelledby="g-objective"],.brief-goals .kpi-content>.hint{min-height:0}
+}

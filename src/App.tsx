@@ -1,4 +1,5 @@
 import { profileInitials } from './profileInitials';
+import { withSavedMarket } from './savedPlanMarkets';
 import { downloadPlanPdf } from './planPdf';
 import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDraftKey, bindingMatches } from './authDraft';
 import type { DraftBinding } from './authDraft';
@@ -8,6 +9,8 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 import EmailAuth from './EmailAuth';
+import { BriefColumns } from './BriefColumns';
+import { AnimatedKpiField } from './AnimatedKpiField';
 
 import logoUrl from './assets/thh-logo.svg';
 
@@ -198,6 +201,7 @@ import {
   campaignWeeks,
   checklistFor,
   demoBrief,
+  kpisForObjectives,
   endBeforeStart,
   formatDate,
   monthsRangeLabel,
@@ -552,6 +556,27 @@ function recoverCorruptPlans(): void {
   }
 }
 
+// Persist a market for all valid legacy saved plans, not only untouched seeds.
+// Keep explicit choices, dates, plan order and IDs. A failed write leaves the
+// stored payload intact and uses the existing storage-failure state.
+function ensureSavedPlanMarkets(): void {
+  try {
+    const raw = window.localStorage.getItem(PLANS_KEY);
+    if (raw === null) return;
+    const plans: SavedPlan[] = JSON.parse(raw);
+    let changed = false;
+    const updated = plans.map(plan => {
+      if (plan.brief.markets?.length) return plan;
+      const brief = withSavedMarket(plan.brief);
+      changed = true;
+      return { ...plan, brief };
+    });
+    if (changed) window.localStorage.setItem(PLANS_KEY, JSON.stringify(updated));
+  } catch {
+    plansLoadFailed = true;
+  }
+}
+
 function loadPlans(): SavedPlan[] {
   try {
     const raw = window.localStorage.getItem(PLANS_KEY);
@@ -564,7 +589,7 @@ function loadPlans(): SavedPlan[] {
         typeof p.id === 'string' &&
         typeof p.savedAt === 'string' &&
         isBrief(p.brief),
-    ).map(p => ({ ...p, brief: { ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) } }));
+    ).map(p => ({ ...p, brief: withSavedMarket({ ...p.brief, audiences: p.brief.audiences.filter(a => AUDIENCES.includes(a)) }) }));
   } catch {
     return [];
   }
@@ -609,51 +634,8 @@ function SkeletonBlock() {
   );
 }
 
-function PlanOutline() {
-  return (
-    <div className="outline">
-      <div className="outlinetitle">Your new plan will appear here</div>
-      <div className="osect">
-        <div className="ok">Key figures</div>
-        <div className="ometrics">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div className="ometric" key={i}>
-              <span className="ol w40" />
-              <span className="ol w65" />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="osect">
-        <div className="ok">Publishers, formats and spend split</div>
-        {[0, 1, 2].map((i) => (
-          <div className="oact" key={i}>
-            <div className="oacttop">
-              <span className="ol w45" />
-              <span className="ol pill" />
-              <span className="ol w15 r" />
-            </div>
-            <span className="ol w80" />
-          </div>
-        ))}
-      </div>
-      <div className="osect">
-        <div className="ok">Suggested timing</div>
-        <div className="omonths">
-          {[0, 1, 2].map((i) => (
-            <div className="omonth" key={i}>
-              <span className="ol w50" />
-              <span className="ol w80" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function DemoCap() {
-  return <div className="cap">CONCEPT DEMO &middot; FIGURES + RATIONALE ILLUSTRATIVE</div>;
+  return <div className="cap">DEMO DATA</div>;
 }
 
 const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
@@ -673,6 +655,13 @@ function IndustryReel() {
 }
 
 export default function App() {
+  const [wideBrief, setWideBrief] = useState(() => window.matchMedia('(min-width:1200px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width:1200px)');
+    const update = () => setWideBrief(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
   const [brief, setBrief] = useState<Brief>(EMPTY_BRIEF);
   const editBaseline = useRef<Brief | null>(null);
@@ -791,6 +780,7 @@ export default function App() {
     if (!plansLoadFailed) {
       ensureSeedPlans();
       cleanDemoAudiences();
+      if (!plansLoadFailed) ensureSavedPlanMarkets();
     }
     return loadPlans();
   });
@@ -1062,7 +1052,8 @@ export default function App() {
       if (event === 'PASSWORD_RECOVERY' && session) { recoveryPrincipal.current = session.user.id; setRecoveringPassword(true); setPage('signin'); writePageUrl('signin'); }
     });
     const stopErrors = authController.onError(error => setAuthNotice(error.message));
-    return () => { stopErrors(); subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
+
+  return () => { stopErrors(); subscription.unsubscribe(); window.removeEventListener('pageshow', onPageShow); };
     // One subscription per mount; planner/account/flow state is read through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1125,19 +1116,47 @@ export default function App() {
   const savedBriefReadOnly = savedEntry !== null && savedEntry.mode === 'view';
   const viewingSaved = savedBriefReadOnly && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
+  // Mount the live region empty before the first answer, then retain zero updates.
+  const [briefProgressCount, setBriefProgressCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (viewingSaved || editingSaved || (stage !== 'empty' && stage !== 'filling')) {
+      setBriefProgressCount(null);
+      return;
+    }
+    setBriefProgressCount(previous => count > 0 || previous !== null ? count : null);
+  }, [count, stage, viewingSaved, editingSaved]);
   // A page kept open across midnight must not retain an expired Edit form.
   useEffect(() => {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
   });
+  // KPIs are included with the chosen objectives, never picked by hand.
+  // Keep every editable brief's stored KPIs in step with its objectives
+  // (covers drafts, demo fills and older saved plans opened for editing);
+  // read-only saved-plan views keep their stored KPIs.
+  useEffect(() => {
+    if (savedBriefReadOnly) return;
+    setBrief((b) => {
+      const derived = kpisForObjectives(b.objectives);
+      return b.kpis.length === derived.length && b.kpis.every((k, i) => k === derived[i])
+        ? b
+        : { ...b, kpis: derived };
+    });
+    // kpisForObjectives is pure and brief.kpis is read via the functional
+    // setter, so objectives and the read-only flag are the only real deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brief.objectives, savedBriefReadOnly]);
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && briefValues(brief) !== briefValues(submittedBrief);
+  // KPI is not listed: KPIs come included with the objective, so a missing
+  // objective is the only way KPIs can be missing.
   const missingForRegeneration = editingSaved ? [
     !(brief.markets?.length) && 'Market',
     !brief.objectives.length && 'Objective',
-    !brief.kpis.length && 'KPI',
     !brief.audiences.some(a => AUDIENCES.includes(a)) && 'Audience',
     !(brief.budget !== null && brief.budget > 0) && 'Budget',
     !(weeks > 0 && !startNotFuture(brief.start)) && 'valid future campaign dates',
   ].filter((answer): answer is string => Boolean(answer)) : [];
+  const legacyNameUnchanged = editingSaved && brief.name === editBaseline.current?.name && brief.name.length > 80;
+  const nameTooLong = brief.name.length > 80 && !legacyNameUnchanged;
 
   useEffect(() => {
     if (stage === 'empty' || stage === 'filling') {
@@ -1183,6 +1202,12 @@ export default function App() {
   useEffect(() => {
     if (stage !== 'generating') return;
     setTicks(0);
+    // Reduced motion skips the staged progress theatre: the plan is ready
+    // as soon as it computes, with no animated checklist to sit through.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setTicks(genSteps);
+      return;
+    }
     const interval = window.setInterval(() => {
       setTicks((t) => Math.min(t + 1, genSteps));
     }, 950);
@@ -1195,7 +1220,8 @@ export default function App() {
     if (ticks < genSteps) return;
     // Plans are gated behind sign-in: without a session, show the gate
     // first; the brief and generated plan stay intact behind it.
-    const id = window.setTimeout(() => setStage(canViewPlan ? 'plan' : 'gate'), 500);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const id = window.setTimeout(() => setStage(canViewPlan ? 'plan' : 'gate'), reduce ? 0 : 500);
     return () => window.clearTimeout(id);
   }, [stage, ticks, genSteps, canViewPlan]);
 
@@ -1227,17 +1253,9 @@ export default function App() {
       const objectives = b.objectives.includes(id)
         ? b.objectives.filter((o) => o !== id)
         : [...b.objectives, id];
-      const valid = OBJECTIVES.filter((o) => objectives.includes(o.id)).flatMap((o) => o.kpis);
-      return { ...b, objectives, kpis: b.kpis.filter((k) => valid.includes(k)) };
+      // KPIs come included with the chosen objectives; there is no KPI picking.
+      return { ...b, objectives, kpis: kpisForObjectives(objectives) };
     });
-  }
-
-  function toggleKpi(k: string) {
-    clearCue();
-    setBrief((b) => ({
-      ...b,
-      kpis: b.kpis.includes(k) ? b.kpis.filter((x) => x !== k) : [...b.kpis, k],
-    }));
   }
 
   function toggleAudience(a: string) {
@@ -1268,7 +1286,10 @@ export default function App() {
     }
     setConfirmFill(false);
     setHasFilled(true);
-    const d = demoBrief(brief.name || undefined);
+    const demo = demoBrief(brief.name || undefined);
+    // Derive KPIs up front: the walkthrough timer can call generate() from a
+    // render still holding this brief, before the normalization effect runs.
+    const d = { ...demo, kpis: kpisForObjectives(demo.objectives) };
     setBrief(d);
     setBudgetText(d.budget !== null ? d.budget.toLocaleString('en-GB') : '');
     setSubmittedBrief(null);
@@ -1309,6 +1330,7 @@ export default function App() {
   }, [stage]);
 
   function generate() {
+    if (nameTooLong) return;
     if (count < 6) return;
     clearCue();
     setSubmittedBrief(brief);
@@ -1380,6 +1402,7 @@ export default function App() {
 
   function persist(plans: SavedPlan[]): boolean {
     if (plansLoadFailed) return false;
+    plans = plans.map(plan => ({ ...plan, brief: withSavedMarket(plan.brief) }));
     try {
       window.localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
     } catch {
@@ -1400,7 +1423,7 @@ export default function App() {
   }
 
   function savePlan() {
-    if (!submittedBrief) return;
+    if (!submittedBrief || nameTooLong) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
       if (latest.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) { cancelEditSaved(); return; }
@@ -1415,6 +1438,11 @@ export default function App() {
       if (persist(updated)) {
         pinSaveRow();
         invalidateWorkspaceDraft();
+        // Only kpis can differ here (any other unregenerated edit disables
+        // Save): a legacy plan's form shows the objective-derived KPIs while
+        // the stored snapshot keeps what was generated. Re-sync the form to
+        // the persisted snapshot so the read-only view matches storage.
+        setBrief(submittedBrief);
         setSavedEntry({ id: savedEntry.id, mode: 'view' });
         setJustSavedId(savedEntry.id);
         navigation.address({ page: 'planner', planId: savedEntry.id });
@@ -1498,9 +1526,12 @@ export default function App() {
   // Compare field values, not object identity or the fact that Edit was opened.
   // Multi-select order and absent optional markets are not user-visible changes.
   function briefValues(value: Brief) {
+    // KPIs are derived from the objectives, so they carry no independent
+    // change signal: comparing them would flag older saved plans (which
+    // stored hand-picked subsets) as changed the moment they are opened.
     return JSON.stringify({ name: value.name, budget: value.budget,
       start: value.start, end: value.end, objectives: [...value.objectives].sort(),
-      markets: [...(value.markets ?? [])].sort(), kpis: [...value.kpis].sort(),
+      markets: [...(value.markets ?? [])].sort(),
       audiences: [...value.audiences].sort() });
   }
 
@@ -1799,6 +1830,187 @@ export default function App() {
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
   if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
 
+  // Keep mobile DOM/tab order unchanged; group desktop columns independently.
+  const nameField = (
+          <div className="field planning-step">
+            <label htmlFor="f-name">Campaign name</label>
+            <input
+              id="f-name"
+              className="ctl"
+              type="text"
+              placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
+              value={brief.name}
+              maxLength={80}
+              onChange={(e) => patch({ name: e.target.value.slice(0, 80) })}
+            />
+          </div>
+
+
+  );
+  const marketField = (
+          <div className="field planning-step">
+            <label id="g-market">Market</label>
+            <div className="pills" role="group" aria-labelledby="g-market">
+              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
+            </div>
+          </div>
+
+
+  );
+  const objectiveField = (
+          <div className="field planning-step">
+            <label id="g-objective">Objective</label>
+            <div className="pills" role="group" aria-labelledby="g-objective">
+              {OBJECTIVES.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`pill obj-${o.id}${brief.objectives.includes(o.id) ? '' : ' off'}`}
+                  aria-pressed={brief.objectives.includes(o.id)}
+                  onClick={() => toggleObjective(o.id)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+
+  );
+  const kpiField = (
+          <AnimatedKpiField>
+            {/* KPIs are included with the objective, so they are read-only
+                chips, not choices: no buttons, no pressed state. The note sits
+                on the label line so it adds no height to the measured column. */}
+            <div className="kpi-label-row">
+              <label id="g-kpi">KPI</label>
+              {kpiOptions.length > 0 && (
+                <span className="kpi-note">Included with your {brief.objectives.length > 1 ? 'objectives' : 'objective'}</span>
+              )}
+            </div>
+            {kpiOptions.length === 0 ? (
+              <div className="hint">Select an objective first</div>
+            ) : (
+              <div className="pills" role="group" aria-labelledby="g-kpi">
+                {kpiOptions.map((entry) => (
+                  <span key={entry.label} className={`pill obj-${entry.objective}`}>
+                    {entry.label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </AnimatedKpiField>
+
+
+  );
+  const audienceField = (
+          <div className="field planning-step">
+            <label id="g-audience">Audience</label>
+            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
+              {AUDIENCES.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  className={`pill${brief.audiences.includes(a) ? '' : ' off'}`}
+                  aria-pressed={brief.audiences.includes(a)}
+                  onClick={() => toggleAudience(a)}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+
+  );
+  const budgetField = (
+          <div className="field planning-step">
+            <label htmlFor="f-budget">Budget</label>
+            <input
+              id="f-budget"
+              className="ctl"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. £100,000"
+              value={budgetText ? `£${budgetText}` : ''}
+              onChange={(e) => onBudget(e.target.value)}
+            />
+          </div>
+
+
+  );
+  const datesField = (
+          <div className="field planning-step">
+            <label>Campaign dates</label>
+            <div className="daterow">
+              <div className="datewrap">
+                <input
+                  ref={startRef}
+                  aria-label="Start date"
+                  aria-invalid={startNotFuture(brief.start) || undefined}
+                  aria-describedby={startNotFuture(brief.start) ? "start-date-error" : undefined}
+                  className={`ctl${!brief.start ? " date-empty" : ""}`}
+                  type="date"
+                  onFocus={clearCue}
+                  onPointerDown={clearCue}
+                  value={brief.start}
+                  min={tomorrowISO}
+                  onChange={(e) => patch({ start: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="calbtn"
+                  aria-label="Choose start date"
+                  onClick={() => openDatePicker(startRef)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+                  </svg>
+                </button>
+              </div>
+              <div className="datewrap">
+                <input
+                  ref={endRef}
+                  aria-label="End date"
+                  aria-invalid={endBeforeStart(brief.start, brief.end) || undefined}
+                  aria-describedby={endBeforeStart(brief.start, brief.end) ? "end-date-error" : undefined}
+                  className={`ctl${!brief.end ? " date-empty" : ""}`}
+                  type="date"
+                  onFocus={clearCue}
+                  onPointerDown={clearCue}
+                  value={brief.end}
+                  min={brief.start || tomorrowISO}
+                  onChange={(e) => patch({ end: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="calbtn"
+                  aria-label="Choose end date"
+                  onClick={() => openDatePicker(endRef)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            {startNotFuture(brief.start) && (
+              <div id="start-date-error" className="dur date-error" role="status">⚠ Start date must be in the future.</div>
+            )}
+            {endBeforeStart(brief.start, brief.end) && (
+              <div id="end-date-error" className="dur date-error" role="status">⚠ End date must be on or after the start date.</div>
+            )}
+            {weeks > 0 && (
+              <div className="dur">
+                {formatDate(brief.start)} to {formatDate(brief.end)} · {weeksLabel(weeks)}
+              </div>
+            )}
+          </div>
+
+
+  );
   return (
     <div className="wrap">
       <nav>
@@ -1882,7 +2094,7 @@ export default function App() {
           </p>
         </header>
       )}
-      <div className="layout">
+      <div className={`layout${!viewingSaved && !editingSaved && (stage === 'empty' || stage === 'filling') ? ' brief-first' : ''}`}>
         <section className="card form" aria-label={savedBriefReadOnly ? 'Saved plan brief' : editingSaved ? 'Edit saved plan brief' : 'Plan a campaign'}>
           {savedBriefReadOnly ? (
             <>
@@ -1939,164 +2151,28 @@ export default function App() {
           <div className="demohint">{cueGen ? 'Example filled. Building your plan next...' : 'Fills an example and builds your plan'}</div>
           </>}
 
-          <div className="field planning-step">
-            <label htmlFor="f-name">Campaign name</label>
-            <input
-              id="f-name"
-              className="ctl"
-              type="text"
-              placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
-              value={brief.name}
-              onChange={(e) => patch({ name: e.target.value })}
-            />
-          </div>
+          {wideBrief && !viewingSaved && !editingSaved && (stage === 'empty' || stage === 'filling') ? (
+            <BriefColumns>
+              <div className="brief-details">{nameField}{marketField}</div>
+              <div className="brief-goals">{objectiveField}{kpiField}</div>
+              <div className="brief-audience">{audienceField}</div>
+              <div className="brief-timing">{budgetField}{datesField}</div>
+            </BriefColumns>
+          ) : <>{nameField}{marketField}{objectiveField}{kpiField}{audienceField}{budgetField}{datesField}</>}
 
-          <div className="field planning-step">
-            <label id="g-market">Market</label>
-            <div className="pills" role="group" aria-labelledby="g-market">
-              {MARKETS.map(m=><button key={m.id} type="button" className={`pill${brief.markets?.includes(m.id) ? '' : ' off'}`} aria-pressed={brief.markets?.includes(m.id) ?? false} onClick={()=>patch({markets:brief.markets?.includes(m.id) ? brief.markets.filter(id=>id!==m.id) : [...(brief.markets??[]),m.id]})}>{m.label}</button>)}
-            </div>
-          </div>
-
-          <div className="field planning-step">
-            <label id="g-objective">Objective</label>
-            <div className="pills" role="group" aria-labelledby="g-objective">
-              {OBJECTIVES.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`pill obj-${o.id}${brief.objectives.includes(o.id) ? '' : ' off'}`}
-                  aria-pressed={brief.objectives.includes(o.id)}
-                  onClick={() => toggleObjective(o.id)}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="field planning-step">
-            <label id="g-kpi">KPI</label>
-            {kpiOptions.length === 0 ? (
-              <div className="hint">Select an objective first</div>
-            ) : (
-              <div className="pills" role="group" aria-labelledby="g-kpi">
-                {kpiOptions.map((entry) => (
-                  <button
-                    key={entry.label}
-                    type="button"
-                    className={`pill obj-${entry.objective}${brief.kpis.includes(entry.label) ? '' : ' off'}`}
-                    aria-pressed={brief.kpis.includes(entry.label)}
-                    onClick={() => toggleKpi(entry.label)}
-                  >
-                    {entry.label}
-                  </button>
-                ))}
+          <span className="sr-only brief-status" role="status" aria-live="polite" aria-atomic="true">
+            {briefProgressCount === null ? '' : `${briefProgressCount} OF 6 ANSWERED`}
+          </span>
+          {!viewingSaved && !editingSaved && (stage === 'empty' || stage === 'filling') && (
+            <div className="prog brief-progress" aria-hidden="true">
+              <div className="bar" aria-hidden="true">
+                <div className="fill" style={{ width: `${(count / 6) * 100}%` }} />
               </div>
-            )}
-          </div>
-
-          <div className="field planning-step">
-            <label id="g-audience">Audience</label>
-            <div className="pills audience-pills" role="group" aria-labelledby="g-audience">
-              {AUDIENCES.map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  className={`pill${brief.audiences.includes(a) ? '' : ' off'}`}
-                  aria-pressed={brief.audiences.includes(a)}
-                  onClick={() => toggleAudience(a)}
-                >
-                  {a}
-                </button>
-              ))}
+              <div className="t">{count} OF 6 ANSWERED</div>
             </div>
-          </div>
-
-          <div className="field planning-step">
-            <label htmlFor="f-budget">Budget</label>
-            <input
-              id="f-budget"
-              className="ctl"
-              type="text"
-              inputMode="numeric"
-              placeholder="e.g. £100,000"
-              value={budgetText ? `£${budgetText}` : ''}
-              onChange={(e) => onBudget(e.target.value)}
-            />
-          </div>
-
-          <div className="field planning-step">
-            <label>Campaign dates</label>
-            <div className="daterow">
-              <div className="datewrap">
-                <input
-                  ref={startRef}
-                  aria-label="Start date"
-                  aria-invalid={startNotFuture(brief.start) || undefined}
-                  aria-describedby={startNotFuture(brief.start) ? "start-date-error" : undefined}
-                  className={`ctl${!brief.start ? " date-empty" : ""}`}
-                  type="date"
-                  onFocus={clearCue}
-                  onPointerDown={clearCue}
-                  value={brief.start}
-                  min={tomorrowISO}
-                  onChange={(e) => patch({ start: e.target.value })}
-                />
-                <button
-                  type="button"
-                  className="calbtn"
-                  aria-label="Choose start date"
-                  onClick={() => openDatePicker(startRef)}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
-                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
-                  </svg>
-                </button>
-              </div>
-              <div className="datewrap">
-                <input
-                  ref={endRef}
-                  aria-label="End date"
-                  aria-invalid={endBeforeStart(brief.start, brief.end) || undefined}
-                  aria-describedby={endBeforeStart(brief.start, brief.end) ? "end-date-error" : undefined}
-                  className={`ctl${!brief.end ? " date-empty" : ""}`}
-                  type="date"
-                  onFocus={clearCue}
-                  onPointerDown={clearCue}
-                  value={brief.end}
-                  min={brief.start || tomorrowISO}
-                  onChange={(e) => patch({ end: e.target.value })}
-                />
-                <button
-                  type="button"
-                  className="calbtn"
-                  aria-label="Choose end date"
-                  onClick={() => openDatePicker(endRef)}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
-                    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            {startNotFuture(brief.start) && (
-              <div id="start-date-error" className="dur date-error" role="status">⚠ Start date must be in the future.</div>
-            )}
-            {endBeforeStart(brief.start, brief.end) && (
-              <div id="end-date-error" className="dur date-error" role="status">⚠ End date must be on or after the start date.</div>
-            )}
-            {weeks > 0 && (
-              <div className="dur">
-                {formatDate(brief.start)} to {formatDate(brief.end)} · {weeksLabel(weeks)}
-              </div>
-            )}
-          </div>
-
-          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || stage === 'generating'} onClick={generate}>
-            {hasGenerated || stage === 'plan' ? 'Regenerate my plan' : 'Generate my plan'} <span>&rarr;</span>
+          )}
+          <button ref={genRef} className={`gen${cueGen ? ' cue' : ''}`} type="button" aria-describedby={missingForRegeneration.length ? 'regenerate-required' : undefined} disabled={count < 6 || nameTooLong || stage === 'generating'} onClick={generate}>
+            {hasGenerated || stage === 'plan' ? 'Regenerate my' : 'Generate my'} <span className="gen-tail">plan <span className="gen-arrow">&rarr;</span></span>
           </button>
           {missingForRegeneration.length > 0 && stage !== 'generating' && (
             <p id="regenerate-required" className="regenerate-required" role="status">{new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' }).format(missingForRegeneration)} must be selected.</p>
@@ -2116,34 +2192,10 @@ export default function App() {
                 </div>
                 <h3>Your recommended plan builds here</h3>
                 <p>
-                  As you answer, Compass checks your brief against publisher rates, audience sizes
-                  and performance benchmarks - then shows the full plan{' '}
-                  <span className="only-d">on this side</span>
-                  <span className="only-m">below</span>.
+                  Answer your brief, then generate your publishers, spend split and expected results.
                 </p>
               </div>
-              <div className="steps3">
-                <div className="step3">
-                  <div className="n">01</div>
-                  <b>Tell us your brief</b>
-                  <span>Objective, audience, budget and dates. No media knowledge needed.</span>
-                </div>
-                <div className="step3">
-                  <div className="n">02</div>
-                  <b>Compass builds the plan</b>
-                  <span>Publishers, formats and a spend split matched to your brief.</span>
-                </div>
-                <div className="step3">
-                  <div className="n">03</div>
-                  <b>Act on it</b>
-                  <span>Save it, download it, or ask{' '}
-                  <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
-                    Hybrid House
-                  </a>{' '}
-                  to activate it.</span>
-                </div>
-              </div>
-              <PlanOutline />
+
             </>
           )}
 
@@ -2166,7 +2218,6 @@ export default function App() {
                 </div>
                 <div className="t">{count} OF 6 ANSWERED</div>
               </div>
-              <SkeletonBlock />
               <p className="keep">
                 Keep going - your recommended publishers, spend split and expected results appear
                 here as soon as you generate.
@@ -2296,7 +2347,7 @@ export default function App() {
                   </>
                 ) : editingSaved ? (
                   <>
-                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated || nameTooLong}>
                       <IconSave />
                       Save changes
                     </button>
@@ -2307,7 +2358,7 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated}>
+                    <button type="button" className="ghost lead" onClick={savePlan} disabled={editsNotGenerated || nameTooLong}>
                       <IconSave />
                       Save plan
                     </button>
@@ -2501,7 +2552,7 @@ export default function App() {
             <div className="include">
               <div className="n">03</div>
               <b>Saved and shareable</b>
-              <span>Saved plans stay in this browser in the demo - accounts and sharing are part of the full product design.</span>
+              <span>Saved plans stay in this browser - accounts and sharing are part of the full product design.</span>
             </div>
           </div>
           <div className="cta pricecta">
@@ -2526,9 +2577,7 @@ export default function App() {
         Compass by{' '}
         <a href="https://thehybridhouse.co.uk" target="_blank" rel="noreferrer">
           The Hybrid House
-        </a>{' '}
-        &middot; Design concept - scenario, figures and rationale are
-        illustrative, adapted from the Compass brief
+        </a>
       </footer>
 
       {demoMode && !editingSaved && confirmFill && (

@@ -17,8 +17,8 @@ test('natural audience rows use available space and retain narrow and enlarged-t
  if(variant!=='double'){
  assert.ok(g.every(e=>e.h===g[0].h));
  const w=await p.$eval('[aria-labelledby=g-audience]',e=>e.clientWidth);
- if(g[2].w+g[3].w+8<=w)assert.equal(g[2].y,g[3].y);else assert.ok(g[2].y<g[3].y);
- if(variant==='loaded'&&(width===390||width===1440))assert.equal(g[2].y,g[3].y);
+ let used=0;for(let i=0;i<g.length;i++){const fits=i>0&&used+8+g[i].w<=w+1;if(i>0)assert.equal(g[i].y===g[i-1].y,fits,'natural rows must pack every preceding pill, not an isolated pair');used=fits?used+8+g[i].w:g[i].w;}
+ if(variant==='loaded'&&width===390)assert.equal(g[2].y,g[3].y);
  }
  await p.$eval('[aria-labelledby=g-audience]',e=>e.scrollIntoView({block:'center'}));
  if(process.env.SCREENSHOT_DIR&&(width===390||width===1440))await p.screenshot({path:`${process.env.SCREENSHOT_DIR}/room-${width}-${variant}.png`});

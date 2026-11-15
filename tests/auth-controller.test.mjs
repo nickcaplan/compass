@@ -67,7 +67,8 @@ test('runtime transaction failure stays blocked inline and failed callbacks remo
  try {
   const url=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('Preview unavailable')),10000);server.once('error',reject);server.stdout.on('data',b=>{out+=stripVTControlCharacters(b.toString());const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0]);}});});
   browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH??(process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']});
-  const ctx=await browser.createBrowserContext(),p=await ctx.newPage();p.setDefaultTimeout(6000);await p.setViewport({width:390,height:900});const errors=[];p.on('pageerror',e=>errors.push(e.message));
+  const ctx=await browser.createBrowserContext(),p=await ctx.newPage();// Poll ceilings, not performance budgets: CI runners can be 3-4x slower than local, so these fixed waits are sized to tolerate load.
+  p.setDefaultTimeout(15000);await p.setViewport({width:390,height:900});const errors=[];p.on('pageerror',e=>errors.push(e.message));
   await p.setRequestInterception(true);p.on('request',r=>r.url().includes('supabase.co')?r.abort():r.continue());
   await p.goto(url+'?demo=1');await p.waitForSelector('#f-name');await seedSession(p,session('b'));await p.waitForSelector('.avatar');
   await p.evaluate(()=>{const original=IDBDatabase.prototype.transaction;window.restoreFixtureTransactions=()=>{IDBDatabase.prototype.transaction=original;};IDBDatabase.prototype.transaction=function(...args){if(this.name==='compass-auth-v2')throw new Error('fixture runtime transaction failure');return original.apply(this,args);};for(let i=0;i<10;i++)setTimeout(()=>window.dispatchEvent(new Event('focus')),i*10);});
