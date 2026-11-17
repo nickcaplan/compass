@@ -14,7 +14,7 @@ async function fill(page, objective='Consideration', markets=['UK']) {
  await page.locator('button.gen').click();
 }
 test('connected source slice respects brief, units, gate, no save and legacy isolation',{timeout:180000},async()=>{
- const s=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
+ const s=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe'],env:{...process.env,NO_COLOR:'1',FORCE_COLOR:'0'}});let browser;
  try {
  const url=await new Promise((resolve,reject)=>{let out='';const t=setTimeout(()=>reject(Error('Server timeout')),10000);s.stdout.on('data',d=>{out+=d;const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(t);resolve(m[0]);}});});
  browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox']});
