@@ -618,6 +618,10 @@ test('signed-out visitor is asked to log in before the plan reveals, brief kept'
     // depend on animation frames firing.
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
     await (await installAuthFixture(page), fixtureNavigation(page,'http://127.0.0.1:4177/?demo=1'));
+    // Do not start the walkthrough before initial route and font setup settle.
+    await page.waitForFunction(() => location.hash === '#/planner');
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForSelector('.signin[aria-busy=false]');
 
     // Generate without a session: the gate asks for log-in and hides the plan.
     await clickButton(page, 'Fill it in for me');
