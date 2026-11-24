@@ -5,7 +5,10 @@ import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDr
 import type { DraftBinding } from './authDraft';
 import { readPlanRoute, routeHash, usePlanNavigation } from './planRoutes';
 import type { Page, PlanRoute } from './planRoutes';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+const SourcePlannerResults = lazy(() => import('./SourcePlannerResults'));
+// Explicit local draft entry; normal planner and legacy saved plans are unchanged.
+const sourcePlannerDraft = new URLSearchParams(window.location.search).get('source-options') === '1';
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 import EmailAuth from './EmailAuth';
@@ -635,7 +638,7 @@ function SkeletonBlock() {
 }
 
 function DemoCap() {
-  return <div className="cap">DEMO DATA</div>;
+  return null;
 }
 
 const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
@@ -697,7 +700,6 @@ export default function App() {
   const [recoveringPassword, setRecoveringPassword] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery');
   const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
-  const canViewPlan = Boolean(authEmail && profileComplete && !recoveringPassword);
 
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
@@ -787,6 +789,17 @@ export default function App() {
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
   const [storageFailed] = useState(() => plansLoadFailed);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
+  const canViewPlan = Boolean(((sourcePlannerDraft && !savedEntry) || (authEmail && profileComplete)) && !recoveringPassword);
+
+  useEffect(() => {
+    const titles: Record<Page, string> = {
+      planner: sourcePlannerDraft && !savedEntry ? 'Compass - Source options' : 'Compass - Plan a campaign',
+      plans: 'Compass - My plans',
+      signin: 'Compass - Sign in',
+      pricing: 'Compass - Pricing',
+    };
+    document.title = page === 'planner' && unavailablePlan ? 'Compass - Plan unavailable' : titles[page];
+  }, [page, unavailablePlan, savedEntry]);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
@@ -1165,7 +1178,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count]);
 
-  const genSteps = checklistFor(viewBrief).length;
+  const generationChecklist = sourcePlannerDraft && !savedEntry ? ['Reading exact market and objective source rows', 'Excluding rows that require review', 'Keeping whole source packages and their currencies', 'Grouping source options by tactic'] : checklistFor(viewBrief);
+  const genSteps = generationChecklist.length;
 
   // Saving swaps the tall form for a compact read-only brief, shortening the
   // page. Without correction the plan visibly jumps; keep it pinned to its
@@ -1423,6 +1437,7 @@ export default function App() {
   }
 
   function savePlan() {
+    if (sourcePlannerDraft && !savedEntry) return; // Never save legacy figures behind source results.
     if (!submittedBrief || nameTooLong) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
@@ -1838,7 +1853,7 @@ export default function App() {
               id="f-name"
               className="ctl"
               type="text"
-              placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
+              placeholder="e.g. UK lab procurement - Q1 2027"
               value={brief.name}
               maxLength={80}
               onChange={(e) => patch({ name: e.target.value.slice(0, 80) })}
@@ -2219,8 +2234,7 @@ export default function App() {
                 <div className="t">{count} OF 6 ANSWERED</div>
               </div>
               <p className="keep">
-                Keep going - your recommended publishers, spend split and expected results appear
-                here as soon as you generate.
+                {sourcePlannerDraft ? 'Keep going - market and objective source options appear after you generate. Audience matching and budget allocation are pending.' : 'Keep going - your recommended publishers, spend split and expected results appear here as soon as you generate.'}
               </p>
             </>
           )}
@@ -2240,7 +2254,7 @@ export default function App() {
                 <span className="chip">{weeksLabel(viewWeeks)}</span>
               </div>
               <div className="check">
-                {checklistFor(viewBrief).map((item, i) =>
+                {generationChecklist.map((item, i) =>
                   i < ticks ? (
                     <div className="row" key={item}>
                       <span className="tick">&#10003;</span>
@@ -2261,7 +2275,7 @@ export default function App() {
           {stage === 'gate' && (
             <div className="planin">
               <div className="planhead">
-                <h2>Your plan is ready</h2>
+                <h2>{sourcePlannerDraft && !savedEntry ? 'Your source options are ready' : 'Your plan is ready'}</h2>
                 <DemoCap />
               </div>
               <p className="pagesub">
@@ -2269,7 +2283,7 @@ export default function App() {
               </p>
               {authNotice && <p role="alert" className="fieldnote">{authNotice}</p>}
               {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
-              {savedBriefReadOnly ? <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button> :
+              {savedBriefReadOnly ? (authEmail && <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button>) :
                 <button type="button" className="ghost gate-secondary" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
             </div>
           )}
@@ -2279,12 +2293,13 @@ export default function App() {
               <div className="planhead">
                 <h2>{viewingSaved || editingSaved
                   ? 'Media plan'
-                  : 'Recommended plan'}</h2>
+                  : sourcePlannerDraft ? 'Your media options' : 'Recommended plan'}</h2>
                 {viewingSaved || editingSaved ? <div className="cap">{editingSaved ? 'SAVED PLAN - EDITING BRIEF' : 'SAVED PLAN - READ ONLY'}</div> : <DemoCap />}
               </div>
               {editsNotGenerated && (
                 <p className="stale-plan-note" role="status">Your brief has changed. These figures are from your previous plan. Regenerate your plan to include your latest changes before saving.</p>
               )}
+              {sourcePlannerDraft && !viewingSaved && !editingSaved ? <><Suspense fallback={<p role="status">Loading source options...</p>}><SourcePlannerResults brief={viewBrief}/></Suspense><button type="button" className="ghost" onClick={reset}><IconPlus />Create another</button></> : <>
               <div className="metrics">
                 {plan.metrics.map((m) => (
                   <div className="metric" key={m.k}>
@@ -2370,6 +2385,7 @@ export default function App() {
                   </>
                 )}
               </div>
+              </>}
             </div>
           )}
         </section>
@@ -2637,4 +2653,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+    }
