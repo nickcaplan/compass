@@ -638,7 +638,7 @@ function SkeletonBlock() {
 }
 
 function DemoCap() {
-  return <div className="cap">DEMO DATA</div>;
+  return null;
 }
 
 const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
@@ -700,7 +700,6 @@ export default function App() {
   const [recoveringPassword, setRecoveringPassword] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery');
   const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
-  const canViewPlan = Boolean((sourcePlannerDraft || (authEmail && profileComplete)) && !recoveringPassword);
 
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
@@ -790,6 +789,17 @@ export default function App() {
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
   const [storageFailed] = useState(() => plansLoadFailed);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
+  const canViewPlan = Boolean(((sourcePlannerDraft && !savedEntry) || (authEmail && profileComplete)) && !recoveringPassword);
+
+  useEffect(() => {
+    const titles: Record<Page, string> = {
+      planner: sourcePlannerDraft && !savedEntry ? 'Compass - Source options' : 'Compass - Plan a campaign',
+      plans: 'Compass - My plans',
+      signin: 'Compass - Sign in',
+      pricing: 'Compass - Pricing',
+    };
+    document.title = page === 'planner' && unavailablePlan ? 'Compass - Plan unavailable' : titles[page];
+  }, [page, unavailablePlan, savedEntry]);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
@@ -1168,7 +1178,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count]);
 
-  const generationChecklist = sourcePlannerDraft && !savedEntry ? ['Reading exact market and objective source rows', 'Excluding rows that require review', 'Keeping whole source packages and their currencies', 'Grouping illustrative options by tactic'] : checklistFor(viewBrief);
+  const generationChecklist = sourcePlannerDraft && !savedEntry ? ['Reading exact market and objective source rows', 'Excluding rows that require review', 'Keeping whole source packages and their currencies', 'Grouping source options by tactic'] : checklistFor(viewBrief);
   const genSteps = generationChecklist.length;
 
   // Saving swaps the tall form for a compact read-only brief, shortening the
@@ -1843,7 +1853,7 @@ export default function App() {
               id="f-name"
               className="ctl"
               type="text"
-              placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
+              placeholder="e.g. UK lab procurement - Q1 2027"
               value={brief.name}
               maxLength={80}
               onChange={(e) => patch({ name: e.target.value.slice(0, 80) })}
@@ -2224,7 +2234,7 @@ export default function App() {
                 <div className="t">{count} OF 6 ANSWERED</div>
               </div>
               <p className="keep">
-                {sourcePlannerDraft ? 'Keep going - illustrative market and objective source options appear after you generate. Audience matching and budget allocation are pending.' : 'Keep going - your recommended publishers, spend split and expected results appear here as soon as you generate.'}
+                {sourcePlannerDraft ? 'Keep going - market and objective source options appear after you generate. Audience matching and budget allocation are pending.' : 'Keep going - your recommended publishers, spend split and expected results appear here as soon as you generate.'}
               </p>
             </>
           )}
@@ -2273,7 +2283,7 @@ export default function App() {
               </p>
               {authNotice && <p role="alert" className="fieldnote">{authNotice}</p>}
               {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
-              {savedBriefReadOnly ? <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button> :
+              {savedBriefReadOnly ? (authEmail && <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button>) :
                 <button type="button" className="ghost gate-secondary" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
             </div>
           )}
@@ -2643,4 +2653,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+    }

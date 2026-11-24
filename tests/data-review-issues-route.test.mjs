@@ -11,6 +11,7 @@ test('simple problems report shows truthful counts and one-step affected rows',a
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--no-sandbox']});const p=await browser.newPage();
  await p.goto(url+'data-review/issues');await p.waitForSelector('.ir-problem');
  assert.equal(await p.$eval('h1',e=>e.textContent),'Data problems');
+ assert.equal(await p.evaluate(()=>document.title),'Compass - Data problems');
  const {records}=JSON.parse(readFileSync('src/inventory.mock.json','utf8'));
  const counts=new Map();for(const r of records)for(const i of r.structural_issues)counts.set(i,(counts.get(i)||0)+1);
  assert.equal((await p.$$('.ir-problem')).length,counts.size);
@@ -40,7 +41,24 @@ test('simple problems report shows truthful counts and one-step affected rows',a
  await p.click('.ir-back-problems');await p.click('.ir-problem');assert.equal((await p.$$('.ir-problem-row')).length,50,'reopening resets pagination');
  for(const width of [390,820,1440]){await p.setViewport({width,height:900});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
  await p.setViewport({width:390,height:844});assert.equal(await p.$eval('.ir-problem-head',e=>getComputedStyle(e).display),'none');assert.equal(await p.$eval('.ir-problem-row small',e=>getComputedStyle(e).display),'inline');
- await p.click('.ir-back-problems');await p.reload();await p.waitForSelector('.ir-problem');assert.equal(await p.$('.ir-problem-row'),null);
- await p.setViewport({width:1440,height:900});await p.click('.ir-nav a[href="/data-review"]');await p.waitForSelector('.ir-stats');
+ await p.click('.ir-back-problems');await p.waitForSelector('.ir-problem');
+ const phoneProblem=await p.$eval('.ir-problem',e=>{const action=e.querySelector('.ir-problem-action');const style=getComputedStyle(action);return {direction:getComputedStyle(e).flexDirection,font:style.fontSize,width:action.getBoundingClientRect().width,text:action.textContent}});
+ assert.equal(phoneProblem.direction,'column');
+ assert.notEqual(phoneProblem.font,'0px');
+ assert.ok(phoneProblem.width>50,'problem action keeps its readable label');
+ assert.match(phoneProblem.text,/See rows/);
+ await p.reload();await p.waitForSelector('.ir-problem');assert.equal(await p.$('.ir-problem-row'),null);
+ await p.setViewport({width:1440,height:900});
+ const desktopProblem=await p.$eval('.ir-problem',e=>{const action=e.querySelector('.ir-problem-action').getBoundingClientRect();const row=e.getBoundingClientRect();return {direction:getComputedStyle(e).flexDirection,actionLeft:action.left,rowLeft:row.left,actionRight:action.right,rowRight:row.right}});
+ assert.equal(desktopProblem.direction,'column');
+ assert.ok(Math.abs(desktopProblem.actionLeft-desktopProblem.rowLeft)<2,'desktop action starts with the row text');
+ assert.ok(desktopProblem.actionRight<desktopProblem.rowRight-100,'desktop action is not pinned to the right edge');
+ await p.evaluate(()=>localStorage.setItem('compass-theme','light'));await p.reload();await p.waitForSelector('.ir-problem');
+ const plainHover=await p.$eval('.ir-problem',e=>({background:getComputedStyle(e).backgroundColor,decoration:getComputedStyle(e.querySelector('.ir-problem-action')).textDecorationLine,transform:getComputedStyle(e.querySelector('.ir-problem-action span')).transform}));
+ await p.hover('.ir-problem');await p.evaluate(()=>new Promise(requestAnimationFrame));
+ const activeHover=await p.$eval('.ir-problem',e=>({background:getComputedStyle(e).backgroundColor,decoration:getComputedStyle(e.querySelector('.ir-problem-action')).textDecorationLine,transform:getComputedStyle(e.querySelector('.ir-problem-action span')).transform}));
+ assert.notEqual(activeHover.background,plainHover.background,'light-mode problem rows show a background hover');
+ assert.equal(activeHover.decoration,'underline');assert.notEqual(activeHover.transform,'none');
+ await p.click('.ir-nav a[href="/data-review"]');await p.waitForSelector('.ir-stats');
  }finally{await browser?.close();server.kill('SIGTERM')}
 });

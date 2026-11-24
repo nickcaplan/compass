@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {SliceDropdown} from './SliceDropdown';
 import {issueLabel} from './issueLabels';
 import source from './inventory.mock.json';
@@ -10,6 +10,7 @@ const FC_TIP='Fully classified: the product type is recognised, the name is sens
 const assumptions=[['Review unknown tactics','Other and Other / Review combine into one review bucket, never recommendations.'],['Exact markets','Global stays separate. It is not automatic coverage of other regions.'],['No invented GBP rates','Source amounts keep their declared currency label. GBP stays blank.'],['No guessed audience match','Keep the six Compass audiences. No audience match is claimed until mapping is agreed.'],['Whole source packages','No unlimited scaling, budget allocation or preferred publisher without agreed rules.']];
 export default function InventoryReview(){
  const [market,setMarket]=useState(''),[objective,setObjective]=useState(''),[theme,setTheme]=useState('dark'),[showHeld,setShowHeld]=useState(false),[fcHelp,setFcHelp]=useState(false);
+ useEffect(()=>{document.title='Compass - Data review'},[]);
  const sliceChosen=market!==''&&objective!=='';
  const matches=useMemo(()=>sliceChosen?source.records.filter(r=>r.market===market&&r.objective===objective):[],[sliceChosen,market,objective]);
  const visible=matches.filter(r=>showHeld||r.structurally_reviewable);

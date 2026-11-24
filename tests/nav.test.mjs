@@ -38,6 +38,13 @@ test('nav is Planner, My plans and Sign in, with no Support link', { timeout: 60
       assert.equal(await page.$eval('nav', n => n.textContent.includes('Support')), false, 'Support must stay out of the nav');
       assert.equal(await page.$eval('.navlinks .themebtn', b => b.getAttribute('aria-label')), 'Switch to light mode');
       assert.equal(await page.$eval('.prodhome', b => b.textContent.trim()), 'COMPASS');
+      assert.equal(await page.evaluate(() => document.title), 'Compass - Plan a campaign');
+      assert.ok(await page.$eval('#f-name', e => e.scrollWidth <= e.clientWidth), 'campaign name placeholder must not clip');
+      const disabledGenerate = await page.$eval('.gen', e => { const s = getComputedStyle(e); return { opacity: s.opacity, cursor: s.cursor, border: s.borderTopWidth, shadow: s.boxShadow }; });
+      assert.equal(disabledGenerate.opacity, '1');
+      assert.equal(disabledGenerate.cursor, 'not-allowed');
+      assert.equal(disabledGenerate.border, '1px');
+      assert.equal(disabledGenerate.shadow, 'none');
       if (width >= 980) {
         // Nick (13 Nov 2026): nav options sit on the right of the header, not beside the brand.
         const brandRight = await page.$eval('.brand.lockup', e => e.getBoundingClientRect().right);
@@ -47,7 +54,32 @@ test('nav is Planner, My plans and Sign in, with no Support link', { timeout: 60
         assert.ok(plannerLeft - brandRight > 200, `nav options must be detached from the brand (gap ${plannerLeft - brandRight}px)`);
         assert.ok(Math.abs(signinRight - headerRight) < 1, 'nav cluster must be flush with the right edge of the header');
       }
+      await page.locator('.navlinks > button:nth-child(2)').click();
+      await page.waitForSelector('.pagecard[aria-label="My plans"]');
+      assert.equal(await page.evaluate(() => document.title), 'Compass - My plans');
+      await page.locator('.navlinks .signin').click();
+      await page.waitForSelector('.signincard');
+      assert.equal(await page.evaluate(() => document.title), 'Compass - Sign in');
       await page.close();
     }
+    const light = await browser.newPage();
+    await light.setViewport({ width: 1440, height: 900 });
+    await light.evaluateOnNewDocument(() => localStorage.setItem('compass-theme', 'light'));
+    await light.goto(previewUrl);
+    await light.waitForSelector('.industry-eyebrow');
+    const eyebrow = await light.evaluate(() => {
+      const label = document.querySelector('.industry-eyebrow > span[aria-hidden="true"]:not(.industry-reel)').getBoundingClientRect();
+      const reel = document.querySelector('.industry-reel').getBoundingClientRect();
+      return { top: Math.abs(label.top - reel.top), height: Math.abs(label.height - reel.height) };
+    });
+    assert.ok(eyebrow.top <= 1, 'light-mode eyebrow pair starts on the same line');
+    assert.ok(eyebrow.height <= 1, 'light-mode eyebrow pair has the same line box');
+    assert.ok(await light.$eval('#f-name', e => e.scrollWidth <= e.clientWidth), 'light-mode campaign name placeholder must not clip');
+    await light.close();
+    const pricing = await browser.newPage();
+    await pricing.goto(previewUrl + '#/pricing');
+    await pricing.waitForSelector('.pagecard[aria-label="Pricing"]');
+    assert.equal(await pricing.evaluate(() => document.title), 'Compass - Pricing');
+    await pricing.close();
   } finally { await browser?.close(); server.kill(); }
 });

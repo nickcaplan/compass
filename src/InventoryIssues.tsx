@@ -22,6 +22,7 @@ export default function InventoryIssues(){
  const [theme,setTheme]=useState('dark');
  const [showCount,setShowCount]=useState(PAGE);
  const problem=problems.find(p=>p.token===selected);
+ useEffect(()=>{document.title='Compass - Data problems'},[]);
  useEffect(()=>{const sync=()=>{setSelected(fromHash());setShowCount(PAGE)};window.addEventListener('popstate',sync);window.addEventListener('hashchange',sync);return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)}},[]);
  useEffect(()=>{const frame=requestAnimationFrame(()=>{document.getElementById('problem-heading')?.focus();window.scrollTo(0,0)});return()=>cancelAnimationFrame(frame)},[selected]);
  function open(token:string){window.history.pushState(null,'',window.location.pathname+window.location.search+(token?`#${encodeURIComponent(token)}`:''));setSelected(token);setShowCount(PAGE)}
@@ -32,7 +33,7 @@ export default function InventoryIssues(){
  <button type="button" className="ir-back-problems" onClick={()=>open('')}>← All problems</button>
  <p className="ir-eyebrow">DATA PROBLEM</p>
  <h1 id="problem-heading" tabIndex={-1}>{problem.sentence}</h1>
- <p className="ir-small">{problem.token==='cpl_one_unit_cost_not_campaign_budget'?'Known demo limitation: these are one-lead costs, not full campaign budgets.':problem.token==='cpm_over_1000_review_threshold'?'Our chosen threshold flags rates to check; it does not mean they are wrong.':problem.token==='unclassified_tactic'?'These rows are labelled Other or Other / Review, rather than a usable tactic category.':'These are review flags, not confirmed errors.'}</p>
+ <p className="ir-small">{problem.token==='cpl_one_unit_cost_not_campaign_budget'?'These are one-lead costs, not full campaign budgets.':problem.token==='cpm_over_1000_review_threshold'?'Our chosen threshold flags rates to check; it does not mean they are wrong.':problem.token==='unclassified_tactic'?'These rows are labelled Other or Other / Review, rather than a usable tactic category.':'These are review flags, not confirmed errors.'}</p>
  <p className="ir-small" role="status">Across {problem.publishers} {problem.publishers===1?'publisher':'publishers'} · Showing {Math.min(showCount,problem.rows.length)} of {number(problem.rows.length)} rows</p>
  <div className="ir-problem-table">
  <div className="ir-problem-head" aria-hidden="true"><span>Publisher</span><span>Product</span><span>Market</span><span>Tactic</span></div>
@@ -44,7 +45,7 @@ export default function InventoryIssues(){
  {problem.token==='missing_tactic_rule'&&<>No matching entry for {r.tactic} in Tactic Rules. </>}
  {problem.token==='missing_tactic_description'&&<>No matching entry for {r.tactic} in Tactic Descriptions. </>}
  {(problem.token==='cpl_one_unit_cost_not_campaign_budget'||problem.token==='cpm_over_1000_review_threshold')&&<>Buying model: {r.raw['Buying Model']} · Rate: {number(r.raw['Cost / Rate'])} {r.declared_currency}{r.raw['Buying Model']==='CPM'?' per 1,000 impressions':' per lead'} · Estimated source cost: {number(r.estimated_source_cost)} {r.declared_currency}. {r.raw['Calculation rule']}. </>}
- Source inventory row {r.raw['Source Excel Row']} · {r.raw['Source File']} · page {r.raw['Source Page']}. MOCK DATA - NOT VALIDATED.
+ Source inventory row {r.raw['Source Excel Row']} · {r.raw['Source File']} · page {r.raw['Source Page']}
  </p>
  </article>)}
  </div>
@@ -53,7 +54,7 @@ export default function InventoryIssues(){
  <p className="ir-eyebrow">INVENTORY REVIEW</p>
  <h1 id="problem-heading" tabIndex={-1}>Data problems</h1>
  <p className="ir-lede">{number(rows.length)} of {number(source.records.length)} imported rows need review. Choose a problem to see the affected rows.</p>
- <p className="ir-small">Rows include market versions. Review flags and known demo limitations can overlap. All figures are mock, not validated.</p>
+ <p className="ir-small">Rows include market versions. Review flags can overlap.</p>
  {problems.length===0?<p className="ir-empty">No data problems found.</p>:<div className="ir-problem-list">{problems.map(p=><button type="button" className="ir-problem" key={p.token} onClick={()=>open(p.token)}>
  <span><strong>{p.sentence}</strong><small>Across {p.publishers} {p.publishers===1?'publisher':'publishers'}</small></span><span className="ir-problem-action">See rows <span aria-hidden="true">→</span></span>
  </button>)}</div>}
