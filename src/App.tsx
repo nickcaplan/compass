@@ -638,7 +638,7 @@ function SkeletonBlock() {
 }
 
 function DemoCap() {
-  return <div className="cap">DEMO DATA</div>;
+  return null;
 }
 
 const REEL_SERVICES = ['Media Planning', 'Data Infrastructure', 'Analytics', 'Measurement', 'Publisher Partnerships', 'Sponsorship', 'Events', 'Paid Social', 'SEO', 'Media Planning'];
@@ -700,7 +700,7 @@ export default function App() {
   const [recoveringPassword, setRecoveringPassword] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery');
   const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
-  const canViewPlan = Boolean(authEmail && profileComplete && !recoveringPassword);
+  const canViewPlan = Boolean((sourcePlannerDraft || (authEmail && profileComplete)) && !recoveringPassword);
 
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
@@ -1168,7 +1168,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count]);
 
-  const generationChecklist = sourcePlannerDraft && !savedEntry ? ['Reading exact market and objective source rows', 'Excluding rows that require review', 'Keeping whole source packages and their currencies', 'Grouping illustrative options by tactic'] : checklistFor(viewBrief);
+  const generationChecklist = sourcePlannerDraft && !savedEntry ? ['Reading exact market and objective source rows', 'Excluding rows that require review', 'Keeping whole source packages and their currencies', 'Grouping source options by tactic'] : checklistFor(viewBrief);
   const genSteps = generationChecklist.length;
 
   // Saving swaps the tall form for a compact read-only brief, shortening the
@@ -2224,7 +2224,7 @@ export default function App() {
                 <div className="t">{count} OF 6 ANSWERED</div>
               </div>
               <p className="keep">
-                {sourcePlannerDraft ? 'Keep going - illustrative market and objective source options appear after you generate. Audience matching and budget allocation are pending.' : 'Keep going - your recommended publishers, spend split and expected results appear here as soon as you generate.'}
+                {sourcePlannerDraft ? 'Keep going - market and objective source options appear after you generate. Audience matching and budget allocation are pending.' : 'Keep going - your recommended publishers, spend split and expected results appear here as soon as you generate.'}
               </p>
             </>
           )}
@@ -2643,4 +2643,4 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+    }
