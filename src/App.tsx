@@ -702,6 +702,16 @@ export default function App() {
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
   const canViewPlan = Boolean((sourcePlannerDraft || (authEmail && profileComplete)) && !recoveringPassword);
 
+  useEffect(() => {
+    const titles: Record<Page, string> = {
+      planner: sourcePlannerDraft ? 'Compass - Source options' : 'Compass - Plan a campaign',
+      plans: 'Compass - My plans',
+      signin: 'Compass - Sign in',
+      pricing: 'Compass - Pricing',
+    };
+    document.title = page === 'planner' && unavailablePlan ? 'Compass - Plan unavailable' : titles[page];
+  }, [page, unavailablePlan]);
+
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
   const initialSessionPending = useRef(true);
@@ -1843,7 +1853,7 @@ export default function App() {
               id="f-name"
               className="ctl"
               type="text"
-              placeholder="e.g. UK Laboratory Procurement Campaign - Q1 2027"
+              placeholder="e.g. UK lab procurement - Q1 2027"
               value={brief.name}
               maxLength={80}
               onChange={(e) => patch({ name: e.target.value.slice(0, 80) })}
@@ -2273,7 +2283,7 @@ export default function App() {
               </p>
               {authNotice && <p role="alert" className="fieldnote">{authNotice}</p>}
               {authEmail ? renderProfileFields('f-gate-profile') : renderSignInFields('f-gate')}
-              {savedBriefReadOnly ? <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button> :
+              {savedBriefReadOnly ? (authEmail && <button type="button" className="ghost gate-secondary" onClick={() => go('plans')}>View all plans</button>) :
                 <button type="button" className="ghost gate-secondary" onClick={() => { setStage('filling'); window.scrollTo(0, 0); }}>Back to my brief</button>}
             </div>
           )}

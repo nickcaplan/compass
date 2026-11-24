@@ -22,6 +22,7 @@ export default function InventoryIssues(){
  const [theme,setTheme]=useState('dark');
  const [showCount,setShowCount]=useState(PAGE);
  const problem=problems.find(p=>p.token===selected);
+ useEffect(()=>{document.title='Compass - Data problems'},[]);
  useEffect(()=>{const sync=()=>{setSelected(fromHash());setShowCount(PAGE)};window.addEventListener('popstate',sync);window.addEventListener('hashchange',sync);return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)}},[]);
  useEffect(()=>{const frame=requestAnimationFrame(()=>{document.getElementById('problem-heading')?.focus();window.scrollTo(0,0)});return()=>cancelAnimationFrame(frame)},[selected]);
  function open(token:string){window.history.pushState(null,'',window.location.pathname+window.location.search+(token?`#${encodeURIComponent(token)}`:''));setSelected(token);setShowCount(PAGE)}

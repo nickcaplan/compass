@@ -11,6 +11,7 @@ test('simple problems report shows truthful counts and one-step affected rows',a
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--no-sandbox']});const p=await browser.newPage();
  await p.goto(url+'data-review/issues');await p.waitForSelector('.ir-problem');
  assert.equal(await p.$eval('h1',e=>e.textContent),'Data problems');
+ assert.equal(await p.evaluate(()=>document.title),'Compass - Data problems');
  const {records}=JSON.parse(readFileSync('src/inventory.mock.json','utf8'));
  const counts=new Map();for(const r of records)for(const i of r.structural_issues)counts.set(i,(counts.get(i)||0)+1);
  assert.equal((await p.$$('.ir-problem')).length,counts.size);
@@ -52,6 +53,12 @@ test('simple problems report shows truthful counts and one-step affected rows',a
  assert.equal(desktopProblem.direction,'column');
  assert.ok(Math.abs(desktopProblem.actionLeft-desktopProblem.rowLeft)<2,'desktop action starts with the row text');
  assert.ok(desktopProblem.actionRight<desktopProblem.rowRight-100,'desktop action is not pinned to the right edge');
+ await p.evaluate(()=>localStorage.setItem('compass-theme','light'));await p.reload();await p.waitForSelector('.ir-problem');
+ const plainHover=await p.$eval('.ir-problem',e=>({background:getComputedStyle(e).backgroundColor,decoration:getComputedStyle(e.querySelector('.ir-problem-action')).textDecorationLine,transform:getComputedStyle(e.querySelector('.ir-problem-action span')).transform}));
+ await p.hover('.ir-problem');await p.evaluate(()=>new Promise(requestAnimationFrame));
+ const activeHover=await p.$eval('.ir-problem',e=>({background:getComputedStyle(e).backgroundColor,decoration:getComputedStyle(e.querySelector('.ir-problem-action')).textDecorationLine,transform:getComputedStyle(e.querySelector('.ir-problem-action span')).transform}));
+ assert.notEqual(activeHover.background,plainHover.background,'light-mode problem rows show a background hover');
+ assert.equal(activeHover.decoration,'underline');assert.notEqual(activeHover.transform,'none');
  await p.click('.ir-nav a[href="/data-review"]');await p.waitForSelector('.ir-stats');
  }finally{await browser?.close();server.kill('SIGTERM')}
 });
