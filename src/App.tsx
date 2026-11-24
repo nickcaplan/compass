@@ -700,7 +700,7 @@ export default function App() {
   const [recoveringPassword, setRecoveringPassword] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery');
   const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
-  const canViewPlan = Boolean(authEmail && profileComplete && !recoveringPassword);
+  const canViewPlan = Boolean((sourcePlannerDraft || (authEmail && profileComplete)) && !recoveringPassword);
 
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
