@@ -700,17 +700,6 @@ export default function App() {
   const [recoveringPassword, setRecoveringPassword] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery');
   const profileComplete = Boolean(authUser?.user_metadata.compass_profile_complete &&
     typeof authUser.user_metadata.full_name === 'string' && authUser.user_metadata.full_name.trim());
-  const canViewPlan = Boolean((sourcePlannerDraft || (authEmail && profileComplete)) && !recoveringPassword);
-
-  useEffect(() => {
-    const titles: Record<Page, string> = {
-      planner: sourcePlannerDraft ? 'Compass - Source options' : 'Compass - Plan a campaign',
-      plans: 'Compass - My plans',
-      signin: 'Compass - Sign in',
-      pricing: 'Compass - Pricing',
-    };
-    document.title = page === 'planner' && unavailablePlan ? 'Compass - Plan unavailable' : titles[page];
-  }, [page, unavailablePlan]);
 
   const profileSource = useRef<string | null>(null);
   const currentAccount = useRef<User | null>(null);
@@ -800,6 +789,17 @@ export default function App() {
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
   const [storageFailed] = useState(() => plansLoadFailed);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
+  const canViewPlan = Boolean(((sourcePlannerDraft && !savedEntry) || (authEmail && profileComplete)) && !recoveringPassword);
+
+  useEffect(() => {
+    const titles: Record<Page, string> = {
+      planner: sourcePlannerDraft && !savedEntry ? 'Compass - Source options' : 'Compass - Plan a campaign',
+      plans: 'Compass - My plans',
+      signin: 'Compass - Sign in',
+      pricing: 'Compass - Pricing',
+    };
+    document.title = page === 'planner' && unavailablePlan ? 'Compass - Plan unavailable' : titles[page];
+  }, [page, unavailablePlan, savedEntry]);
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasFilled, setHasFilled] = useState(false);
