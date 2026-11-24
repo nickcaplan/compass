@@ -28,10 +28,10 @@
 .ir-problem-page h1{max-width:950px}
 .ir-problem-page h1:focus{outline:none}
 .ir-problem-list{margin-top:34px;border-top:1px solid var(--line)}
-.inventory-review .ir-problem{width:100%;display:flex;justify-content:space-between;align-items:center;gap:24px;padding:24px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;color:var(--text);text-align:left;cursor:pointer;font:inherit}
+.inventory-review .ir-problem{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:24px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;color:var(--text);text-align:left;cursor:pointer;font:inherit}
 .ir-problem strong{display:block;font-size:20px;line-height:1.5}
 .ir-problem small{display:block;margin-top:6px;color:var(--muted);font-size:14px}
-.ir-problem-action{white-space:nowrap;color:var(--accent-ink);font-size:14px}
+.ir-problem>span:first-child{min-width:0}.ir-problem-action{margin-top:4px;color:var(--accent-ink);font-size:14px}
 .ir-problem:hover{background:var(--card)}
 .inventory-review .ir-back-problems{display:block;background:none;border:0;padding:0;margin:0 0 28px;color:var(--accent-ink);font:inherit;cursor:pointer}
 .ir-problem-table{margin-top:30px}
@@ -41,7 +41,7 @@
 .ir-problem-row>span{font-size:14px;color:var(--muted)}
 .ir-problem-row small{display:none}
 .ir-problem:focus-visible,.ir-back-problems:focus-visible{outline:2px solid var(--accent-ink);outline-offset:4px}
-@media(max-width:600px){.inventory-review .ir-problem{gap:16px;padding:22px 0}.ir-problem strong{font-size:18px}.ir-problem-action{font-size:0}.ir-problem-action span{font-size:22px}.ir-problem-head{display:none}.ir-problem-row{display:block;padding:22px 0}.ir-problem-row>span{display:block;margin-top:9px}.ir-problem-row small{display:inline;margin-right:8px;font-size:12px}.ir-problem-page h1{font-size:32px}}
+@media(max-width:600px){.inventory-review .ir-problem{padding:22px 0}.ir-problem strong{font-size:18px}.ir-problem-head{display:none}.ir-problem-row{display:block;padding:22px 0}.ir-problem-row>span{display:block;margin-top:9px}.ir-problem-row small{display:inline;margin-right:8px;font-size:12px}.ir-problem-page h1{font-size:32px}}
 
 .ir-problem-evidence{grid-column:1/-1;font-size:12px;line-height:1.6;color:var(--text2);margin:0;overflow-wrap:anywhere}
 @media(max-width:600px){.ir-problem-evidence{margin-top:12px}}
