@@ -4,7 +4,7 @@ import inventory from './inventory.mock.json';
 import {sourceOptions} from './plannerSourceOptions';
 import './SourcePlannerResults.css';
 const number=(n:number)=>n.toLocaleString('en-GB',{maximumFractionDigits:2});
-const cost=(n:number)=>n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+const cost=(n:number)=>n.toLocaleString('en-GB',{maximumFractionDigits:0});
 const sourceAssumption=(value:string)=>value.replace(/Existing demo volume \(not validated\)/gi,'Existing source volume');
 
 /** Source inspection only. Never construct a legacy allocated Plan from these rows. */

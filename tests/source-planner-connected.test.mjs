@@ -28,7 +28,7 @@ test('connected source slice respects brief, units, no-auth source access, no sa
  for(const width of [1280,1440,1920]){
   await p.setViewport({width,height:900});await p.evaluate(()=>new Promise(requestAnimationFrame));
   assert.equal(await p.$eval('.form',e=>getComputedStyle(e).position),'sticky');
-  assert.ok(await p.$$eval('.sp-option',els=>els.every(e=>/\d\.\d{2}$/.test([...e.querySelectorAll('div')].find(d=>d.querySelector('dt')?.textContent.startsWith('Source cost'))?.querySelector('dd')?.textContent??''))),'every source cost uses two decimals');
+  assert.ok(await p.$$eval('.sp-option',els=>els.every(e=>/^\d{1,3}(,\d{3})*$/.test([...e.querySelectorAll('div')].find(d=>d.querySelector('dt')?.textContent.startsWith('Source cost'))?.querySelector('dd')?.textContent??''))),'every source cost is a whole number');
   const layout=await p.evaluate(()=>[...document.querySelectorAll('.sp-options')].map(grid=>{const g=grid.getBoundingClientRect();return {grid:g.width,cards:[...grid.children].map(e=>{const r=e.getBoundingClientRect();return {top:r.top,height:r.height,width:r.width}})}}));
   for(const group of layout){for(const card of group.cards)assert.ok(card.width<=group.grid/2+1,`one card must not take the full ${width}px grid`)}
   const rowHeights=await p.$$eval('.sp-options',grids=>grids.flatMap(grid=>{const cards=[...grid.children].map(e=>e.getBoundingClientRect());const tops=[...new Set(cards.map(r=>Math.round(r.top)))];return tops.map(top=>{const row=cards.filter(r=>Math.round(r.top)===top);return Math.max(...row.map(r=>r.height))-Math.min(...row.map(r=>r.height))})}));
