@@ -70,8 +70,8 @@ The guide's missing-volume default of 5,000 is for the mock only and must be
 visible as an assumption. No unlimited inventory, linear delivery or package
 availability should be invented. Ben's 24 November 2026 call set the first
 currency policy: show the selected market's currency and convert source costs
-on the fly. The current implementation uses ECB reference rates as a visible
-temporary source. A GBP brief still does not make a USD rate GBP; it is
+on the fly. The current implementation fetches live ECB reference rates and falls back to
+a dated saved snapshot, named on screen. A GBP brief still does not make a USD rate GBP; it is
 converted and labelled, not relabelled.
 
 ## What must be decided before implementation
@@ -82,8 +82,8 @@ converted and labelled, not relabelled.
    including exclusions and what to show for missing mappings.
 3. Agree package/volume limits, multi-market deduplication, budget allocation,
    and whether under-spend is accepted.
-4. Confirm THH's long-term exchange-rate source and update policy, and fix
-   Canadian-dollar labels inside the broad North America market.
+4. Confirm THH's long-term exchange-rate source, and automate the daily
+   refresh of the fallback rates.
 5. Agree preferred-option scoring, including objective fit, audience fit,
    value and data quality. No preferred recommendation before this.
 6. Validate publisher availability, rates, volume and benchmarks before live use.

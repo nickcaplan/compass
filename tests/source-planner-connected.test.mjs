@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
 import puppeteer from 'puppeteer-core';
-import {seedPlannerFixture} from './planner-auth-fixture.mjs';
+import {handleFixtureAuthRequest, seedPlannerFixture} from './planner-auth-fixture.mjs';
 const chrome='/usr/bin/google-chrome';
 async function fill(page, objective='Consideration', markets=['UK']) {
  await page.waitForSelector('#f-name');
@@ -18,13 +18,13 @@ test('connected source slice respects brief, units, no-auth source access, no sa
  try {
  const url=await new Promise((resolve,reject)=>{let out='';const t=setTimeout(()=>reject(Error('Server timeout')),10000);s.stdout.on('data',d=>{out+=d;const m=out.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(t);resolve(m[0]);}});});
  browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox']});
- const p=await browser.newPage();await p.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await seedPlannerFixture(p);
+ const p=await browser.newPage();await p.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await seedPlannerFixture(p,false);await p.setRequestInterception(true);p.on('request',r=>{if(handleFixtureAuthRequest(r))return;if(r.url().includes('data-api.ecb.europa.eu'))return r.abort();r.continue()});
  await p.goto(url+'?source-options=1');await p.waitForSelector('#f-name');assert.equal(await p.evaluate(()=>document.title),'Compass - Source options');await fill(p);await p.waitForSelector('.sp-option');
  assert.match(await p.$eval('.sp-results',e=>e.textContent),/Audience matching is pending/);
  assert.equal(await p.$('.planin .metrics'),null);assert.equal(await p.$('.planin .timing'),null);
  assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.planin button')].some(e=>/^Save/.test(e.textContent.trim()))),false);
  assert.equal(await p.$$eval('.sp-option',els=>els.length),23);
- const text=await p.$eval('.sp-results',e=>e.textContent);assert.match(text,/European Central Bank reference rates, 24 November 2026/);assert.equal(await p.$eval('.sp-market',e=>e.getAttribute('aria-label')),'UK source options');assert.match(text,/· GBP/);assert.doesNotMatch(text,/Publisher [ABC]/);assert.doesNotMatch(text,/MOCK DATA|DEMO DATA|mock data|not validated|not verified|demo volume|Illustrative source|Illustrative delivery/i);
+ const text=await p.$eval('.sp-results',e=>e.textContent);assert.match(text,/European Central Bank reference rates, 24 November 2026 \(live rates unavailable/);assert.equal(await p.$eval('.sp-market',e=>e.getAttribute('aria-label')),'UK source options');assert.match(text,/· GBP/);assert.doesNotMatch(text,/Publisher [ABC]/);assert.doesNotMatch(text,/MOCK DATA|DEMO DATA|mock data|not validated|not verified|demo volume|Illustrative source|Illustrative delivery/i);
  for(const width of [1280,1440,1920]){
   await p.setViewport({width,height:900});await p.evaluate(()=>new Promise(requestAnimationFrame));
   assert.equal(await p.$eval('.form',e=>getComputedStyle(e).position),'sticky');

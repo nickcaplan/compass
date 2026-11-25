@@ -69,37 +69,64 @@ export type MarketId = typeof MARKETS[number]['id'];
 export type CurrencyCode = 'USD' | 'GBP' | 'EUR' | 'CAD';
 
 // Ben's 24 November 2026 call: show each market in its own currency and
-// convert on the fly. North America is USD for this demo slice; Canadian-dollar
-// source rows still need Ben's label fix before CAD can be treated separately.
+// convert on the fly. Nick confirmed CAD for Canada (25 November), so the
+// North America market is shown in Canadian dollars.
 export const MARKET_CURRENCIES: Record<MarketId, CurrencyCode> = {
-  'north-america': 'USD',
+  'north-america': 'CAD',
   uk: 'GBP',
   france: 'EUR',
   germany: 'EUR',
 };
 
-// ECB euro foreign exchange reference rates, 24 November 2026. These are a
-// visible temporary source until THH confirms its FX source and update policy.
+// Fallback snapshot of the ECB euro foreign exchange reference rates. The
+// app fetches the live rates from the ECB and only uses this snapshot when
+// that fetch fails or times out. The daily refresh of this snapshot is
+// planned, not yet automated.
+export function marketLabels(markets: readonly MarketId[] = []): string {
+  return MARKETS.filter(m=>markets.includes(m.id)).map(m=>m.label).join(' + ');
+}
+
 export const FX_RATE_SOURCE = 'European Central Bank reference rates';
 export const FX_RATE_DATE = '24 November 2026';
-const ECB_EUR_REFERENCE_RATES: Record<CurrencyCode, number> = {
+export const ECB_RATES_URL = 'https://data-api.ecb.europa.eu/service/data/EXR/D.USD+GBP+CAD.EUR.SP00.A?lastNObservations=1&format=jsondata';
+export type FxRates = Record<CurrencyCode, number>;
+export interface FxRateSet { rates: FxRates; date: string; live: boolean }
+export const FALLBACK_RATES: FxRates = {
   EUR: 1,
   USD: 1.0963,
   GBP: 0.837,
   CAD: 1.5707,
 };
-
-export function marketLabels(markets: readonly MarketId[] = []): string {
-  return MARKETS.filter(m=>markets.includes(m.id)).map(m=>m.label).join(' + ');
-}
+export const FALLBACK_RATE_SET: FxRateSet = { rates: FALLBACK_RATES, date: FX_RATE_DATE, live: false };
 
 export function isCurrencyCode(value: string): value is CurrencyCode {
-  return value in ECB_EUR_REFERENCE_RATES;
+  return value in FALLBACK_RATES;
 }
 
-export function convertCurrency(amount: number, from: string, to: CurrencyCode): number | null {
+// Reads the ECB SDMX-JSON response. Returns null for anything unexpected so
+// the caller keeps the snapshot. Never returns a partial set.
+export function parseEcbRates(data: unknown): FxRateSet | null {
+  try {
+    const root = data as { dataSets: { series: Record<string, { observations: Record<string, number[]> }> }[]; structure: { dimensions: { series: { id: string; values: { id: string }[] }[]; observation: { values: { id: string }[] }[] } } };
+    const codes = root.structure.dimensions.series.find(d => d.id === 'CURRENCY')?.values.map(v => v.id) ?? [];
+    const day = root.structure.dimensions.observation[0]?.values.at(-1)?.id;
+    if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+    const rates: FxRates = { EUR: 1, USD: 0, GBP: 0, CAD: 0 };
+    for (const [key, series] of Object.entries(root.dataSets[0].series)) {
+      const code = codes[Number(key.split(':')[1])];
+      const value = Object.values(series.observations).at(-1)?.[0];
+      if (code && isCurrencyCode(code) && code !== 'EUR' && typeof value === 'number' && Number.isFinite(value) && value > 0) rates[code] = value;
+    }
+    if (!(rates.USD > 0 && rates.GBP > 0 && rates.CAD > 0)) return null;
+    const [y, m, d] = day.split('-').map(Number);
+    const label = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+    return { rates, date: label, live: true };
+  } catch { return null; }
+}
+
+export function convertCurrency(amount: number, from: string, to: CurrencyCode, rates: FxRates = FALLBACK_RATES): number | null {
   if (!Number.isFinite(amount) || amount < 0 || !isCurrencyCode(from)) return null;
-  return amount / ECB_EUR_REFERENCE_RATES[from] * ECB_EUR_REFERENCE_RATES[to];
+  return amount / rates[from] * rates[to];
 }
 
 export function formatCurrency(amount: number, currency: CurrencyCode): string {
