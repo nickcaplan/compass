@@ -68,8 +68,11 @@ CPM pricing and CTR delivery are separate:
 
 The guide's missing-volume default of 5,000 is for the mock only and must be
 visible as an assumption. No unlimited inventory, linear delivery or package
-availability should be invented. Keep source currencies until currency
-labels and any FX policy are agreed. A GBP brief does not make a USD rate GBP.
+availability should be invented. Ben's 24 November 2026 call set the first
+currency policy: show the selected market's currency and convert source costs
+on the fly. The current implementation fetches live ECB reference rates and falls back to
+a dated saved snapshot, named on screen. A GBP brief still does not make a USD rate GBP; it is
+converted and labelled, not relabelled.
 
 ## What must be decided before implementation
 
@@ -79,7 +82,8 @@ labels and any FX policy are agreed. A GBP brief does not make a USD rate GBP.
    including exclusions and what to show for missing mappings.
 3. Agree package/volume limits, multi-market deduplication, budget allocation,
    and whether under-spend is accepted.
-4. Agree currency labels and any exchange-rate source/update policy.
+4. Confirm THH's long-term exchange-rate source, and automate the daily
+   refresh of the fallback rates.
 5. Agree preferred-option scoring, including objective fit, audience fit,
    value and data quality. No preferred recommendation before this.
 6. Validate publisher availability, rates, volume and benchmarks before live use.
@@ -112,10 +116,10 @@ adding filters or modes. Keep mock status and overlapping-count caveats.
    from the UI change; keep the old saved-plan contract intact or migrate it
    explicitly.
 4. Connect the tactic-led results page, then verify market separation,
-   budget/package limits, KPI units, source currency, no preferred badge,
+   budget/package limits, KPI units, market-currency conversion, no preferred badge,
    keyboard flow, small screens, saved plans and PDF output.
 
-Not checked: real-world publisher inventory/pricing, live availability, FX,
+Not checked: real-world publisher inventory/pricing, live availability, THH's long-term FX source,
 source-PDF formatting exclusions, approved audience mapping/scoring, or the
 current production planner's pixels in this research pass. None is implied by
 this proposal, the mocked data, or passing structural checks.
