@@ -19,10 +19,9 @@ The guide says three tabs early on, then adds Tactic Descriptions in section 7;
 the actual companion workbook has four tabs. Use actual header names, not
 stale column references or the earlier filename.
 
-The current main planner still uses illustrative Publisher A/B/C plans and
-linear budget scaling in src/data.ts. The imported workbook only powers the
-separate data-review pages. This proposal would replace that output model,
-not claim it is already connected.
+The planner now uses the imported workbook-backed source-option result for
+new generated plans. The former illustrative Publisher A/B/C allocation
+builders remain only for existing saved plans and their PDF export.
 
 ## Proposed result page
 

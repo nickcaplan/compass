@@ -378,3 +378,15 @@ for this demo data. Keep existing explicit market choices. Persist the repair
 without changing IDs, dates, other answers, list order or deleted-plan metadata.
 An unsaved brief still requires a deliberate market selection. A storage failure
 must not be presented as a successful repair.
+## 2026-11-25 - Source options become the default planner result
+
+Nick asked on 25 November to remove the `source-options` URL flag and stop
+maintaining the old hard-coded planner as the way to generate new plans. The
+workbook-backed source-option result is now the default at the normal planner
+URL. The `?source-options=1` query is ignored rather than redirected, and new
+planner links should use `/#/planner`.
+
+New generated results use source rows only. The illustrative Publisher A/B/C
+builders and allocated-plan PDF export remain solely so existing saved plans
+can still be opened, edited and exported; removing those saved-plan surfaces
+is a separate product decision.

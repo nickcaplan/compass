@@ -38,7 +38,7 @@ test('nav is Planner, My plans and Sign in, with no Support link', { timeout: 60
       assert.equal(await page.$eval('nav', n => n.textContent.includes('Support')), false, 'Support must stay out of the nav');
       assert.equal(await page.$eval('.navlinks .themebtn', b => b.getAttribute('aria-label')), 'Switch to light mode');
       assert.equal(await page.$eval('.prodhome', b => b.textContent.trim()), 'COMPASS');
-      assert.equal(await page.evaluate(() => document.title), 'Compass - Plan a campaign');
+      assert.equal(await page.evaluate(() => document.title), 'Compass - Source options');
       assert.ok(await page.$eval('#f-name', e => e.scrollWidth <= e.clientWidth), 'campaign name placeholder must not clip');
       const disabledGenerate = await page.$eval('.gen', e => { const s = getComputedStyle(e); return { opacity: s.opacity, cursor: s.cursor, border: s.borderTopWidth, shadow: s.boxShadow }; });
       assert.equal(disabledGenerate.opacity, '1');

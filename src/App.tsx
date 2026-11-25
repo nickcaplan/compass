@@ -7,8 +7,6 @@ import { readPlanRoute, routeHash, usePlanNavigation } from './planRoutes';
 import type { Page, PlanRoute } from './planRoutes';
 import { lazy, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 const SourcePlannerResults = lazy(() => import('./SourcePlannerResults'));
-// Explicit local draft entry; normal planner and legacy saved plans are unchanged.
-const sourcePlannerDraft = new URLSearchParams(window.location.search).get('source-options') === '1';
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
 import EmailAuth from './EmailAuth';
@@ -789,11 +787,11 @@ export default function App() {
   const [storageRecovered, setStorageRecovered] = useState(() => plansRecovered);
   const [storageFailed] = useState(() => plansLoadFailed);
   const [savedEntry, setSavedEntry] = useState<{ id: string; mode: 'view' | 'edit' } | null>(null);
-  const canViewPlan = Boolean(((sourcePlannerDraft && !savedEntry) || (authEmail && profileComplete)) && !recoveringPassword);
+  const canViewPlan = Boolean((!savedEntry || (authEmail && profileComplete)) && !recoveringPassword);
 
   useEffect(() => {
     const titles: Record<Page, string> = {
-      planner: sourcePlannerDraft && !savedEntry ? 'Compass - Source options' : 'Compass - Plan a campaign',
+      planner: savedEntry ? 'Compass - Plan a campaign' : 'Compass - Source options',
       plans: 'Compass - My plans',
       signin: 'Compass - Sign in',
       pricing: 'Compass - Pricing',
@@ -1178,7 +1176,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count]);
 
-  const generationChecklist = sourcePlannerDraft && !savedEntry ? ['Reading exact market and objective source rows', 'Excluding rows that require review', 'Keeping whole source packages and their currencies', 'Grouping source options by tactic'] : checklistFor(viewBrief);
+  const generationChecklist = !savedEntry ? ['Reading exact market and objective source rows', 'Excluding rows that require review', 'Keeping whole source packages and their currencies', 'Grouping source options by tactic'] : checklistFor(viewBrief);
   const genSteps = generationChecklist.length;
 
   // Saving swaps the tall form for a compact read-only brief, shortening the
@@ -1437,7 +1435,7 @@ export default function App() {
   }
 
   function savePlan() {
-    if (sourcePlannerDraft && !savedEntry) return; // Never save legacy figures behind source results.
+    if (!savedEntry) return; // Saving source-option results is not built yet.
     if (!submittedBrief || nameTooLong) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
@@ -2234,7 +2232,7 @@ export default function App() {
                 <div className="t">{count} OF 6 ANSWERED</div>
               </div>
               <p className="keep">
-                {sourcePlannerDraft ? 'Keep going - market and objective source options appear after you generate. Audience matching and budget allocation are pending.' : 'Keep going - your recommended publishers, spend split and expected results appear here as soon as you generate.'}
+                {!savedEntry ? 'Keep going - market and objective source options appear after you generate. Audience matching and budget allocation are pending.' : 'Keep going - your recommended publishers, spend split and expected results appear here as soon as you generate.'}
               </p>
             </>
           )}
@@ -2275,7 +2273,7 @@ export default function App() {
           {stage === 'gate' && (
             <div className="planin">
               <div className="planhead">
-                <h2>{sourcePlannerDraft && !savedEntry ? 'Your source options are ready' : 'Your plan is ready'}</h2>
+                <h2>{!savedEntry ? 'Your source options are ready' : 'Your plan is ready'}</h2>
                 <DemoCap />
               </div>
               <p className="pagesub">
@@ -2293,13 +2291,13 @@ export default function App() {
               <div className="planhead">
                 <h2>{viewingSaved || editingSaved
                   ? 'Media plan'
-                  : sourcePlannerDraft ? 'Your media options' : 'Recommended plan'}</h2>
+                  : !savedEntry ? 'Your media options' : 'Recommended plan'}</h2>
                 {viewingSaved || editingSaved ? <div className="cap">{editingSaved ? 'SAVED PLAN - EDITING BRIEF' : 'SAVED PLAN - READ ONLY'}</div> : <DemoCap />}
               </div>
               {editsNotGenerated && (
-                <p className="stale-plan-note" role="status">Your brief has changed. These figures are from your previous plan. Regenerate your plan to include your latest changes before saving.</p>
+                <p className="stale-plan-note" role="status">{editingSaved ? 'Your brief has changed. These figures are from your previous plan. Regenerate your plan to include your latest changes before saving.' : 'Your brief has changed. These source options are from your previous brief. Generate again to include your latest changes.'}</p>
               )}
-              {sourcePlannerDraft && !viewingSaved && !editingSaved ? <><Suspense fallback={<p role="status">Loading source options...</p>}><SourcePlannerResults brief={viewBrief}/></Suspense><button type="button" className="ghost" onClick={reset}><IconPlus />Create another</button></> : <>
+              {!viewingSaved && !editingSaved ? <><Suspense fallback={<p role="status">Loading source options...</p>}><SourcePlannerResults brief={viewBrief}/></Suspense><button type="button" className="ghost" onClick={reset}><IconPlus />Create another</button></> : <>
               <div className="metrics">
                 {plan.metrics.map((m) => (
                   <div className="metric" key={m.k}>

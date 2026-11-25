@@ -51,15 +51,15 @@ test('example walkthrough generates automatically and respects interruptions', {
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.demohint');
     // The transient one-second cue may have completed on a busy runner.
-    await page.waitForFunction(()=>document.querySelector('.demohint')?.textContent.includes('Example filled') || document.querySelector('.planin .metrics'));
-    await page.waitForSelector('.planin .metrics');
-    assert.ok(await page.$('.secondary'));
+    await page.waitForFunction(()=>document.querySelector('.demohint')?.textContent.includes('Example filled') || document.querySelector('.planin .sp-results'));
+    await page.waitForSelector('.planin .sp-results');
+    assert.ok(await page.evaluate(()=>[...document.querySelectorAll('.planin button')].some(e=>e.textContent.trim()==='Create another')));
     // Replacing work still requires confirmation; cancelling does not run.
     await clickButton(page, 'Try another example');
     await page.waitForSelector('[role="alertdialog"]');
     await page.keyboard.press('Escape');
     await page.waitForSelector('[role="alertdialog"]', { hidden: true });
-    assert.ok(await page.$('.planin .metrics'));
+    assert.ok(await page.$('.planin .sp-results'));
     // Editing during the fill beat cancels automatic generation.
     await clickButton(page, 'Create another');
     await page.waitForSelector('[role=alertdialog]');
@@ -76,7 +76,7 @@ test('example walkthrough generates automatically and respects interruptions', {
       e.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await delay(1300);
-    assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.$('.planin .sp-results'), null);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
     assert.equal(await page.$eval('#f-name', e => e.value), 'My own draft');
     // Opening a date field cancels the example before a date is committed.
@@ -86,7 +86,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     await page.waitForSelector('.demohint');
     await page.focus('input[type=date]');
     await delay(1300);
-    assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.$('.planin .sp-results'), null);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
     // Replacement confirmation during the fill pause must stop that pause.
     await page.reload();
@@ -96,7 +96,7 @@ test('example walkthrough generates automatically and respects interruptions', {
     await clickButton(page, 'Try another example');
     await page.waitForSelector('[role="alertdialog"]');
     await delay(1300);
-    assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.$('.planin .sp-results'), null);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
     await page.keyboard.press('Escape');
     await page.waitForSelector('[role="alertdialog"]', {hidden:true});
@@ -105,7 +105,8 @@ test('example walkthrough generates automatically and respects interruptions', {
     await clickButton(page, 'Try another example');
     await page.waitForSelector('[role="alertdialog"]');
     await page.locator('.confirm .btn').click();
-    await page.waitForSelector('.planin .metrics');
+    await page.waitForSelector('[role="alertdialog"]', {hidden: true});
+    await page.waitForSelector('.planin .sp-results');
     await clickButton(page, 'Create another');
     await page.waitForSelector('[role=alertdialog]');
     await page.locator('.confirm .btn').click();
@@ -119,12 +120,12 @@ test('example walkthrough generates automatically and respects interruptions', {
     });
     await page.waitForSelector('[role="alertdialog"]');
     await delay(1300);
-    assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.$('.planin .sp-results'), null);
     await clickButton(page, 'Discard changes');
     await page.waitForSelector('.plancard');
     await clickButton(page, 'Planner');
     await delay(1300);
-    assert.equal(await page.$('.planin .metrics'), null);
+    assert.equal(await page.$('.planin .sp-results'), null);
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('h2')].some(e => e.textContent === 'Building your plan')), false);
   } finally { await browser?.close(); server.kill(); }
 });
