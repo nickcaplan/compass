@@ -65,8 +65,49 @@ export const MARKETS = [
   {id:'germany',label:'Germany'},
 ] as const;
 export type MarketId = typeof MARKETS[number]['id'];
+
+export type CurrencyCode = 'USD' | 'GBP' | 'EUR' | 'CAD';
+
+// Ben's 24 November 2026 call: show each market in its own currency and
+// convert on the fly. North America is USD for this demo slice; Canadian-dollar
+// source rows still need Ben's label fix before CAD can be treated separately.
+export const MARKET_CURRENCIES: Record<MarketId, CurrencyCode> = {
+  'north-america': 'USD',
+  uk: 'GBP',
+  france: 'EUR',
+  germany: 'EUR',
+};
+
+// ECB euro foreign exchange reference rates, 24 November 2026. These are a
+// visible temporary source until THH confirms its FX source and update policy.
+export const FX_RATE_SOURCE = 'European Central Bank reference rates';
+export const FX_RATE_DATE = '24 November 2026';
+const ECB_EUR_REFERENCE_RATES: Record<CurrencyCode, number> = {
+  EUR: 1,
+  USD: 1.0963,
+  GBP: 0.837,
+  CAD: 1.5707,
+};
+
 export function marketLabels(markets: readonly MarketId[] = []): string {
   return MARKETS.filter(m=>markets.includes(m.id)).map(m=>m.label).join(' + ');
+}
+
+export function isCurrencyCode(value: string): value is CurrencyCode {
+  return value in ECB_EUR_REFERENCE_RATES;
+}
+
+export function convertCurrency(amount: number, from: string, to: CurrencyCode): number | null {
+  if (!Number.isFinite(amount) || amount < 0 || !isCurrencyCode(from)) return null;
+  return amount / ECB_EUR_REFERENCE_RATES[from] * ECB_EUR_REFERENCE_RATES[to];
+}
+
+export function formatCurrency(amount: number, currency: CurrencyCode): string {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Math.round(amount));
 }
 
 export interface Brief {

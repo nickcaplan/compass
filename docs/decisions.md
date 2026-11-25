@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-11-25 - Source options show the market currency
+
+Ben's call with Nick on 24 November 2026 set the first FX policy: show the
+currency of the selected market and convert source costs on the fly. The
+source-options planner maps North America to USD, the UK to GBP, and France
+and Germany to EUR. The brief's budget remains a GBP input, so each market
+shows an equivalent budget in that market's currency without changing the
+stored brief or legacy saved plans.
+
+Workbook USD amounts are converted in the browser with European Central Bank
+reference rates from 24 November 2026, shown beside the result. THH still
+needs to confirm the long-term rate source, update cadence and how
+CAD-labelled rows inside the broad North America market should be labelled.
+These rates convert the mocked source costs for inspection; they do not make the
+underlying prices validated or client-ready.
+
 ## 2026-11-13 - KPIs come included with the objective
 
 Nick's feedback (13 November 2026): "you shouldn't be able to select KPIs -
