@@ -5,7 +5,7 @@ import { AUTH_DRAFT_KEY, AUTH_FLOW_KEY, accountDraftKey, emailDraftKey, googleDr
 import type { DraftBinding } from './authDraft';
 import { readPlanRoute, routeHash, usePlanNavigation } from './planRoutes';
 import type { Page, PlanRoute } from './planRoutes';
-import { lazy, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 const SourcePlannerResults = lazy(() => import('./SourcePlannerResults'));
 import type { User } from '@supabase/supabase-js';
 import { supabase, authController, googleOAuthCallback, emailAuthCallback, SUPABASE_URL, SUPABASE_PUBLIC_KEY } from './supabase';
@@ -198,7 +198,6 @@ import {
 
   OBJECTIVES,
   answeredCount,
-  buildPlan,
   campaignWeeks,
   checklistFor,
   demoBrief,
@@ -211,7 +210,6 @@ import {
   campaignEnded,
   weeksLabel,
   type Brief,
-  type Plan,
   type ObjectiveId,
 } from './data';
 
@@ -272,7 +270,7 @@ function ComingSoonButton({ compact = false }: { compact?: boolean }) {
 
 
 
-function DownloadReportButton({ brief, plan }: { brief: Brief; plan: Plan }) {
+function DownloadReportButton({ brief }: { brief: Brief }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const wrap = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -290,7 +288,7 @@ function DownloadReportButton({ brief, plan }: { brief: Brief; plan: Plan }) {
   async function download() {
     if (status === 'loading') return;
     setStatus('loading');
-    try { await downloadPlanPdf(brief, plan); setStatus('ready'); } catch { setStatus('error'); }
+    try { await downloadPlanPdf(brief); setStatus('ready'); } catch { setStatus('error'); }
   }
   return <span className="cs-wrap cs-compact pdf-report" ref={wrap}>
     <button type="button" className="ghost" aria-label="Download PDF" aria-busy={status === 'loading'} aria-disabled={status === 'loading'} onClick={download}><IconDownload /></button>
@@ -1120,10 +1118,6 @@ export default function App() {
   const now = new Date();
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-  const plan = useMemo(
-    () => (stage === 'plan' && submittedBrief ? buildPlan(submittedBrief) : null),
-    [stage, submittedBrief],
-  );
   const savedBriefReadOnly = savedEntry !== null && savedEntry.mode === 'view';
   const viewingSaved = savedBriefReadOnly && stage === 'plan';
   const editingSaved = savedEntry !== null && savedEntry.mode === 'edit';
@@ -1435,7 +1429,6 @@ export default function App() {
   }
 
   function savePlan() {
-    if (!savedEntry) return; // Saving source-option results is not built yet.
     if (!submittedBrief || nameTooLong) return;
     if (editingSaved && savedEntry) {
       const latest = loadPlans();
@@ -2117,7 +2110,7 @@ export default function App() {
                   <div className="cap">SAVED PLAN - READ ONLY</div>
                 </div>
                 <div className="saved-brief-tools" role="group" aria-label="Export and share plan">
-                  {plan && <DownloadReportButton key={savedEntry?.id} brief={brief} plan={plan} />}
+                  {stage === 'plan' && <DownloadReportButton key={savedEntry?.id} brief={brief} />}
                 <button type="button" className="ghost saved-plan-copy" onClick={() => copyPlanLink()} aria-label={linkCopy === 'copied' ? 'Plan link copied - only works in this browser' : 'Copy plan link - only works in this browser'}>
                   {linkCopy === 'copied' ? <IconCheck /> : <IconShare />}
                 </button>
@@ -2286,63 +2279,19 @@ export default function App() {
             </div>
           )}
 
-          {stage === 'plan' && canViewPlan && plan && (
+          {stage === 'plan' && canViewPlan && submittedBrief && (
             <div className="planin">
               <div className="planhead">
-                <h2>{viewingSaved || editingSaved
-                  ? 'Media plan'
-                  : !savedEntry ? 'Your media options' : 'Recommended plan'}</h2>
+                <h2>Your media options</h2>
                 {viewingSaved || editingSaved ? <div className="cap">{editingSaved ? 'SAVED PLAN - EDITING BRIEF' : 'SAVED PLAN - READ ONLY'}</div> : <DemoCap />}
               </div>
               {editsNotGenerated && (
                 <p className="stale-plan-note" role="status">{editingSaved ? 'Your brief has changed. These figures are from your previous plan. Regenerate your plan to include your latest changes before saving.' : 'Your brief has changed. These source options are from your previous brief. Generate again to include your latest changes.'}</p>
               )}
-              {!viewingSaved && !editingSaved ? <><Suspense fallback={<p role="status">Loading source options...</p>}><SourcePlannerResults brief={viewBrief}/></Suspense><button type="button" className="ghost" onClick={reset}><IconPlus />Create another</button></> : <>
-              <div className="metrics">
-                {plan.metrics.map((m) => (
-                  <div className="metric" key={m.k}>
-                    <div className="k">{m.k}</div>
-                    <div className={`v${m.hl ? ' hl' : ''}`}>{m.v}</div>
-                  </div>
-                ))}
-              </div>
-              {plan.items.map((item) => (
-                <div className="act" key={item.title}>
-                  <div className="who">
-                    <b>{item.title}</b>
-                    <span className="tag">{item.format}</span>
-                  </div>
-                  <div className="num">
-                    <div className="v">{gbp(item.spend)}</div>
-                    <div className="k">Spend</div>
-                  </div>
-                  {item.metrics.map((m) => (
-                    <div className="num" key={m.k}>
-                      <div className="v">{m.v}</div>
-                      <div className="k">{m.k}</div>
-                    </div>
-                  ))}
-                  <div className="why">
-                    <b>Why</b>
-                    {item.why}
-                  </div>
-                </div>
-              ))}
-              <div className="timing">
-                <div className="k">Suggested timing</div>
-                <div className="months">
-                  {plan.timing.map((t, ti) => (
-                    <div className="month" key={ti}>
-                      <b>{t.label}</b>
-                      <span>{t.activity}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <Suspense fallback={<p role="status">Loading source options...</p>}><SourcePlannerResults brief={viewBrief}/></Suspense>
               <div className="cta">
                 <div>
                   <b>A Hybrid House specialist can pick it up from here.</b>
-
                 </div>
                 <a className="btn specialist-link" href="https://thehybridhouse.co.uk/contact/" target="_blank" rel="noreferrer">
                   Speak to a specialist
@@ -2383,7 +2332,6 @@ export default function App() {
                   </>
                 )}
               </div>
-              </>}
             </div>
           )}
         </section>

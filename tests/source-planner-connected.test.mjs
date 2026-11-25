@@ -21,8 +21,8 @@ test('connected source slice respects brief, units, no-auth source access, no sa
  const p=await browser.newPage();await p.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await seedPlannerFixture(p);
  await p.goto(url);await p.waitForSelector('#f-name');assert.equal(await p.evaluate(()=>document.title),'Compass - Source options');await fill(p);await p.waitForSelector('.sp-option');
  assert.match(await p.$eval('.sp-results',e=>e.textContent),/Audience matching is pending/);
- assert.equal(await p.$('.planin .metrics'),null);assert.equal(await p.$('.planin .timing'),null);
- assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.planin button')].some(e=>/^Save/.test(e.textContent.trim()))),false);
+ assert.equal(await p.$('.planin .timing'),null);
+ assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.planin button')].some(e=>/^Save/.test(e.textContent.trim()))),true);
  assert.equal(await p.$$eval('.sp-option',els=>els.length),23);
  const text=await p.$eval('.sp-results',e=>e.textContent);assert.match(text,/No GBP conversion/);assert.doesNotMatch(text,/Publisher [ABC]/);assert.doesNotMatch(text,/MOCK DATA|DEMO DATA|mock data|not validated|not verified|demo volume|Illustrative source|Illustrative delivery/i);
  for(const width of [1280,1440,1920]){

@@ -9,7 +9,7 @@ const chromePath = process.platform === 'darwin'
   ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
   : '/usr/bin/google-chrome';
 
-test('source-option results do not offer PDF export yet', { timeout: 60000 }, async () => {
+test('new source-option results show no overflow and keep the coming-soon share control', { timeout: 60000 }, async () => {
   const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
   let browser;
   try {
@@ -34,8 +34,8 @@ test('source-option results do not offer PDF export yet', { timeout: 60000 }, as
       await page.waitForSelector('.demofill');
       await page.locator('.demofill').click();
       await page.waitForSelector('.sp-results');
-      assert.equal(await page.$('.cs-wrap'), null);
-      assert.match(await page.$eval('.sp-results', e => e.textContent), /PDF export for this new result format are not built yet/);
+      assert.ok(await page.$('.cs-wrap'));
+      assert.doesNotMatch(await page.$eval('.sp-results', e => e.textContent), /not built yet/);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await context.close();
     }

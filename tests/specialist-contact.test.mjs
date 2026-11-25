@@ -43,7 +43,7 @@ test('specialist link preserves presentation and opens only the verified contact
   await page.evaluate(({brief})=>{localStorage.setItem('compass-demo-seeded-v2','1');localStorage.setItem('compass-saved-plans',JSON.stringify([{id:'specialist-contact-test',savedAt:'2026-11-09T14:00:00Z',brief}]))},{brief});
   await page.reload();await page.waitForFunction(()=>location.hash==='#/planner');
   await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='My plans').click());await page.waitForSelector('.plancard');
-  await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Open plan').click());await page.waitForSelector('.metrics',{timeout:20000});
+  await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Open plan').click());await page.waitForSelector('.sp-results',{timeout:20000});
   assert.equal(await page.$eval('.cta b',e=>e.textContent),'A Hybrid House specialist can pick it up from here.');
   // The parked pricing CTA also uses a.btn. Probe that shared selector
   // without exposing a new route or changing its existing presentation.

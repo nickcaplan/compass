@@ -80,7 +80,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 90000 }, asyn
 
     await generateExample(page);
     assert.equal(await page.$('#f-gate-email'), null, 'source options do not require sign-in');
-    assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Save plan')), false);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Save plan')), true);
 
     await signInTestUser(page);
     await page.reload();
@@ -102,7 +102,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 90000 }, asyn
     await openSavedPlan(page);
     await page.waitForSelector('.bsum');
     assert.equal(await page.$eval('.cap', e => e.textContent), 'SAVED PLAN - READ ONLY');
-    assert.ok(await page.$('.metrics'), 'existing saved plans keep the allocated-plan view');
+    assert.ok(await page.waitForSelector('.sp-results'), 'existing saved plans open as source options');
 
     await t.test('saved plan still warns after its form is edited', async () => {
       await clickButton(page, 'Edit plan');
@@ -134,7 +134,7 @@ test('saved-plan replacement protects unsaved answers', { timeout: 90000 }, asyn
       await page.locator('#f-name').fill('Saved spring rename');
       await page.waitForFunction(() => !document.querySelector('.gen')?.disabled);
       await page.evaluate(() => document.querySelector('.gen').click());
-      await page.waitForSelector('.planin .metrics', { timeout: 40000 });
+      await page.waitForSelector('.planin .sp-results', { timeout: 40000 });
       assert.equal(await page.$eval('.cta b', e => e.textContent), 'A Hybrid House specialist can pick it up from here.');
       await clickButton(page, 'Save changes');
       await page.waitForFunction(() => document.querySelector('.secondary .saved')?.textContent.trim() === 'Saved');
@@ -393,9 +393,9 @@ test('signed-out visitor sees source options immediately and keeps the filled br
     await clickButton(page, 'Fill it in for me');
     await page.waitForSelector('.sp-results');
     assert.equal(await page.$('#f-gate-email'), null);
-    assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Save plan')), false);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Save plan')), true);
     assert.notEqual(await page.$eval('#f-name', e => e.value), '');
-    assert.match(await page.$eval('.sp-results', e => e.textContent), /Saving and PDF export for this new result format are not built yet/);
+    assert.doesNotMatch(await page.$eval('.sp-results', e => e.textContent), /not built yet/);
     await clickButton(page, 'Create another');
     await page.waitForSelector('[role="alertdialog"]');
     await page.locator('.confirm .btn').click();

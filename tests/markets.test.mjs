@@ -36,7 +36,7 @@ test('market options preserve shared pill styling and multi-selection without re
   await p.locator('[aria-labelledby=g-market] button').click();
   await click('Regenerate my plan');await p.waitForFunction(text=>document.querySelector('.sp-results')?.textContent!==text,{},sourceText);await p.waitForSelector('.sp-market>header h3',{timeout:20000});
   assert.deepEqual(await p.$$eval('.sp-market>header h3',es=>es.map(e=>e.textContent)),['North America','UK']);
-  assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.planin button')].some(e=>/^Save/.test(e.textContent.trim()))),false);
+  assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.planin button')].some(e=>/^Save/.test(e.textContent.trim()))),true);
   await click('My plans');await p.waitForSelector('[role=alertdialog]');await p.locator('.confirm .btn').click();await p.waitForSelector('.pc-actions');await click('Open plan');await p.waitForSelector('.bsum');assert.match(await p.$eval('.bsum',e=>e.textContent),/Market/);
   // Legacy saved records now receive the chosen UK default, but removing it in Edit still blocks regeneration.
   await p.evaluate(()=>{const plans=JSON.parse(localStorage.getItem('compass-saved-plans'));delete plans[0].brief.markets;localStorage.setItem('compass-saved-plans',JSON.stringify(plans))});

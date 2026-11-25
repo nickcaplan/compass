@@ -49,13 +49,13 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         await page.locator('#f-signin-email').fill(user.email);
         await page.locator('#f-signin-password').fill('fixture-password-only');if(await page.$('input[id$="-confirm-password"]'))await page.locator('input[id$="-confirm-password"]').fill('fixture-password-only');
         await page.locator('form[aria-label="Email account"] .gen').click();
-        await page.waitForSelector(mode === 'missing' ? '.sp-results' : '.metrics');
+        await page.waitForSelector(mode === 'missing' ? '.sp-results' : '.sp-results');
         // Inspect the immediate synchronous stash, before any navigation or reload
         // can repair latestPlanner via the layout effect.
         const entry = await page.evaluate(() => window.snapshotWrites[0].savedEntry);
         assert.deepEqual(entry, mode === 'missing' ? null : { id: 'saved-entry', mode });
         await page.reload();
-        await page.waitForSelector(mode === 'missing' ? '.sp-results' : '.metrics');
+        await page.waitForSelector(mode === 'missing' ? '.sp-results' : '.sp-results');
         if (mode === 'view') {
           await page.waitForSelector('.bsum');
           assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Save plan')), false);
@@ -65,7 +65,7 @@ test('email login immediately preserves a restored saved-plan link in its accoun
         }
         if(mode!=='missing'){
           assert.match(new URL(page.url()).hash,mode==='edit'?/saved-entry\/edit$/:/saved-entry$/);
-          await page.reload();await page.waitForSelector('.metrics');
+          await page.reload();await page.waitForSelector('.sp-results');
           if(mode==='edit'){
             await page.waitForFunction(()=>document.querySelector('#f-name')?.value==='Restored saved campaign');
             await page.locator('.navlinks button:nth-child(2)').click();await page.waitForSelector('[role=alertdialog]');

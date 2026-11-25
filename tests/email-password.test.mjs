@@ -37,7 +37,7 @@ test('email signup, failed signin, successful signin, and recovery stay in the a
    // Recovery is a new callback, not another sent email or real provider call.
    await p.evaluate(async d=>{(await window.fixtureAuth.removeItem('sb-ctailpmcoyvaplwbwskf-auth-token'));localStorage.setItem('compass-auth-draft:email:test@example.com',d)},resetDraft);
    await (await installAuthFixture(p), fixtureNavigation(p,url+'?demo=1#access_token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjQwMDAwMDAwMDB9.fake-signature&refresh_token=test-refresh&expires_in=3600&token_type=bearer&type=recovery'));
-   await p.waitForFunction(()=>document.querySelector('.email-heading')?.textContent==='Choose a new password');assert.equal(await p.$('.metrics'),null);assert.equal(await p.$('.ssolist'),null);
+   await p.waitForFunction(()=>document.querySelector('.email-heading')?.textContent==='Choose a new password');assert.equal(await p.$('.sp-results'),null);assert.equal(await p.$('.ssolist'),null);
    if(process.env.SCREENSHOT_DIR)await p.screenshot({path:process.env.SCREENSHOT_DIR+'/controller-recovery-'+width+'.png',fullPage:true});
    const cancelGap=await p.evaluate(()=>document.querySelector('.cancel-recovery').getBoundingClientRect().top-document.querySelector('form[aria-label="Email account"] .gen').getBoundingClientRect().bottom);assert.ok(cancelGap>=10,'Recovery cancel has at least 10px separation');
    // Cancelling recovery exits to the normal form without a reload.

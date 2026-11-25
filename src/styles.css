@@ -473,7 +473,7 @@ input.ctl{color:var(--text)}
 
 /* Allow the three full-size objective pills to share the desktop row. */
 @media(min-width:981px){.layout{grid-template-columns:416px minmax(0,1fr)}}
-@media(min-width:1200px){.layout:not(.brief-first)>.form{position:sticky;top:20px}}
+@media(min-width:1200px){.layout:not(.brief-first)>.form{position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}}
 
 /* The collapse must also win over the 981px form-column rule, so it stays last. */
 @media(max-width:1199px){.layout{grid-template-columns:1fr}.form{position:static}}

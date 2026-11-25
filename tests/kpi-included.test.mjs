@@ -89,7 +89,7 @@ test('KPIs come included with the objective and cannot be picked by hand',{timeo
  // Regenerate and save: the stored plan picks up the included KPI set.
  await p3.locator('.pc-actions .pc-open').click();await p3.waitForSelector('.bsum');
  await p3.locator('.saved-plan-edit').click();await p3.waitForSelector('#f-name');
- await p3.locator('.gen').click();await p3.waitForSelector('.metrics',{timeout:20000});
+ await p3.locator('.gen').click();await p3.waitForSelector('.sp-results',{timeout:20000});
  await p3.locator('.secondary .lead').click();await p3.waitForSelector('.bsum');
  assert.deepEqual(await p3.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.kpis),['Reach','Impressions','Audience penetration','Video views','Brand exposure']);
  await c3.close();

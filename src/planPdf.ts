@@ -1,10 +1,12 @@
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
-import type { Brief, Plan } from './data';
-import { OBJECTIVES, campaignWeeks, formatDate, gbp, marketLabels, weeksLabel } from './data';
+import type { Brief } from './data';
+import { MARKETS, OBJECTIVES, campaignWeeks, formatDate, gbp, marketLabels, weeksLabel } from './data';
+import inventory from './inventory.mock.json';
+import { sourceOptions } from './plannerSourceOptions';
 
 
 // Plain text only: campaign names are never interpreted as HTML or PDF markup.
-export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: { brandLogo: string; brandMark: string }): TDocumentDefinitions {
+export function planReport(brief: Brief, { brandLogo, brandMark }: { brandLogo: string; brandMark: string }): TDocumentDefinitions {
   const weeks = campaignWeeks(brief.start, brief.end);
   const rows = [
     ['Campaign name', brief.name || 'Untitled campaign'],
@@ -21,26 +23,26 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
       { text, style: 'section', margin: [8, 1, 0, 0] },
     ], margin: [0, 15, 0, 10], unbreakable: true,
   });
-  const metricRows: Content[] = [];
-  for (let i = 0; i < plan.metrics.length; i += 3) {
-    metricRows.push({ columns: plan.metrics.slice(i, i + 3).map(metric => ({
-      width: 163, stack: [
-        { canvas: [{ type: 'rect', x: 0, y: 0, w: 147, h: 3, color: '#ffcc00' }] },
-        { table: { widths: [147], body: [[{ stack: [
-          { text: metric.k, fontSize: 8, margin: [0, 0, 0, 6] },
-          { text: metric.v, font: 'Poppins', bold: true, fontSize: 17 },
-        ], fillColor: '#f4f3ef', margin: [5, 8, 5, 9] }]] }, layout: 'noBorders' },
-      ],
-    })), columnGap: 11, margin: [0, 0, 0, 10], unbreakable: true });
-  }
-  const allocated = plan.items.reduce((total, item) => total + item.spend, 0);
-  const exactShares = plan.items.map(item => allocated > 0 ? 100 * item.spend / allocated : 0);
-  const spendShares = exactShares.map(Math.floor);
-  const remaining = allocated > 0 ? 100 - spendShares.reduce((sum, share) => sum + share, 0) : 0;
-  exactShares.map((value, index) => ({ index, fraction: value - Math.floor(value) }))
-    .sort((a, b) => b.fraction - a.fraction || a.index - b.index)
-    .slice(0, remaining).forEach(({ index }) => { spendShares[index] += 1; });
-
+  const objectiveLabels = brief.objectives.map(id => OBJECTIVES.find(o => o.id === id)?.label).filter((l): l is string => Boolean(l));
+  const marketBlocks: Content[] = MARKETS.filter(m => brief.markets?.includes(m.id)).flatMap((m, mi): Content[] => {
+    const result = sourceOptions(inventory.records, m.label, objectiveLabels);
+    return [
+      { ...heading(m.label, String(mi + 2).padStart(2, '0')) as object, ...(mi === 0 ? { pageBreak: 'before' } : {}) } as Content,
+      { text: `${result.optionCount} source options. ${result.heldCount} source rows held for review.`, fontSize: 8, margin: [0, 0, 0, 8] },
+      ...(result.optionCount ? [] : [{ text: 'No source options ready in this slice. This is a data limitation, not proof that no publishers exist.', margin: [0, 0, 0, 8] } as Content]),
+      ...result.groups.flatMap((g): Content[] => [
+        { text: g.tactic, style: 'publisher' },
+        ...g.options.map((row): Content => ({ unbreakable: true, margin: [0, 0, 0, 9], stack: [
+          { text: `${row.publisher} - ${row.product}`, bold: true },
+          { text: [
+            { text: 'Expected delivery: ' }, { text: `${row.expected_result.toLocaleString('en-GB', { maximumFractionDigits: 2 })} ${row.forecast_unit}`, bold: true },
+            { text: `    Source cost (${row.declared_currency || 'unspecified currency'}): ` }, { text: Math.round(row.estimated_source_cost).toLocaleString('en-GB'), bold: true },
+            { text: '    Primary KPI: ' }, { text: row.primary_kpi, bold: true },
+          ], fontSize: 9 },
+        ] })),
+      ]),
+    ];
+  });
 
   return {
     pageSize: 'A4', pageMargins: [42, 108, 42, 60],
@@ -51,36 +53,20 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
       ]] }, layout: 'noBorders' },
       { canvas: [{ type: 'line', x1: 0, y1: 1, x2: 64, y2: 1, lineWidth: 2, lineColor: '#ffcc00' }] },
     ] }),
-    info: { title: brief.name || 'Untitled campaign', author: 'The Hybrid House', subject: 'Compass saved media plan' },
+    info: { title: brief.name || 'Untitled campaign', author: 'The Hybrid House', subject: 'Compass saved source options' },
     defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25, color: '#000000' },
     footer: (page, pages) => ({ margin: [42, 10, 42, 0], stack: [
       { text: `Compass by The Hybrid House  |  ${page} / ${pages}`, fontSize: 8, color: '#000000' },
     ] }),
     content: [
       { text: brief.name || 'Untitled campaign', font: 'Poppins', fontSize: 19, bold: true, margin: [0, 0, 0, 6] },
-      { text: 'SAVED MEDIA PLAN', fontSize: 8, characterSpacing: 1.3, color: '#000000', margin: [0, 0, 0, 16] },
+      { text: 'SAVED SOURCE OPTIONS', fontSize: 8, characterSpacing: 1.3, color: '#000000', margin: [0, 0, 0, 16] },
       heading('Your brief', '01'),
       { table: { widths: [92, 292], body: rows.map(([label, value]) => [
         { text: label, color: '#000000' }, { text: value, bold: true },
       ]) }, layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 0, paddingRight: () => 10, paddingTop: () => 3.5, paddingBottom: () => 3.5 } },
-      heading('Key figures', '02'),
-      ...metricRows,
-      { ...heading('Publisher allocations', '03') as object, pageBreak: 'before' } as Content,
-      ...plan.items.map((item, index): Content => ({ unbreakable: true, stack: [
-        { text: item.title, style: 'publisher' },
-        { text: item.format, fontSize: 8, color: '#000000', margin: [0, 0, 0, 7] },
-        { canvas: [
-          { type: 'rect', x: 0, y: 0, w: 180, h: 5, color: '#f0efeb' },
-          { type: 'rect', x: 0, y: 0, w: allocated > 0 ? 180 * item.spend / allocated : 0, h: 5, color: '#ffcc00' },
-        ], margin: [0, 0, 0, 5] },
-        { text: `${spendShares[index]}% of allocated spend`, fontSize: 8, margin: [0, 0, 0, 7] },
-        { text: [{ text: 'Spend: ', color: '#000000' }, { text: gbp(item.spend), bold: true }, ...item.metrics.flatMap(metric => [{ text: `    ${metric.k}: `, color: '#000000' }, { text: metric.v, bold: true }])], margin: [0, 0, 0, 7] },
-        { text: [{ text: 'Why: ', bold: true }, { text: item.why }], margin: [0, 0, 0, 18] },
-      ] })),
-      { unbreakable: true, stack: [
-        heading('Suggested timing', '04'),
-        ...plan.timing.map((timing): Content => ({ columns: [{ text: timing.label, width: 94, bold: true, color: '#000000' }, { text: timing.activity, width: '*' }], columnGap: 12, margin: [0, 0, 0, 8] })),
-      ] },
+      { text: 'Source options. No allocated plan. Options are unranked and nothing is preferred or allocated. Costs keep the currency declared in the source workbook.', fontSize: 9, margin: [0, 12, 0, 0] },
+      ...marketBlocks,
     ],
     styles: {
       section: { font: 'Poppins', fontSize: 13, bold: true, margin: [0, 13, 0, 8] },
@@ -89,14 +75,14 @@ export function planReport(brief: Brief, plan: Plan, { brandLogo, brandMark }: {
   };
 }
 
-export async function downloadPlanPdf(brief: Brief, plan: Plan): Promise<void> {
+export async function downloadPlanPdf(brief: Brief): Promise<void> {
   // Large renderer/font chunks load only on demand, never on initial page load.
   const [{ default: pdfMake }, { default: fonts }, { brandFont }, brand] = await Promise.all([
     import('pdfmake/build/pdfmake'), import('pdfmake/build/vfs_fonts'), import('./reportFont'), import('./reportBrand'),
   ]);
   pdfMake.addVirtualFileSystem({ ...fonts, 'Poppins-Bold.ttf': brandFont });
   pdfMake.addFonts({ Poppins: { normal: 'Poppins-Bold.ttf', bold: 'Poppins-Bold.ttf', italics: 'Poppins-Bold.ttf', bolditalics: 'Poppins-Bold.ttf' } });
-  const blob = await pdfMake.createPdf(planReport(brief, plan, brand)).getBlob();
+  const blob = await pdfMake.createPdf(planReport(brief, brand)).getBlob();
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
