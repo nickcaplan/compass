@@ -25,7 +25,7 @@ test('live ECB rates are used when available and the dated snapshot when not',{t
     if(mode==='live')return r.respond({status:200,headers,contentType:'application/json',body:JSON.stringify(ecbSample)});
     if(mode==='fail')return r.abort();
     return r.respond({status:200,headers,contentType:'application/json',body:'{"unexpected":true}'})});
-   await p.goto(url+'?source-options=1');await fill(p,['North America']);
+   await p.goto(url);await fill(p,['North America']);
    if(mode==='live')await p.waitForFunction(()=>/25 November 2026/.test(document.querySelector('.sp-results').textContent));
    else await new Promise(r=>setTimeout(r,800));
    const text=await p.$eval('.sp-results',e=>e.textContent);

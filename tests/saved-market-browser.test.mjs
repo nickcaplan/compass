@@ -29,7 +29,7 @@ test('legacy/custom/expired saved markets persist and appear in cards, Open and 
    await p.reload();await p.waitForSelector('.plancard');assert.deepEqual(await read(),plans);
    await p.locator('.pc-actions .pc-open').click();await p.waitForSelector('.bsum');assert.match(await p.$eval('.bsum',e=>e.textContent),/MarketUK/);
    await p.locator('.saved-plan-edit').click();await p.waitForSelector('#f-name');assert.deepEqual(await p.$$eval('[aria-labelledby=g-market] [aria-pressed=true]',es=>es.map(e=>e.textContent)),['UK']);
-   await p.locator('#f-budget').fill('60000');await p.locator('.gen').click();await p.waitForSelector('.metrics');await p.waitForSelector('.ghost.lead:not(:disabled)');await p.locator('.ghost.lead').click();await p.waitForSelector('.bsum');
+   await p.locator('#f-budget').fill('60000');await p.locator('.gen').click();await p.waitForSelector('.sp-results');await p.waitForSelector('.ghost.lead:not(:disabled)');await p.locator('.ghost.lead').click();await p.waitForSelector('.bsum');
    assert.equal((await read()).find(p=>p.id==='custom').brief.budget,60000);assert.deepEqual((await read()).find(p=>p.id==='custom').brief.markets,['uk']);
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await c.close();
   }

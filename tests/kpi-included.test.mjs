@@ -65,9 +65,9 @@ test('KPIs come included with the objective and cannot be picked by hand',{timeo
  assert.equal(await p2.$eval('.gen',e=>e.disabled),false);
  await p2.locator('.gen').click();
  await p2.waitForSelector('.check .row');
- assert.ok(await p2.$$eval('.check .row',rs=>rs.some(r=>/your performance KPIs/.test(r.textContent))),'checklist should name the objective KPIs');
+ assert.ok(await p2.$$eval('.check .row',rs=>rs.some(r=>/exact market and objective source rows/.test(r.textContent))),'checklist should name the source rows');
  assert.equal(await p2.$eval('.plan .chips .chip:nth-child(2)',e=>e.textContent),'Lead generation + Cost per lead + Website visits + Qualified traffic + Downloads + Form completions + Enquiries');
- await p2.waitForSelector('.metrics',{timeout:20000});
+ await p2.waitForSelector('.sp-results',{timeout:20000});assert.match(await p2.$eval('.sp-results',e=>e.textContent),/No source options ready|source options/);
  await c2.close();
 
  // An older saved plan with a hand-picked KPI subset still opens read-only
@@ -89,7 +89,7 @@ test('KPIs come included with the objective and cannot be picked by hand',{timeo
  // Regenerate and save: the stored plan picks up the included KPI set.
  await p3.locator('.pc-actions .pc-open').click();await p3.waitForSelector('.bsum');
  await p3.locator('.saved-plan-edit').click();await p3.waitForSelector('#f-name');
- await p3.locator('.gen').click();await p3.waitForSelector('.metrics',{timeout:20000});
+ await p3.locator('.gen').click();await p3.waitForSelector('.sp-results',{timeout:20000});
  await p3.locator('.secondary .lead').click();await p3.waitForSelector('.bsum');
  assert.deepEqual(await p3.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.kpis),['Reach','Impressions','Audience penetration','Video views','Brand exposure']);
  await c3.close();

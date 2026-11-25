@@ -45,6 +45,6 @@ export default function SourcePlannerResults({brief}:{brief:Brief}) {
    </article>)}</div></section>)}
    <aside className="sp-review"><strong>{result.heldCount} source rows require review</strong><p>Unclassified tactics, missing rules and other data flags are excluded. Passing structural checks does not establish suitability.</p><a href="/data-review/issues">See data problems</a></aside>
   </section>})}
-  <p className="sp-note">Source options are unranked. Nothing is preferred and no budget is spent or allocated. Saving and PDF export for this new result format are not built yet. Existing saved plans remain unchanged in the current planner.</p>
+  <p className="sp-note">Source options are unranked. Nothing is preferred and no budget is spent or allocated.</p>
  </section>;
 }

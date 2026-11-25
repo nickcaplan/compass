@@ -5,6 +5,8 @@ import {stripVTControlCharacters} from 'node:util';
 import test from 'node:test';
 import puppeteer from 'puppeteer-core';
 
+const brief={name:'Specialist contact saved plan',objectives:['awareness'],markets:['uk'],kpis:['Reach','Impressions'],audiences:['Scientist / Researcher'],budget:150000,start:'2026-12-09',end:'2027-03-02'};
+
 test('specialist link preserves presentation and opens only the verified contact destination', {timeout:60000}, async()=>{
  const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0'],{stdio:['ignore','pipe','pipe']});let browser;
  try{
@@ -38,7 +40,10 @@ test('specialist link preserves presentation and opens only the verified contact
   });
   await page.goto((process.env.HOSTED_URL??local)+'?demo=1');await page.waitForSelector('.demofill');
   const unrelated=await page.$$eval('a[href^="mailto:"]',as=>as.map(a=>a.href));
-  await page.locator('.demofill').click();await page.waitForSelector('.planin',{timeout:20000});
+  await page.evaluate(({brief})=>{localStorage.setItem('compass-demo-seeded-v2','1');localStorage.setItem('compass-saved-plans',JSON.stringify([{id:'specialist-contact-test',savedAt:'2026-11-09T14:00:00Z',brief}]))},{brief});
+  await page.reload();await page.waitForFunction(()=>location.hash==='#/planner');
+  await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='My plans').click());await page.waitForSelector('.plancard');
+  await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Open plan').click());await page.waitForSelector('.sp-results',{timeout:20000});
   assert.equal(await page.$eval('.cta b',e=>e.textContent),'A Hybrid House specialist can pick it up from here.');
   // The parked pricing CTA also uses a.btn. Probe that shared selector
   // without exposing a new route or changing its existing presentation.

@@ -4,7 +4,7 @@ import test from 'node:test';
 import {spawn} from 'node:child_process';
 import puppeteer from 'puppeteer-core';
 import {stripVTControlCharacters} from 'node:util';
-test('desktop brief fills its canvas, keeps Objective above KPI and completes manual generation and save', {timeout:90000}, async()=>{
+test('desktop brief fills its canvas, keeps Objective above KPI and completes manual source-option generation', {timeout:90000}, async()=>{
  const server=process.env.HOSTED_URL?null:spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','0']);let browser;
  try{
  const url=process.env.HOSTED_URL||await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(Error('Preview startup timeout')),10000);server.once('error',reject);server.stdout.on('data',d=>{output+=stripVTControlCharacters(d.toString());const m=output.match(/http:\/\/127\.0\.0\.1:\d+\//);if(m){clearTimeout(timer);resolve(m[0])}})});
@@ -25,7 +25,7 @@ test('desktop brief fills its canvas, keeps Objective above KPI and completes ma
  await p.type('#f-name','Manual campaign');await p.locator('[aria-labelledby=g-market] button').click();if(width>=1200){await p.waitForSelector('.brief-progress',{visible:true});assert.match(await p.$eval('.brief-progress',e=>e.textContent),/1 OF 6 ANSWERED/);assert.equal(await p.$eval('.gen',e=>e.disabled),true)}await p.locator('[aria-labelledby=g-objective] button').click();await p.waitForSelector('[aria-labelledby=g-kpi] .pill');await p.locator('[aria-labelledby=g-audience] button').click();await p.locator('#f-budget').fill('50000');
  const date=days=>{const d=new Date();d.setDate(d.getDate()+days);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
  for(const[label,value]of[['Start date',date(30)],['End date',date(90)]])await p.$eval(`input[aria-label="${label}"]`,(e,v)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}))},value);
- if(width>=1200)assert.match(await p.$eval('.brief-progress',e=>e.textContent),/6 OF 6 ANSWERED/);assert.equal(await p.$eval('.gen',e=>e.disabled),false);await p.locator('.gen').click();await p.waitForSelector('.metrics');assert.equal(await p.$eval('.plan',e=>e.offsetWidth>0),true);await p.locator('.secondary .lead').click();await p.waitForSelector('.bsum');assert.match(await p.$eval('h1',e=>e.textContent),/Manual campaign/);assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans'))[0].brief.name),'Manual campaign');await p.reload();await p.waitForSelector('.bsum');assert.match(await p.$eval('h1',e=>e.textContent),/Manual campaign/);await c.close();
+ if(width>=1200)assert.match(await p.$eval('.brief-progress',e=>e.textContent),/6 OF 6 ANSWERED/);assert.equal(await p.$eval('.gen',e=>e.disabled),false);await p.locator('.gen').click();await p.waitForSelector('.sp-option');assert.equal(await p.$eval('.plan',e=>e.offsetWidth>0),true);assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.planin button')].some(e=>/^Save/.test(e.textContent.trim()))),true);assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('compass-saved-plans')||'[]').some(plan=>plan.brief.name==='Manual campaign')),false);await c.close();
  }
  }finally{await browser?.close();server?.kill()}
 });
