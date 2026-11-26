@@ -57,7 +57,7 @@ test('planning cards stay readable and inputs remain usable', { timeout: 60000 }
       await page.focus('#f-name');
       assert.equal(await page.$eval('#f-name',e=>getComputedStyle(e).outlineStyle),'solid');
       await page.$eval('.themebtn',e=>e.click());
-      assert.equal(await page.$$eval('.planning-step',es=>es.every(e=>getComputedStyle(e).borderTopStyle==='solid')),true);
+      assert.equal(await page.$$eval('.planning-step',es=>es.every(e=>getComputedStyle(e).borderTopStyle==='none')),true,'brief groups are not boxed');
       assert.equal(await page.$$eval('.planning-step input.ctl',es=>es.every(e=>getComputedStyle(e).borderTopStyle==='solid')),true);
       await context.close();
     }
