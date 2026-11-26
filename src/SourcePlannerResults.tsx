@@ -1,5 +1,6 @@
-import {useEffect, useState} from 'react';
-import {ECB_RATES_URL, FALLBACK_RATE_SET, FX_RATE_SOURCE, MARKETS, MARKET_CURRENCIES, OBJECTIVES, convertCurrency, formatCurrency, isCurrencyCode, parseEcbRates} from './data';
+import {useSyncExternalStore} from 'react';
+import {getRates, subscribeRates} from './fxRates';
+import {FX_RATE_SOURCE, MARKETS, MARKET_CURRENCIES, OBJECTIVES, convertCurrency, formatCurrency, isCurrencyCode} from './data';
 import type {Brief, FxRateSet} from './data';
 import inventory from './inventory.mock.json';
 import {sourceOptions} from './plannerSourceOptions';
@@ -8,20 +9,8 @@ const number=(n:number)=>n.toLocaleString('en-GB',{maximumFractionDigits:2});
 const sourceAssumption=(value:string)=>value.replace(/Existing demo volume \(not validated\)/gi,'Existing source volume');
 
 
-// One live fetch per page load, shared by every result view. Any failure or a
-// slow answer keeps the dated fallback snapshot, which is named on screen.
-let liveRates:Promise<FxRateSet|null>|null=null;
-function fetchLiveRates():Promise<FxRateSet|null>{
- liveRates??=(async()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),4000);
-  try{const response=await fetch(ECB_RATES_URL,{signal:controller.signal,headers:{Accept:'application/json'}});return response.ok?parseEcbRates(await response.json()):null}
-  catch{return null}finally{window.clearTimeout(timer)}})();
- return liveRates;
-}
-function useRates():FxRateSet{
- const [rates,setRates]=useState<FxRateSet>(FALLBACK_RATE_SET);
- useEffect(()=>{let current=true;void fetchLiveRates().then(live=>{if(current&&live)setRates(live)});return()=>{current=false}},[]);
- return rates;
-}
+// Rates come from the background load started when Compass opened (see fxRates.ts).
+const useRates=():FxRateSet=>useSyncExternalStore(subscribeRates,getRates,getRates);
 
 /** Source inspection only. Never construct a legacy allocated Plan from these rows. */
 export default function SourcePlannerResults({brief}:{brief:Brief}) {

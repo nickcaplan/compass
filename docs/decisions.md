@@ -9,12 +9,15 @@ UK to GBP, and France and Germany to EUR. The brief's budget remains a GBP input
 shows an equivalent budget in that market's currency without changing the
 stored brief or legacy saved plans.
 
-Workbook amounts are converted in the browser. Compass fetches the latest
-European Central Bank reference rates directly from the ECB data API on page
-load (free, no key, one request) and shows the rate date beside the result. If
-the fetch fails, is slow (4 seconds) or returns anything unexpected, it uses the
-saved rates from 24 November 2026 and says so on screen. Nick wants the saved
-fallback rates refreshed daily from go-live; that refresh is not automated yet.
+Workbook amounts are converted in the browser. Nick (26 November): fetch the
+rates in the background when Compass first loads, not on demand each time.
+Compass asks the European Central Bank data API once at startup (free, no key,
+one request, 15 second limit), keeps a good answer in browser storage for a day
+so later visits start with it and do not ask again, and shows the rate date
+beside the result. Until the rates arrive, or if the fetch fails or returns
+anything unexpected, it uses the saved rates from 24 November 2026 and says so
+on screen. Nick wants the saved fallback rates refreshed daily from go-live;
+that refresh is not automated yet.
 These rates convert the mocked source costs for inspection; they do not make the
 underlying prices validated or client-ready.
 
