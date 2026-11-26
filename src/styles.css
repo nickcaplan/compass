@@ -110,7 +110,7 @@ h1{font-family:Poppins,sans-serif;font-weight:800;font-size:52px;line-height:1.0
 .form .hint{font-size:12.5px;margin-bottom:20px}
 .field{margin-bottom:15px}
 /* Each planning step has its own boundary without changing the input order. */
-.planning-step{padding:14px;border:1px solid var(--line-mid);border-radius:12px;background:var(--bg)}
+.planning-step{padding:0;border:0;border-radius:0;background:none}
 label{display:block;font-family:Roboto,system-ui,sans-serif;font-size:10.5px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;margin-bottom:7px}
 .ctl{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:500;font-family:Roboto,system-ui,sans-serif}
 select.ctl,input.ctl{appearance:none;-webkit-appearance:none;border:0;outline:none}
@@ -211,7 +211,7 @@ footer{padding:24px 0 40px;font-size:11.5px;font-family:Roboto,system-ui,sans-se
 body{background:var(--bg);color:var(--text);background-image:radial-gradient(1000px 480px at 85% -10%,rgba(254,202,10,.10),transparent 60%);background-repeat:no-repeat}
 .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--card-shadow)}
 .eyebrow{color:var(--accent-ink)}
-h1 em{font-style:normal;color:var(--accent-ink)}
+h1 em{font-style:normal;color:inherit}
 .sub,.hint{color:var(--muted)}
 .navlinks{color:var(--muted)}
 .signin{border:1px solid var(--line-strong);color:var(--text);background:var(--tint)}
@@ -467,8 +467,6 @@ input.ctl{color:var(--text)}
 .cta a.specialist-link,.cta a.specialist-link:hover{color:var(--on-accent);text-decoration:none}
 /* Inset inputs need their own edge inside matching-background planning cards. */
 .planning-step input.ctl{border:1px solid var(--line-mid)}
-/* Reclaim nested whitespace, not label size, so natural audience pills pair. */
-.planning-step{padding:8px}
 @media(max-width:980px){.wrap{padding:0 12px}.form{padding:20px 8px}}
 
 /* Allow the three full-size objective pills to share the desktop row. */
@@ -625,7 +623,7 @@ input.ctl{color:var(--text)}
 /* Desktop proposal: complete the brief before introducing the result column. */
 @media(min-width:1200px){
  .layout.brief-first{display:block;max-width:none;margin-inline:0}
- .brief-first>.form{position:static;display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;padding:26px}
+ .brief-first>.form{position:static;display:grid;grid-template-columns:1fr 1fr;gap:22px 28px;padding:26px}
  .brief-first>.form>h2,.brief-first>.form>.hint,.brief-first>.form>.demofill,.brief-first>.form>.demohint,.brief-first>.form>.gen{grid-column:1/-1}
  .brief-first>.form>h2{margin-bottom:0}
  .brief-first>.form>.hint{margin-bottom:0}
