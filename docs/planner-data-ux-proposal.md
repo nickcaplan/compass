@@ -69,7 +69,7 @@ The guide's missing-volume default of 5,000 is for the mock only and must be
 visible as an assumption. No unlimited inventory, linear delivery or package
 availability should be invented. Ben's 24 November 2026 call set the first
 currency policy: show the selected market's currency and convert source costs
-on the fly. The current implementation fetches live ECB reference rates and falls back to
+on the fly. The current implementation fetches live ECB reference rates once in the background at startup and falls back to
 a dated saved snapshot, named on screen. A GBP brief still does not make a USD rate GBP; it is
 converted and labelled, not relabelled.
 
