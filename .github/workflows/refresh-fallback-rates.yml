@@ -1,0 +1,55 @@
+name: Refresh fallback rates
+
+# The planner shows live ECB rates and only uses the saved snapshot in
+# src/data.ts when the live fetch fails. This keeps the snapshot current: when
+# the ECB has published a newer day, open (or update) one pull request with the
+# new rates. It never merges anything; a person merges it like any other PR.
+on:
+  schedule:
+    - cron: '37 17 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: refresh-fallback-rates
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Fetch the latest ECB rates
+        id: refresh
+        run: echo "result=$(node scripts/refresh-fallback-rates.mjs 2>/dev/null | tail -n 1)" >> "$GITHUB_OUTPUT"
+      - name: Open or update the pull request
+        if: steps.refresh.outputs.result == 'changed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          date_label=$(sed -n "s/^export const FX_RATE_DATE = '\(.*\)';/\1/p" src/data.ts)
+          branch=automation/fallback-rates
+          git config user.name nickcaplan
+          git config user.email 19152137+nickcaplan@users.noreply.github.com
+          git checkout -B "$branch"
+          git add src/data.ts
+          git commit -m "Refresh saved fallback exchange rates ($date_label)"
+          git push --force origin "$branch"
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --base main --head "$branch" \
+              --title "Refresh saved fallback exchange rates" \
+              --body "Updates the saved fallback ECB rates in src/data.ts to $date_label. Only used when the live ECB fetch fails. Data-only change made by the scheduled workflow. Not merged automatically."
+          fi
+          # Pushes made with the workflow token do not start the normal checks,
+          # so start the required CI run on this branch by hand.
+          gh workflow run ci.yml --ref "$branch"

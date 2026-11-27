@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import puppeteer from 'puppeteer-core';
+import {readFileSync} from 'node:fs';
+const fallbackDate=/FX_RATE_DATE = '([^']+)'/.exec(readFileSync('src/data.ts','utf8'))[1];
 import {handleFixtureAuthRequest, seedPlannerFixture} from './planner-auth-fixture.mjs';
 const chrome='/usr/bin/google-chrome';
-const ecbSample={dataSets:[{series:{'0:0:0:0:0':{observations:{'0':[1.5707,0,0,null,null]}},'0:1:0:0:0':{observations:{'0':[0.837,0,0,null,null]}},'0:2:0:0:0':{observations:{'0':[1.1,0,0,null,null]}}}}],structure:{dimensions:{series:[{id:'FREQ',values:[{id:'D'}]},{id:'CURRENCY',values:[{id:'CAD'},{id:'GBP'},{id:'USD'}]}],observation:[{id:'TIME_PERIOD',values:[{id:'2026-11-25'}]}]}}};
+const ecbSample={dataSets:[{series:{'0:0:0:0:0':{observations:{'0':[1.5707,0,0,null,null]}},'0:1:0:0:0':{observations:{'0':[0.837,0,0,null,null]}},'0:2:0:0:0':{observations:{'0':[1.1,0,0,null,null]}}}}],structure:{dimensions:{series:[{id:'FREQ',values:[{id:'D'}]},{id:'CURRENCY',values:[{id:'CAD'},{id:'GBP'},{id:'USD'}]}],observation:[{id:'TIME_PERIOD',values:[{id:'2030-01-15'}]}]}}};
 async function fill(page,markets){
  await page.waitForSelector('#f-name');await page.locator('#f-name').fill('Currency campaign');
  for(const text of [...markets,'Consideration','Laboratory Manager']) await page.evaluate(text=>[...document.querySelectorAll('button')].find(e=>e.textContent.trim()===text).click(),text);
@@ -27,18 +29,18 @@ test('live ECB rates are used when available and the dated snapshot when not',{t
     if(mode==='fail')return r.abort();
     return r.respond({status:200,headers,contentType:'application/json',body:'{"unexpected":true}'})});
    await p.goto(url);await fill(p,['North America']);
-   if(mode==='live'||mode==='slow')await p.waitForFunction(()=>/25 November 2026/.test(document.querySelector('.sp-results').textContent));
+   if(mode==='live'||mode==='slow')await p.waitForFunction(()=>/15 January 2030/.test(document.querySelector('.sp-results').textContent));
    else await new Promise(r=>setTimeout(r,800));
    const text=await p.$eval('.sp-results',e=>e.textContent);
    assert.match(text,/North America[\s\S]*· CAD/);assert.match(text,/Estimated cost · CAD/);
-   if(mode==='live'||mode==='slow'){assert.match(text,/European Central Bank reference rates, 25 November 2026\./);assert.doesNotMatch(text,/unavailable/)}
-   else{assert.match(text,/24 November 2026 \(live rates unavailable, using the saved rates from this date\)/)}
+   if(mode==='live'||mode==='slow'){assert.match(text,/European Central Bank reference rates, 15 January 2030\./);assert.doesNotMatch(text,/unavailable/)}
+   else{assert.match(text,new RegExp(fallbackDate+' \\(live rates unavailable, using the saved rates from this date\\)'))}
    assert.equal(ecbCalls,1,'one ECB request per page load, started in the background at startup');
    if(mode==='live'){
     await p.locator('button.gen').click();await new Promise(r=>setTimeout(r,500));
     assert.equal(ecbCalls,1,'regenerating results does not fetch again');
     await p.reload();await fill(p,['North America']);
-    assert.match(await p.$eval('.sp-results',e=>e.textContent),/25 November 2026\./,'a later visit starts with the stored live rates');
+    assert.match(await p.$eval('.sp-results',e=>e.textContent),/15 January 2030\./,'a later visit starts with the stored live rates');
     assert.equal(ecbCalls,1,'a later visit within a day does not ask the ECB again');
    }
    assert.ok(await p.$$eval('.sp-option',els=>els.length===0||els.every(e=>/CA\$[\d,]+/.test(e.textContent))),'costs show CAD');

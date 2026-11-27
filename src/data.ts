@@ -78,25 +78,27 @@ export const MARKET_CURRENCIES: Record<MarketId, CurrencyCode> = {
   germany: 'EUR',
 };
 
-// Fallback snapshot of the ECB euro foreign exchange reference rates. The
-// app fetches the live rates from the ECB and only uses this snapshot when
-// that fetch fails or times out. The daily refresh of this snapshot is
-// planned, not yet automated.
 export function marketLabels(markets: readonly MarketId[] = []): string {
   return MARKETS.filter(m=>markets.includes(m.id)).map(m=>m.label).join(' + ');
 }
 
 export const FX_RATE_SOURCE = 'European Central Bank reference rates';
-export const FX_RATE_DATE = '24 November 2026';
 export const ECB_RATES_URL = 'https://data-api.ecb.europa.eu/service/data/EXR/D.USD+GBP+CAD.EUR.SP00.A?lastNObservations=1&format=jsondata';
 export type FxRates = Record<CurrencyCode, number>;
 export interface FxRateSet { rates: FxRates; date: string; live: boolean }
+// Fallback snapshot of the ECB euro foreign exchange reference rates. The app
+// fetches the live rates from the ECB and only uses this snapshot when that
+// fetch fails or times out. A scheduled workflow refreshes this block daily
+// (scripts/refresh-fallback-rates.mjs); do not edit it by hand.
+// fallback-rates:start
+export const FX_RATE_DATE = '26 November 2026';
 export const FALLBACK_RATES: FxRates = {
   EUR: 1,
-  USD: 1.0963,
-  GBP: 0.837,
-  CAD: 1.5707,
+  USD: 1.0975,
+  GBP: 0.83755,
+  CAD: 1.5617,
 };
+// fallback-rates:end
 export const FALLBACK_RATE_SET: FxRateSet = { rates: FALLBACK_RATES, date: FX_RATE_DATE, live: false };
 
 export function isCurrencyCode(value: string): value is CurrencyCode {

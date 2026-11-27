@@ -16,8 +16,14 @@ one request, 15 second limit), keeps a good answer in browser storage for a day
 so later visits start with it and do not ask again, and shows the rate date
 beside the result. Until the rates arrive, or if the fetch fails or returns
 anything unexpected, it uses the saved rates from 24 November 2026 and says so
-on screen. Nick wants the saved fallback rates refreshed daily from go-live;
-that refresh is not automated yet.
+on screen. Nick wants the saved fallback rates refreshed daily from go-live
+(Nick, 27 November: "Build it"). A scheduled GitHub Actions workflow
+(`refresh-fallback-rates.yml`, weekdays after the ECB publishes) runs
+`scripts/refresh-fallback-rates.mjs`, which rewrites only the marked fallback
+block in `src/data.ts` when the ECB has a newer day. It refuses an older day, a
+missing currency, or a rate that moves more than 10% in one step. The workflow
+opens one data-only pull request and starts the required CI run on it; it never
+merges, so a person merges each one.
 These rates convert the mocked source costs for inspection; they do not make the
 underlying prices validated or client-ready.
 

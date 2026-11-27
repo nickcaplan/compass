@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
 import puppeteer from 'puppeteer-core';
+import {readFileSync} from 'node:fs';
+const gbpPerEur=Number(/GBP: ([\d.]+),/.exec(readFileSync('src/data.ts','utf8'))[1]);
+const fallbackDate=/FX_RATE_DATE = '([^']+)'/.exec(readFileSync('src/data.ts','utf8'))[1];
 import {handleFixtureAuthRequest, seedPlannerFixture} from './planner-auth-fixture.mjs';
 const chrome='/usr/bin/google-chrome';
 async function fill(page, objective='Consideration', markets=['UK']) {
@@ -24,7 +27,7 @@ test('connected source slice respects brief, units, no-auth source access, no sa
  assert.equal(await p.$('.planin .timing'),null);
  assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.planin button')].some(e=>/^Save/.test(e.textContent.trim()))),true);
  assert.equal(await p.$$eval('.sp-option',els=>els.length),23);
- const text=await p.$eval('.sp-results',e=>e.textContent);assert.match(text,/European Central Bank reference rates, 24 November 2026 \(live rates unavailable/);assert.equal(await p.$eval('.sp-market',e=>e.getAttribute('aria-label')),'UK source options');assert.match(text,/· GBP/);assert.doesNotMatch(text,/Publisher [ABC]/);assert.doesNotMatch(text,/MOCK DATA|DEMO DATA|mock data|not validated|not verified|demo volume|Illustrative source|Illustrative delivery/i);
+ const text=await p.$eval('.sp-results',e=>e.textContent);assert.match(text,new RegExp('European Central Bank reference rates, '+fallbackDate+' \\(live rates unavailable'));assert.equal(await p.$eval('.sp-market',e=>e.getAttribute('aria-label')),'UK source options');assert.match(text,/· GBP/);assert.doesNotMatch(text,/Publisher [ABC]/);assert.doesNotMatch(text,/MOCK DATA|DEMO DATA|mock data|not validated|not verified|demo volume|Illustrative source|Illustrative delivery/i);
  for(const width of [1280,1440,1920]){
   await p.setViewport({width,height:900});await p.evaluate(()=>new Promise(requestAnimationFrame));
   assert.equal(await p.$eval('.form',e=>getComputedStyle(e).position),'sticky');
@@ -35,7 +38,7 @@ test('connected source slice respects brief, units, no-auth source access, no sa
   assert.ok(rowHeights.every(delta=>delta<=1),`cards align by row at ${width}px`);
  }
  const before=await p.evaluate(()=>localStorage.getItem('compass-plans'));await p.reload();await p.waitForSelector('#f-name');assert.equal(await p.evaluate(()=>localStorage.getItem('compass-plans')),before);
- for(const [objective,markets,count] of [['Performance',['UK'],0],['Consideration',['UK','France'],46]]){await p.goto(url);await fill(p,objective,markets);await p.waitForSelector('.sp-results');assert.equal(await p.$$eval('.sp-option',e=>e.length),count);if(!count)assert.match(await p.$eval('.sp-results',e=>e.textContent),/No source options ready/);if(count===46){assert.deepEqual(await p.$$eval('.sp-market>header p',es=>es.map(e=>e.textContent.split('·').at(-1).trim())),['GBP','EUR']);assert.match(await p.$eval('.sp-results',e=>e.textContent),/Budget equivalent: €71,685/);}}
+ for(const [objective,markets,count] of [['Performance',['UK'],0],['Consideration',['UK','France'],46]]){await p.goto(url);await fill(p,objective,markets);await p.waitForSelector('.sp-results');assert.equal(await p.$$eval('.sp-option',e=>e.length),count);if(!count)assert.match(await p.$eval('.sp-results',e=>e.textContent),/No source options ready/);if(count===46){assert.deepEqual(await p.$$eval('.sp-market>header p',es=>es.map(e=>e.textContent.split('·').at(-1).trim())),['GBP','EUR']);assert.match(await p.$eval('.sp-results',e=>e.textContent),new RegExp('Budget equivalent: €'+Math.round(60000/gbpPerEur).toLocaleString('en-GB')));}}
  await p.goto(url);await fill(p);await p.waitForSelector('.sp-option');await p.locator('.sp-option summary').click();assert.equal(await p.$eval('.sp-option details',e=>e.open),true);assert.match(await p.$eval('.sp-option details',e=>e.textContent),/Existing source volume/);assert.match(await p.$eval('.sp-option details',e=>e.textContent),/Source cost: US\$[\d,]+ converted to GBP on the fly/);await p.locator('.sp-option summary').click();assert.equal(await p.$eval('.sp-option details',e=>e.open),false);
  const dir=process.env.SOURCE_SCREENSHOT_DIR;
  if(dir){await mkdir(dir,{recursive:true});for(const [mode,q] of [['after','']]){await p.goto(url+q);await fill(p);await p.waitForSelector('.sp-option');for(const width of [320,390,768,1440])for(const theme of ['dark','light'])for(const scale of [100,200]){await p.setViewport({width,height:960});await p.evaluate(({theme,scale})=>{document.documentElement.dataset.theme=theme;for(const el of document.querySelectorAll('.sp-results *')){if(el.dataset.originalStyle!==undefined){el.setAttribute('style',el.dataset.originalStyle);delete el.dataset.originalStyle;}}if(scale===200){const sizes=[...document.querySelectorAll('.sp-results *')].map(el=>[el,parseFloat(getComputedStyle(el).fontSize)]);for(const [el,size] of sizes){el.dataset.originalStyle=el.getAttribute('style')||'';el.style.fontSize=(size*2)+'px';}}},{theme,scale});await p.evaluate(()=>document.querySelector('.planhead').scrollIntoView());assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${mode}/${width}/${theme}/${scale}`);if((width===390||width===1440)&&scale===100&&theme==='dark')await p.screenshot({path:`${dir}/${mode}-${width}.png`});if(mode==='after'&&width===320&&theme==='light'&&scale===200)await p.screenshot({path:`${dir}/after-320-light-200.png`});} }}

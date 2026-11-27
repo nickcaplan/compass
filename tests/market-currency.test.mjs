@@ -20,12 +20,13 @@ test('each planner market has one display currency',()=>{
 
 test('ECB reference rates convert between workbook and market currencies',()=>{
  assert.equal(FX_RATE_SOURCE,'European Central Bank reference rates');
- assert.equal(FX_RATE_DATE,'24 November 2026');
+ assert.match(FX_RATE_DATE,/^\d{1,2} [A-Z][a-z]+ \d{4}$/);
  const close=(actual,expected)=>assert.ok(Math.abs(actual-expected)<0.000001,`${actual} != ${expected}`);
- close(convertCurrency(109.63,'USD','EUR'),100);
- close(convertCurrency(109.63,'USD','GBP'),83.7);
- close(convertCurrency(83.7,'GBP','EUR'),100);
- close(convertCurrency(109.63,'USD','CAD'),157.07);
+ const r=FALLBACK_RATE_SET.rates;
+ close(convertCurrency(r.USD,'USD','EUR'),1);
+ close(convertCurrency(r.USD,'USD','GBP'),r.GBP);
+ close(convertCurrency(r.GBP,'GBP','EUR'),1);
+ close(convertCurrency(r.USD,'USD','CAD'),r.CAD);
  assert.equal(convertCurrency(100,'USD','USD'),100);
  assert.equal(convertCurrency(0,'USD','GBP'),0);
  assert.equal(convertCurrency(Number.NaN,'USD','GBP'),null);
@@ -64,5 +65,5 @@ test('live ECB response parses to a dated rate set and anything else is rejected
 test('fallback rate set is the dated snapshot and is not marked live',()=>{
  assert.equal(FALLBACK_RATE_SET.live,false);
  assert.equal(FALLBACK_RATE_SET.date,FX_RATE_DATE);
- assert.equal(convertCurrency(109.63,'USD','EUR',FALLBACK_RATE_SET.rates)>99.99999,true);
+ assert.equal(Math.abs(convertCurrency(FALLBACK_RATE_SET.rates.USD,'USD','EUR',FALLBACK_RATE_SET.rates)-1)<1e-9,true);
 });
