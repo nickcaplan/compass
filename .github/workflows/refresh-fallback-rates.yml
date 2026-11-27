@@ -30,7 +30,10 @@ jobs:
           node-version: 22
       - name: Fetch the latest ECB rates
         id: refresh
-        run: echo "result=$(node scripts/refresh-fallback-rates.mjs 2>/dev/null | tail -n 1)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          node scripts/refresh-fallback-rates.mjs > "$RUNNER_TEMP/result.txt"
+          echo "result=$(tail -n 1 "$RUNNER_TEMP/result.txt")" >> "$GITHUB_OUTPUT"
       - name: Open or update the pull request
         if: steps.refresh.outputs.result == 'changed'
         env:
