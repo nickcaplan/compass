@@ -205,7 +205,7 @@ import {
   endBeforeStart,
   formatDate,
   monthsRangeLabel,
-  gbp,
+  usd,
   startNotFuture,
   campaignEnded,
   weeksLabel,
@@ -1832,7 +1832,7 @@ export default function App() {
   if (viewBrief.markets?.length) chips.push({label:`Market: ${marketLabels(viewBrief.markets)}`});
   if (viewBrief.kpis.length) chips.push({ label: `KPI: ${viewBrief.kpis.join(' + ')}` });
   if (viewBrief.audiences.length) chips.push({ label: `Audience: ${viewBrief.audiences.join(' + ')}` });
-  if (viewBrief.budget) chips.push({ label: `Budget: ${gbp(viewBrief.budget)}` });
+  if (viewBrief.budget) chips.push({ label: `Budget: ${usd(viewBrief.budget)}` });
   if (viewWeeks > 0) chips.push({ label: weeksLabel(viewWeeks) });
   if (stage === 'filling' && count < 6) chips.push({ label: 'choosing...', soft: true });
 
@@ -1937,8 +1937,8 @@ export default function App() {
               className="ctl"
               type="text"
               inputMode="numeric"
-              placeholder="e.g. £100,000"
-              value={budgetText ? `£${budgetText}` : ''}
+              placeholder="e.g. $100,000"
+              value={budgetText ? `$${budgetText}` : ''}
               onChange={(e) => onBudget(e.target.value)}
             />
           </div>
@@ -2122,7 +2122,7 @@ export default function App() {
                 <div><div className="k">Market</div><div className="v">{marketLabels(brief.markets) || 'Not specified'}</div></div>
                 <div><div className="k">KPI</div><div className="v">{brief.kpis.join(' + ') || '-'}</div></div>
                 <div><div className="k">Audience</div><div className="v">{brief.audiences.join(' + ') || '-'}</div></div>
-                <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? gbp(brief.budget) : '-'}</div></div>
+                <div><div className="k">Budget</div><div className="v">{brief.budget !== null ? usd(brief.budget) : '-'}</div></div>
                 <div><div className="k">Campaign dates</div><div className="v">{weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'}</div></div>
               </div>
               {canViewPlan && !campaignEnded(brief.end) && <div className="saved-plan-actions" role="group" aria-label="Saved plan actions">
@@ -2241,7 +2241,7 @@ export default function App() {
                 <span className="chip">{viewBrief.kpis.join(' + ')}</span>
                 <span className="chip">Market: {marketLabels(viewBrief.markets) || 'Not specified'}</span>
                 <span className="chip">{viewBrief.audiences.join(' + ')}</span>
-                <span className="chip">{gbp(viewBrief.budget ?? 0)}</span>
+                <span className="chip">{usd(viewBrief.budget ?? 0)}</span>
                 <span className="chip">{weeksLabel(viewWeeks)}</span>
               </div>
               <div className="check">
@@ -2430,7 +2430,7 @@ export default function App() {
                         {sp.brief.audiences.length > 0 && (
                           <span className="chip">{sp.brief.audiences.join(' + ')}</span>
                         )}
-                        {sp.brief.budget !== null && <span className="chip">{gbp(sp.brief.budget)}</span>}
+                        {sp.brief.budget !== null && <span className="chip">{usd(sp.brief.budget)}</span>}
                         {wks > 0 && <span className="chip">{weeksLabel(wks)}</span>}
                       </div>
                       <div className="pc-meta">

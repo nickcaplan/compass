@@ -5,5 +5,5 @@ export function browseInventory(data, {markets=[], objectives=[]}={}) {
 }
 export function buildRecommendation(data, brief) {
   // Fail closed. These missing decisions must not quietly broaden the shortlist.
-  return {status:'needs_business_rules',groups:[],blockers:['Confirm publisher currencies and GBP rates','Approve mappings for the six Compass audiences','Validate availability and complete package/budget rules'],reviewGroups:browseInventory(data,brief)};
+  return {status:'needs_business_rules',groups:[],blockers:['Confirm publisher rates in USD','Approve mappings for the six Compass audiences','Validate availability and complete package/budget rules'],reviewGroups:browseInventory(data,brief)};
 }

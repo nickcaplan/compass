@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
-import { startRateFetch } from './fxRates';
 
 const root = createRoot(document.getElementById('root')!);
 // The auth SDK reads browser storage while importing. Keep startup failures
@@ -10,7 +9,7 @@ const entry = /^\/data-review\/issues\/?$/.test(location.pathname)
   ? import('./InventoryIssues.tsx')
   : /^\/data-review\/?$/.test(location.pathname) || new URLSearchParams(location.search).get('inventory') === '1'
   ? import('./InventoryReview.tsx')
-  : (startRateFetch(), import('./App.tsx'));
+  : import('./App.tsx');
 void entry.then(({ default: App }) => {
   root.render(<StrictMode><App /></StrictMode>);
 }).catch(() => {

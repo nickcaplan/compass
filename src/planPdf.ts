@@ -1,6 +1,6 @@
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { Brief } from './data';
-import { MARKETS, OBJECTIVES, campaignWeeks, formatDate, gbp, marketLabels, weeksLabel } from './data';
+import { MARKETS, OBJECTIVES, campaignWeeks, formatDate, usd, marketLabels, weeksLabel } from './data';
 import inventory from './inventory.mock.json';
 import { sourceOptions } from './plannerSourceOptions';
 
@@ -14,7 +14,7 @@ export function planReport(brief: Brief, { brandLogo, brandMark }: { brandLogo: 
     ['Market', marketLabels(brief.markets) || 'Not specified'],
     ['KPI', brief.kpis.join(' + ') || '-'],
     ['Audience', brief.audiences.join(' + ') || '-'],
-    ['Budget', brief.budget !== null ? gbp(brief.budget) : '-'],
+    ['Budget', brief.budget !== null ? usd(brief.budget) : '-'],
     ['Campaign dates', weeks > 0 ? `${formatDate(brief.start)} to ${formatDate(brief.end)} - ${weeksLabel(weeks)}` : '-'],
   ];
   const heading = (text: string, number: string): Content => ({
@@ -36,7 +36,7 @@ export function planReport(brief: Brief, { brandLogo, brandMark }: { brandLogo: 
           { text: `${row.publisher} - ${row.product}`, bold: true },
           { text: [
             { text: 'Expected delivery: ' }, { text: `${row.expected_result.toLocaleString('en-GB', { maximumFractionDigits: 2 })} ${row.forecast_unit}`, bold: true },
-            { text: `    Source cost (${row.declared_currency || 'unspecified currency'}): ` }, { text: Math.round(row.estimated_source_cost).toLocaleString('en-GB'), bold: true },
+            { text: `    Cost (USD): ` }, { text: Math.round(row.estimated_source_cost).toLocaleString('en-GB'), bold: true },
             { text: '    Primary KPI: ' }, { text: row.primary_kpi, bold: true },
           ], fontSize: 9 },
         ] })),
@@ -65,7 +65,7 @@ export function planReport(brief: Brief, { brandLogo, brandMark }: { brandLogo: 
       { table: { widths: [92, 292], body: rows.map(([label, value]) => [
         { text: label, color: '#000000' }, { text: value, bold: true },
       ]) }, layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 0, paddingRight: () => 10, paddingTop: () => 3.5, paddingBottom: () => 3.5 } },
-      { text: 'Source options. No allocated plan. Options are unranked and nothing is preferred or allocated. Costs keep the currency declared in the source workbook.', fontSize: 9, margin: [0, 12, 0, 0] },
+      { text: 'Source options. No allocated plan. Options are unranked and nothing is preferred or allocated. All costs are in US dollars.', fontSize: 9, margin: [0, 12, 0, 0] },
       ...marketBlocks,
     ],
     styles: {

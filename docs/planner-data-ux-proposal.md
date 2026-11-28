@@ -67,11 +67,7 @@ CPM pricing and CTR delivery are separate:
 
 The guide's missing-volume default of 5,000 is for the mock only and must be
 visible as an assumption. No unlimited inventory, linear delivery or package
-availability should be invented. Ben's 24 November 2026 call set the first
-currency policy: show the selected market's currency and convert source costs
-on the fly. The current implementation fetches live ECB reference rates once in the background at startup and falls back to
-a dated saved snapshot, named on screen. A GBP brief still does not make a USD rate GBP; it is
-converted and labelled, not relabelled.
+availability should be invented. Currency (28 November 2026): US dollars only, no conversion, as set by Ben's 27 November amends and confirmed by Nick. See decisions.md.
 
 ## What must be decided before implementation
 
@@ -115,7 +111,7 @@ adding filters or modes. Keep mock status and overlapping-count caveats.
    from the UI change; keep the old saved-plan contract intact or migrate it
    explicitly.
 4. Connect the tactic-led results page, then verify market separation,
-   budget/package limits, KPI units, market-currency conversion, no preferred badge,
+   budget/package limits, KPI units, USD-only display, no preferred badge,
    keyboard flow, small screens, saved plans and PDF output.
 
 Not checked: real-world publisher inventory/pricing, live availability, THH's long-term FX source,

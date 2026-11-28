@@ -66,75 +66,14 @@ export const MARKETS = [
 ] as const;
 export type MarketId = typeof MARKETS[number]['id'];
 
-export type CurrencyCode = 'USD' | 'GBP' | 'EUR' | 'CAD';
-
-// Ben's 24 November 2026 call: show each market in its own currency and
-// convert on the fly. Nick confirmed CAD for Canada (25 November), so the
-// North America market is shown in Canadian dollars.
-export const MARKET_CURRENCIES: Record<MarketId, CurrencyCode> = {
-  'north-america': 'CAD',
-  uk: 'GBP',
-  france: 'EUR',
-  germany: 'EUR',
-};
-
-// Fallback snapshot of the ECB euro foreign exchange reference rates. The
-// app fetches the live rates from the ECB and only uses this snapshot when
-// that fetch fails or times out. The daily refresh of this snapshot is
-// planned, not yet automated.
+// Money is shown in US dollars only (Ben's 27 November amends, confirmed by
+// Nick on 28 November). Every workbook price is USD. There is no conversion.
 export function marketLabels(markets: readonly MarketId[] = []): string {
   return MARKETS.filter(m=>markets.includes(m.id)).map(m=>m.label).join(' + ');
 }
 
-export const FX_RATE_SOURCE = 'European Central Bank reference rates';
-export const FX_RATE_DATE = '24 November 2026';
-export const ECB_RATES_URL = 'https://data-api.ecb.europa.eu/service/data/EXR/D.USD+GBP+CAD.EUR.SP00.A?lastNObservations=1&format=jsondata';
-export type FxRates = Record<CurrencyCode, number>;
-export interface FxRateSet { rates: FxRates; date: string; live: boolean }
-export const FALLBACK_RATES: FxRates = {
-  EUR: 1,
-  USD: 1.0963,
-  GBP: 0.837,
-  CAD: 1.5707,
-};
-export const FALLBACK_RATE_SET: FxRateSet = { rates: FALLBACK_RATES, date: FX_RATE_DATE, live: false };
-
-export function isCurrencyCode(value: string): value is CurrencyCode {
-  return value in FALLBACK_RATES;
-}
-
-// Reads the ECB SDMX-JSON response. Returns null for anything unexpected so
-// the caller keeps the snapshot. Never returns a partial set.
-export function parseEcbRates(data: unknown): FxRateSet | null {
-  try {
-    const root = data as { dataSets: { series: Record<string, { observations: Record<string, number[]> }> }[]; structure: { dimensions: { series: { id: string; values: { id: string }[] }[]; observation: { values: { id: string }[] }[] } } };
-    const codes = root.structure.dimensions.series.find(d => d.id === 'CURRENCY')?.values.map(v => v.id) ?? [];
-    const day = root.structure.dimensions.observation[0]?.values.at(-1)?.id;
-    if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
-    const rates: FxRates = { EUR: 1, USD: 0, GBP: 0, CAD: 0 };
-    for (const [key, series] of Object.entries(root.dataSets[0].series)) {
-      const code = codes[Number(key.split(':')[1])];
-      const value = Object.values(series.observations).at(-1)?.[0];
-      if (code && isCurrencyCode(code) && code !== 'EUR' && typeof value === 'number' && Number.isFinite(value) && value > 0) rates[code] = value;
-    }
-    if (!(rates.USD > 0 && rates.GBP > 0 && rates.CAD > 0)) return null;
-    const [y, m, d] = day.split('-').map(Number);
-    const label = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-    return { rates, date: label, live: true };
-  } catch { return null; }
-}
-
-export function convertCurrency(amount: number, from: string, to: CurrencyCode, rates: FxRates = FALLBACK_RATES): number | null {
-  if (!Number.isFinite(amount) || amount < 0 || !isCurrencyCode(from)) return null;
-  return amount / rates[from] * rates[to];
-}
-
-export function formatCurrency(amount: number, currency: CurrencyCode): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(Math.round(amount));
+export function usd(n: number): string {
+  return `$${Math.round(n).toLocaleString('en-US')}`;
 }
 
 export interface Brief {
@@ -308,9 +247,6 @@ export function monthsRangeLabel(start: string, end: string): string {
   return sm === em ? sm : `${sm} - ${em}`;
 }
 
-export function gbp(n: number): string {
-  return `£${Math.round(n).toLocaleString('en-GB')}`;
-}
 
 export function num(n: number): string {
   return Math.round(n).toLocaleString('en-GB');
@@ -337,7 +273,7 @@ export interface Plan {
 }
 
 // Reference scenario from the brief: Performance / Lead generation /
-// Procurement / Manager + Director / GBP 100,000 / 12 weeks.
+// Procurement / Manager + Director / USD 100,000 / 12 weeks.
 // Other budgets scale linearly from this reference, purely for illustration.
 const REFERENCE_BUDGET = 100000;
 
@@ -368,10 +304,10 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
   const [webinarSpend, articleSpend, leadSpend] = spends(b.budget ?? 0, [0.2, 0.3, 0.5]);
   return {
     metrics: [
-      { k: 'Total budget', v: gbp(b.budget ?? 0) },
+      { k: 'Total budget', v: usd(b.budget ?? 0) },
       { k: 'Estimated reach', v: num(180000 * f) },
       { k: 'Estimated leads', v: num(950 * f), hl: true },
-      { k: 'Blended CPL', v: gbp(105), hl: true },
+      { k: 'Blended CPL', v: usd(105), hl: true },
       { k: 'Duration', v: weeksLabel(weeks) },
     ],
     items: [
@@ -381,7 +317,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
         spend: webinarSpend,
         metrics: [
           { k: 'Estimated leads', v: num(250 * f) },
-          { k: 'Estimated CPL', v: gbp(80) },
+          { k: 'Estimated CPL', v: usd(80) },
         ],
         why: `Webinars historically deliver strong lead generation among ${audienceWord(b)} audiences.`,
       },
@@ -401,7 +337,7 @@ function performancePlan(b: Brief, f: number, weeks: number, months: string[]): 
         spend: leadSpend,
         metrics: [
           { k: 'Estimated leads', v: num(500 * f) },
-          { k: 'Estimated CPL', v: gbp(100) },
+          { k: 'Estimated CPL', v: usd(100) },
         ],
         why: 'Strongest penetration among the selected audience - the largest performance component.',
       },
@@ -418,7 +354,7 @@ function awarenessPlan(b: Brief, f: number, weeks: number, months: string[]): Pl
   const [takeoverSpend, articleSpend, videoSpend] = spends(b.budget ?? 0, [0.35, 0.25, 0.4]);
   return {
     metrics: [
-      { k: 'Total budget', v: gbp(b.budget ?? 0) },
+      { k: 'Total budget', v: usd(b.budget ?? 0) },
       { k: 'Estimated reach', v: num(420000 * f), hl: true },
       { k: 'Estimated impressions', v: `${(1.1 * f).toFixed(1)}m`, hl: true },
       { k: 'Avg. frequency', v: '2.6' },
@@ -468,7 +404,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
   const [webinarSpend, hubSpend, nativeSpend] = spends(b.budget ?? 0, [0.3, 0.4, 0.3]);
   return {
     metrics: [
-      { k: 'Total budget', v: gbp(b.budget ?? 0) },
+      { k: 'Total budget', v: usd(b.budget ?? 0) },
       { k: 'Estimated interactions', v: num(4400 * f), hl: true },
       { k: 'Estimated registrations', v: num(380 * f), hl: true },
       { k: 'Estimated downloads', v: num(1150 * f) },
@@ -481,7 +417,7 @@ function considerationPlan(b: Brief, f: number, weeks: number, months: string[])
         spend: webinarSpend,
         metrics: [
           { k: 'Estimated registrations', v: num(380 * f) },
-          { k: 'Per registration', v: gbp(79) },
+          { k: 'Per registration', v: usd(79) },
         ],
         why: `Webinars hold attention longest among ${audienceWord(b)} audiences.`,
       },
@@ -569,7 +505,7 @@ export function buildPlan(b: Brief): Plan {
     }
   }
   const metrics: PlanMetric[] = [
-    { k: 'Total budget', v: gbp(b.budget ?? 0) },
+    { k: 'Total budget', v: usd(b.budget ?? 0) },
     ...hl,
     { k: 'Duration', v: weeksLabel(weeks) },
   ];
@@ -604,7 +540,7 @@ export function checklistFor(b: Brief): string[] {
   return [
     "Excluding publishers and products that don't fit your brief",
     `Prioritising formats that work for ${kpi}`,
-    `Balancing the spend split within your ${gbp(b.budget ?? 0)}`,
+    `Balancing the spend split within your ${usd(b.budget ?? 0)}`,
     `Calculating expected ${efficiency}`,
   ];
 }
