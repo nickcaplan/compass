@@ -1134,28 +1134,27 @@ export default function App() {
   useEffect(() => {
     if (editingSaved && savedPlans.some(p => p.id === savedEntry.id && campaignEnded(p.brief.end))) cancelEditSaved();
   });
-  // KPIs are included with the chosen objectives, never picked by hand.
-  // Keep every editable brief's stored KPIs in step with its objectives
-  // (covers drafts, demo fills and older saved plans opened for editing);
-  // read-only saved-plan views keep their stored KPIs.
+  // Choosing an objective selects all of its KPIs; chips can then be clicked
+  // off or on. Keep an editable brief's KPIs within its objectives' lists:
+  // older saved plans stored retired KPI names, so those fall back to the
+  // objectives' full lists. Read-only saved-plan views keep their stored KPIs.
   useEffect(() => {
     if (savedBriefReadOnly) return;
     setBrief((b) => {
-      const derived = kpisForObjectives(b.objectives);
-      return b.kpis.length === derived.length && b.kpis.every((k, i) => k === derived[i])
-        ? b
-        : { ...b, kpis: derived };
+      const offered = kpisForObjectives(b.objectives);
+      const kept = b.kpis.filter((k) => offered.includes(k));
+      const next = b.kpis.length > 0 && kept.length === 0 ? offered : kept;
+      return next.length === b.kpis.length && next.every((k, i) => k === b.kpis[i]) ? b : { ...b, kpis: next };
     });
-    // kpisForObjectives is pure and brief.kpis is read via the functional
-    // setter, so objectives and the read-only flag are the only real deps.
+    // brief.kpis is read via the functional setter, so objectives and the
+    // read-only flag are the only real deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brief.objectives, savedBriefReadOnly]);
   const editsNotGenerated = stage === 'plan' && submittedBrief !== null && briefValues(brief) !== briefValues(submittedBrief);
-  // KPI is not listed: KPIs come included with the objective, so a missing
-  // objective is the only way KPIs can be missing.
   const missingForRegeneration = editingSaved ? [
     !(brief.markets?.length) && 'Market',
     !brief.objectives.length && 'Objective',
+    brief.objectives.length > 0 && !brief.kpis.length && 'KPI',
     !brief.audiences.some(a => AUDIENCES.includes(a)) && 'Audience',
     !(brief.budget !== null && brief.budget > 0) && 'Budget',
     !(weeks > 0 && !startNotFuture(brief.start)) && 'valid future campaign dates',
@@ -1259,9 +1258,18 @@ export default function App() {
       const objectives = b.objectives.includes(id)
         ? b.objectives.filter((o) => o !== id)
         : [...b.objectives, id];
-      // KPIs come included with the chosen objectives; there is no KPI picking.
-      return { ...b, objectives, kpis: kpisForObjectives(objectives) };
+      // Adding an objective selects its KPIs; removing one drops the KPIs
+      // no remaining objective offers. KPIs the user clicked off stay off.
+      const offered = kpisForObjectives(objectives);
+      const added = b.objectives.includes(id) ? [] : OBJECTIVES.find((o) => o.id === id)!.kpis;
+      const kpis = offered.filter((k) => added.includes(k) || b.kpis.includes(k));
+      return { ...b, objectives, kpis };
     });
+  }
+
+  function toggleKpi(k: string) {
+    clearCue();
+    setBrief((b) => ({ ...b, kpis: b.kpis.includes(k) ? b.kpis.filter((x) => x !== k) : [...b.kpis, k] }));
   }
 
   function toggleAudience(a: string) {
@@ -1885,13 +1893,10 @@ export default function App() {
   );
   const kpiField = (
           <AnimatedKpiField>
-            {/* KPIs are included with the objective, so they are read-only
-                chips, not choices: no buttons, no pressed state. The note sits
-                on the label line so it adds no height to the measured column. */}
             <div className="kpi-label-row">
               <label id="g-kpi">KPI</label>
               {kpiOptions.length > 0 && (
-                <span className="kpi-note">Included with your {brief.objectives.length > 1 ? 'objectives' : 'objective'}</span>
+                <span className="kpi-note">Click to narrow the options</span>
               )}
             </div>
             {kpiOptions.length === 0 ? (
@@ -1899,9 +1904,15 @@ export default function App() {
             ) : (
               <div className="pills" role="group" aria-labelledby="g-kpi">
                 {kpiOptions.map((entry) => (
-                  <span key={entry.label} className={`pill obj-${entry.objective}`}>
+                  <button
+                    key={entry.label}
+                    type="button"
+                    className={`pill obj-${entry.objective}${brief.kpis.includes(entry.label) ? '' : ' off'}`}
+                    aria-pressed={brief.kpis.includes(entry.label)}
+                    onClick={() => toggleKpi(entry.label)}
+                  >
                     {entry.label}
-                  </span>
+                  </button>
                 ))}
               </div>
             )}

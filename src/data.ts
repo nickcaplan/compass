@@ -12,37 +12,23 @@ export interface Objective {
 }
 
 // Taxonomy from the Compass brief: three objectives, each with its own KPIs.
+// KPI names are the ones in Ben's 27 Nov workbook (Nick, 28 Nov: go with Ben's
+// direction). 'Clicks' covers the workbook's CTR and Clicks rows.
 export const OBJECTIVES: Objective[] = [
   {
     id: 'awareness',
     label: 'Awareness',
-    kpis: ['Reach', 'Impressions', 'Audience penetration', 'Video views', 'Brand exposure'],
+    kpis: ['Reach', 'Impressions', 'Clicks', 'Listens'],
   },
   {
     id: 'consideration',
     label: 'Consideration',
-    kpis: [
-      'Dwell time',
-      'Content interactions',
-      'Video views / completions',
-      'Webinar registrations',
-      'Webinar views',
-      'Content downloads',
-      'Article engagement',
-    ],
+    kpis: ['Registrations', 'Clicks', 'Impressions'],
   },
   {
     id: 'performance',
     label: 'Performance',
-    kpis: [
-      'Lead generation',
-      'Cost per lead',
-      'Website visits',
-      'Qualified traffic',
-      'Downloads',
-      'Form completions',
-      'Enquiries',
-    ],
+    kpis: ['CPL'],
   },
 ];
 
@@ -87,9 +73,19 @@ export interface Brief {
   end: string; // ISO date or ''
 }
 
-// KPIs are never picked by hand: choosing an objective includes all of its
-// KPIs automatically (Nick, 13 Nov 2026). A brief being edited always carries
-// the derived set; saved plans keep whatever KPIs they stored.
+// Choosing an objective selects all of its KPIs; the user can then click KPI
+// chips off or on to narrow the options (Ben's brief: clickable KPI controls).
+// Saved plans keep whatever KPIs they stored.
+/** Workbook Primary KPI values that each KPI chip matches. */
+export const KPI_ROW_VALUES: Record<string, string[]> = {
+  Reach: ['Reach'],
+  Impressions: ['Impressions'],
+  Clicks: ['CTR', 'Clicks'],
+  Listens: ['Listens'],
+  Registrations: ['Registrations'],
+  CPL: ['CPL'],
+};
+
 export function kpisForObjectives(objectives: readonly ObjectiveId[]): string[] {
   return [...new Set(OBJECTIVES.filter((o) => objectives.includes(o.id)).flatMap((o) => o.kpis))];
 }
