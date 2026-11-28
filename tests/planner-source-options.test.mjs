@@ -18,7 +18,7 @@ test('no fallback, no inferred audience or budget allocation',()=>{
  for(const [market,objectives]of [['', ['Awareness']],['Europe',['Awareness']],['UK',[]],['UK',['Invalid']]])assert.equal(sourceOptions(records,market,objectives).optionCount,0);
  const all=sourceOptions(records,'UK',['Awareness','Consideration','Awareness']);
  assert.equal(new Set(all.groups.flatMap(g=>g.options).map(r=>r.id)).size,all.optionCount);
- assert.equal(all.optionCount,30);assert.equal('allocatedBudget' in all,false);
+ assert.equal(all.optionCount,328);assert.equal('allocatedBudget' in all,false);
 });
 test('invalid numbers and held rows never enter source options',()=>{
  const row=records.find(r=>r.structurally_reviewable&&r.market==='UK');

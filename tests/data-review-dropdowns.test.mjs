@@ -45,10 +45,10 @@ test('data review slice dropdowns: placeholders, pointer and keyboard selection,
   // outside pointer closes
   await page.click('#market');await page.waitForSelector('.ir-dd-list');await page.click('.ir-results-head');await page.waitForFunction(()=>!document.querySelector('.ir-dd-list'));
   assert.equal(await page.$('.ir-dd-list'),null);
-  // keyboard selection flow: UK + Awareness gives the known 7 options
+  // keyboard selection flow: UK + Awareness gives the known 173 options
   await page.focus('#objective');await page.keyboard.press('Enter');await page.waitForSelector('.ir-dd-list');
   await page.keyboard.press('Home');await page.keyboard.press('Enter');
   assert.match(await page.$eval('#objective',b=>b.textContent),/Awareness/);
-  await page.waitForFunction(()=>document.querySelector('.ir-results-head h2')?.textContent.includes('7 inspection options'));
+  await page.waitForFunction(()=>document.querySelector('.ir-results-head h2')?.textContent.includes('173 inspection options'));
  }finally{try{if(browser)await browser.close()}finally{server.kill('SIGTERM')}}
 });

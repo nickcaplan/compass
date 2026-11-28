@@ -45,7 +45,7 @@ export default function InventoryIssues(){
  {problem.token==='missing_tactic_rule'&&<>No matching entry for {r.tactic} in Tactic Rules. </>}
  {problem.token==='missing_tactic_description'&&<>No matching entry for {r.tactic} in Tactic Descriptions. </>}
  {(problem.token==='cpl_one_unit_cost_not_campaign_budget'||problem.token==='cpm_over_1000_review_threshold')&&<>Buying model: {r.raw['Buying Model']} · Rate: {number(r.raw['Cost / Rate'])} {r.declared_currency}{r.raw['Buying Model']==='CPM'?' per 1,000 impressions':' per lead'} · Estimated source cost: {number(r.estimated_source_cost)} {r.declared_currency}. {r.raw['Calculation rule']}. </>}
- Source inventory row {r.raw['Source Excel Row']} · {r.raw['Source File']} · page {r.raw['Source Page']}
+ Source inventory row {r.raw['Source Excel Row']} · {r.raw['Source File']} · page {r.source_page}
  </p>
  </article>)}
  </div>
