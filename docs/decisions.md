@@ -1,6 +1,21 @@
 # Decisions
 
-## 2026-11-25 - Source options show the market currency
+## 2026-11-28 - US dollars only, no conversion
+
+Ben's 27 November amends say every price is USD and must show as dollars, never
+CA$, with no live currency conversion for now. Nick confirmed on 28 November:
+"Do B - Ben is the stakeholder here and we are building this for him", and
+"everything in dollars, if that's what Ben has said". This replaces the
+25 and 26 November market-currency decisions below, which are kept for history.
+
+Compass now shows US dollars everywhere, including the brief's budget input,
+and has no exchange-rate code: no ECB request, no saved fallback rates, no
+market currency mapping, no budget "equivalent". The daily fallback-rate refresh
+(#143) was closed as no longer needed. Budgets typed before this change were
+stored as plain numbers, so a saved plan keeps its number and now reads as
+dollars.
+
+## 2026-11-25 - Source options show the market currency (replaced 28 November)
 
 Ben's call with Nick on 24 November 2026 set the first FX policy: show the
 currency of the selected market and convert source costs on the fly. The
