@@ -196,6 +196,124 @@
       "Developer usage": "Show this sentence once at the top of the tactic group, above the publisher options."
     }
   },
+  "readme": [
+    {
+      "topic": "Scope",
+      "note": "349 source products × 5 requested markets = 1,745 records"
+    },
+    {
+      "topic": "Markets",
+      "note": "Global; North America; UK; France; Germany"
+    },
+    {
+      "topic": "Purpose",
+      "note": "Demonstration only. Every market duplication is hypothetical; publisher availability has NOT been confirmed."
+    },
+    {
+      "topic": "Data status",
+      "note": "ALL rows: MOCK DATA — NOT VALIDATED. Do not use for client quotations or firm forecasts."
+    },
+    {
+      "topic": "Market variations",
+      "note": "KPI, price and volume each vary by a deterministic ±10–15% from their source or tactic-peer baseline."
+    },
+    {
+      "topic": "Missing data",
+      "note": "Uses median available source-based values from the same tactic where possible; otherwise illustrative tactic defaults."
+    },
+    {
+      "topic": "KPI rule",
+      "note": "Exactly ONE primary KPI per record, in Media Inventory column M."
+    },
+    {
+      "topic": "Dashboard",
+      "note": "Group by column E (Tactic); show publisher C, format G, KPI M, expected result T, estimated cost U, currency R."
+    },
+    {
+      "topic": "Market filter",
+      "note": "Use column I; 'Global' is a separate simulated market option, not a verified union of all territories."
+    },
+    {
+      "topic": "Data lineage",
+      "note": "Source row in column B points back to the prior 349-row media inventory; provenance columns Z–AC."
+    },
+    {
+      "topic": "Preferred",
+      "note": "Not yet scored; do not mark a publisher preferred until THH sets and validates scoring rules."
+    },
+    {
+      "topic": "Other / Review",
+      "note": "170 original formats remain unclassified; classify before using them for live recommendations."
+    },
+    {
+      "topic": "Grey cells",
+      "note": "Grey source cells should be ignored if applicable; formatting-based exclusions not validated in this demo."
+    },
+    {
+      "topic": "Forecast caveat",
+      "note": "Prototype cost and outcome calculations are rough; CPL demo uses a one-lead unit, not a full budget forecast."
+    },
+    {
+      "topic": "Currencies",
+      "note": "Source currency retained where present; otherwise previous demo USD fallback. No FX conversion applied."
+    },
+    {
+      "topic": "Next step",
+      "note": "THH to validate product availability, price units, KPIs, audience and market before going live."
+    },
+    {
+      "topic": "CPM pricing",
+      "note": "Cost = (impressions / 1,000) × CPM rate. Use S (volume) and Q (rate); cost is U. Missing S becomes 5,000."
+    },
+    {
+      "topic": "CTR delivery",
+      "note": "If primary KPI is CTR, clicks = impressions × CTR. Uses S × N; expected clicks in T. This is separate from CPM pricing."
+    },
+    {
+      "topic": "Dashboard description",
+      "note": "Read Tactic Descriptions column B, matched to Media Inventory column E; show once at the top of each tactic group."
+    },
+    {
+      "topic": "Calculated fields",
+      "note": "Media Inventory T and U are formulas; changing impressions, rate or CTR recalculates results. AF and AG document assumptions."
+    },
+    {
+      "topic": "Demo warning",
+      "note": "All values and market availability remain mock/not validated; no claim of confirmed publisher rates."
+    },
+    {
+      "topic": "Inventory review",
+      "note": "All categories mapped; inferred products are mock, not verified."
+    },
+    {
+      "topic": "CPL packages",
+      "note": "100 leads × CPL rate; all CPL rows use campaign package costs."
+    },
+    {
+      "topic": "CPM / CTR",
+      "note": "CPM impression delivery and CTR click delivery are separate; CPM rates above 1,000 corrected."
+    },
+    {
+      "topic": "Media priority (AH)",
+      "note": "Mock priority: 1 highest, 5 lowest; approximately 10% per tactic are priority 1, with at least one per tactic."
+    },
+    {
+      "topic": "Audience suitability (AI:AN)",
+      "note": "Six independent Yes/No mock flags; approximately 50% Yes per audience. Same flags across all five markets."
+    },
+    {
+      "topic": "Audience filtering",
+      "note": "Use selected audience flags to filter before ranking by AH ascending. Flags and priorities are simulated, not verified audience reach."
+    },
+    {
+      "topic": "Media selection rationale",
+      "note": "Media Inventory AO: show the specific product rationale alongside each recommendation. Use Tactic Descriptions B for the overall tactic summary."
+    },
+    {
+      "topic": "Rationale status",
+      "note": "AO is generated from demo format, audience flags and priority; not verified publisher evidence."
+    }
+  ],
   "summary": {
     "rows": 1745,
     "source_products": 349,
