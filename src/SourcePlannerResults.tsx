@@ -6,7 +6,13 @@ import inventory from './inventory.mock.json';
 import {sourceOptions} from './plannerSourceOptions';
 import './SourcePlannerResults.css';
 const number=(n:number)=>n.toLocaleString('en-GB',{maximumFractionDigits:2});
-const sourceAssumption=(value:string)=>value.replace(/Existing demo volume \(not validated\)/gi,'Existing source volume');
+const basisText:Record<string,string>={
+ volume:'Delivery is the package volume.',
+ volume_x_rate:'Clicks or views = volume × the KPI rate. The cost is the package price.',
+ package_count:'Delivery and cost are the package deliverable and package price.',
+ cpl_package_100_leads:'100 leads per package. Cost = 100 × cost per lead.',
+};
+const calcText=(row:{calc_basis:string;raw:Record<string,string|number>})=>row.raw['Buying Model']==='CPM'?'Cost = volume ÷ 1,000 × CPM rate. Delivery is the volume (5,000 if the source has none).':basisText[row.calc_basis]||'';
 
 
 // Rates come from the background load started when Compass opened (see fxRates.ts).
@@ -29,7 +35,7 @@ export default function SourcePlannerResults({brief}:{brief:Brief}) {
     <p className="sp-publisher">{row.publisher}</p><h5>{row.product}</h5><p>{row.raw.Publication} · {row.raw.Placement}</p>
     {(()=>{const sourceCurrency=row.declared_currency||'';const marketCost=convertCurrency(row.estimated_source_cost,sourceCurrency,marketCurrency,fx.rates);const sourceCost=isCurrencyCode(sourceCurrency)?formatCurrency(row.estimated_source_cost,sourceCurrency):'unspecified currency';return <>
     <dl><div><dt>Expected delivery</dt><dd>{number(row.expected_result)} {row.forecast_unit}</dd></div><div><dt>Estimated cost · {marketCurrency}</dt><dd>{marketCost===null?'Conversion unavailable':formatCurrency(marketCost,marketCurrency)}</dd></div><div><dt>Primary KPI</dt><dd>{row.primary_kpi}{['CTR','VTR'].includes(row.primary_kpi)?` · ${number(row.raw['KPI Assumption']*100)}%`:''}</dd></div></dl>
-    <details><summary>Source and assumptions</summary><p>Whole source package · {row.raw['Buying Model']} · source volume {number(row.raw['Forecast Base Volume'])}.</p><p>{row.raw['Calculation rule']}. {sourceAssumption(row.raw['Impressions / volume assumption'])}</p><p>Source audience: {row.source_audiences.join(', ')}. Not matched to the selected roles.</p><p>Source cost: {sourceCost} {sourceCurrency&&sourceCurrency!==marketCurrency?`converted to ${marketCurrency} on the fly`:sourceCurrency===marketCurrency?'matches the market currency':'cannot be converted without a currency label'}. No publisher-specific rationale or preferred ranking has been supplied.</p><p>Workbook row {row.source_excel_row} · {row.id} · {row.raw['Source File']} · page {row.raw['Source Page']}</p></details>
+    <details><summary>Source and assumptions</summary><p>Whole source package · {row.raw['Buying Model']} · source volume {number(row.raw['Forecast Base Volume'])}.</p><p>{calcText(row)} Existing source volume.</p><p>Source audience: {row.source_audiences.join(', ')}. Not matched to the selected roles.</p><p>Source cost: {sourceCost} {sourceCurrency&&sourceCurrency!==marketCurrency?`converted to ${marketCurrency} on the fly`:sourceCurrency===marketCurrency?'matches the market currency':'cannot be converted without a currency label'}. No publisher-specific rationale or preferred ranking has been supplied.</p><p>Workbook row {row.source_excel_row} · {row.id} · {row.raw['Source File']} · page {row.raw['Source Page']}</p></details>
     </>})()}
    </article>)}</div></section>)}
    <aside className="sp-review"><strong>{result.heldCount} source rows require review</strong><p>Unclassified tactics, missing rules and other data flags are excluded. Passing structural checks does not establish suitability.</p><a href="/data-review/issues">See data problems</a></aside>
