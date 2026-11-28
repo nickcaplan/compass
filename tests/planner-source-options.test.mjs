@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
-const code=stripTypeScriptTypes(readFileSync('src/plannerSourceOptions.ts','utf8')).replace(/^import type.*;$/m,'').replace('export ','');
+const code=stripTypeScriptTypes(readFileSync('src/plannerSourceOptions.ts','utf8')).replace(/^import type.*;$/m,'').replace(/^export /gm,'');
 const sourceOptions=new Function(code+';return sourceOptions')();
 const {records}=JSON.parse(readFileSync('src/inventory.mock.json','utf8'));
 for(const market of ['UK','North America','France','Germany','Global'])for(const objective of ['Awareness','Consideration','Performance'])test(`exact source slice ${market}/${objective}`,()=>{

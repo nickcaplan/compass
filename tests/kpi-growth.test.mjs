@@ -40,7 +40,13 @@ test('Objective stays above animated KPI growth; name/market stay put; reduced m
         const previous=await measure();
         await page.locator(`[aria-labelledby=g-objective] button:nth-child(${objective})`).click();
         if (!reduce && !(width>=1200 && objective===1)) {
-          await page.waitForFunction(()=>document.querySelector('.kpi-field').getAnimations().some(a=>a.playState==='running'));
+          // The height animation only runs when the chips need more room. Chips are now
+          // chosen by workbook name, so an objective can add chips without a new row.
+          const animated=await page.waitForFunction(()=>document.querySelector('.kpi-field').getAnimations().some(a=>a.playState==='running'),{timeout:1500}).then(()=>true,()=>false);
+          if(!animated){
+            const settled=await measure();
+            assert.ok(settled.height===previous.height,`${width}: objective ${objective} without animation keeps the same height`);
+          } else {
           const midpoint=await page.$eval('.kpi-field',e=>{
             const animation=e.getAnimations()[0];animation.pause();animation.currentTime=140;
             const height=e.getBoundingClientRect().height;const frames=animation.effect.getKeyframes();
@@ -49,6 +55,7 @@ test('Objective stays above animated KPI growth; name/market stay put; reduced m
           });
           assert.ok(midpoint.to>midpoint.from,`${width}: objective ${objective} grows`);
           assert.ok(midpoint.height>midpoint.from&&midpoint.height<midpoint.to,`${width}: actual intermediate height`);
+          }
         }
         await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         if (reduce) assert.equal(await page.$eval('.kpi-field',e=>e.getAnimations().length),0,'reduced motion has no height animation');
@@ -63,14 +70,13 @@ test('Objective stays above animated KPI growth; name/market stay put; reduced m
           assert.ok(layout.audience>=layout.bottom&&layout.audience-layout.bottom<24);
         }
       }
-      assert.equal(await page.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.length),19);
-      // KPIs come included with their objectives: read-only chips, no buttons
-      // and no pressed state. Removing an objective gently shrinks the box and
+      assert.equal(await page.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.length),6);
+      // KPIs come included with their objectives as clickable chips named in the workbook. Removing an objective gently shrinks the box and
       // removes exactly that objective's KPIs.
-      assert.equal(await page.$$eval('[aria-labelledby=g-kpi] button',bs=>bs.length),0);
+      assert.equal(await page.$$eval('[aria-labelledby=g-kpi] button',bs=>bs.length),6);
       await page.locator('[aria-labelledby=g-objective] button:nth-child(1)').click();
       await page.evaluate(()=>Promise.all(document.querySelector('.kpi-field').getAnimations().map(a=>a.finished.catch(()=>{}))));
-      assert.equal(await page.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.length),14);
+      assert.equal(await page.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.length),4);
       assert.equal(await page.$$eval('[aria-labelledby=g-kpi] .pill.obj-awareness',bs=>bs.length),0);
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       await page.setViewport({width:width>=1200?390:1440,height:1000});

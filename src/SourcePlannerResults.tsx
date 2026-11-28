@@ -35,7 +35,7 @@ export default function SourcePlannerResults({brief}:{brief:Brief}) {
    <header><h3>{m.label}</h3><p>{objectives.map(o=>o.label).join(' + ')} · {result.selectedCount} recommended, one per tactic · {result.matchCount-result.selectedCount} alternatives · USD</p></header>
    <p className="sp-note">Each market is separate. Market versions are not additional unique packages and cannot be combined into an allocated plan. All costs are in US dollars. One option per tactic is recommended: priority 1 first, then lowest cost.</p>
    {!result.selectedCount&&<div className="sp-empty"><h4>No source options match this brief</h4><p>Try another KPI or audience. This is a data limitation, not proof that no publishers exist. No other market or objective has been substituted.</p></div>}
-   {result.selectedCount>0&&<p className="sp-total"><strong>Recommended options total {usd(result.selectedCost)}</strong> across {result.selectedCount} tactics. Alternatives are not counted.</p>}
+   {result.selectedCount>0&&<p className="sp-total"><strong>Recommended options total {usd(result.selectedCost)}</strong> across {result.selectedCount} {result.selectedCount===1?"tactic":"tactics"}. Alternatives are not counted.</p>}
    {result.groups.map(g=><section className="sp-tactic" key={g.tactic}><h4>{g.tactic}</h4><p>{g.description}</p><div className="sp-options"><OptionCard row={g.selected} recommended/></div>{g.alternatives.length>0&&<details className="sp-alts"><summary>{g.alternatives.length} alternative{g.alternatives.length===1?'':'s'}</summary><div className="sp-options">{g.alternatives.map(a=><OptionCard key={a.id} row={a}/>)}</div></details>}</section>)}
   </section>})}
  </section>;
