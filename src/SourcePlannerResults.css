@@ -24,3 +24,9 @@
 .sp-review { border-left:4px solid #c26a30; }
 @media(min-width:700px) { .sp-options { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:600px) { .sp-option { padding:14px; } }
+.sp-badge { display:inline-block; margin:0 0 6px; font-size:13px; font-weight:650; color:var(--text); }
+.sp-selected { border-color:var(--accent); }
+.sp-total { font-size:15px; margin:16px 0 0; }
+.sp-alts { margin-top:4px; }
+.sp-alts>summary { cursor:pointer; font-size:14px; padding:8px 0; }
+.sp-alts .sp-options { margin-top:12px; }

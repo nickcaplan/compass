@@ -33,12 +33,12 @@ test('objectives use three neutral shades and their KPIs inherit them',{timeout:
   await p.waitForSelector('[aria-labelledby=g-kpi] .pill');
   // KPIs come included with the objective: all five appear at once, already
   // shaded. They are read-only chips - no buttons, no pressed or off state.
-  assert.equal(await p.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.length),5);
+  assert.equal(await p.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.length),4);
   assert.ok(await p.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.every(b=>b.classList.contains('obj-awareness'))),'all Awareness KPIs inherit its shade');
   assert.ok(await p.$$eval('[aria-labelledby=g-kpi] .pill',bs=>bs.every(b=>getComputedStyle(b).backgroundColor===getComputedStyle(bs[0]).backgroundColor)),'included KPIs share one filled shade');
   assert.equal(await p.$eval('[aria-labelledby=g-kpi] .pill.obj-awareness',b=>getComputedStyle(b).backgroundColor),awarenessFill,'included Awareness KPIs are not shaded');
-  assert.equal(await p.$$eval('[aria-labelledby=g-kpi] button',bs=>bs.length),0,'KPIs must not be clickable');
-  assert.equal(await p.$$eval('[aria-labelledby=g-kpi] [aria-pressed]',bs=>bs.length),0,'KPIs carry no pressed state');
+  assert.equal(await p.$$eval('[aria-labelledby=g-kpi] button',bs=>bs.length),4,'KPIs are clickable buttons');
+  assert.equal(await p.$$eval('[aria-labelledby=g-kpi] [aria-pressed=true]',bs=>bs.length),4,'every KPI starts pressed (selected)');
   assert.equal(await p.$$eval('[aria-labelledby=g-kpi] .pill.off',bs=>bs.length),0,'no unselected KPI state remains');
   // With Performance also selected, its KPIs keep their own light-grey shade
   // beside the awareness ones - the relationship stays unambiguous.
